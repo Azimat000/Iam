@@ -197,6 +197,23 @@ def render(state: dict) -> str:
     return "\n".join(out)
 
 
+def req_summary() -> str | None:
+    """Одна строка о реестре требований для brief; None, если реестра нет."""
+    f = ROOT / "requirements.toml"
+    if not f.exists():
+        return None
+    try:
+        import tomllib
+        reqs = tomllib.loads(f.read_text(encoding="utf-8")).get("req", [])
+    except Exception as e:  # повреждённый реестр не должен ронять brief
+        return f"НЕ ЧИТАЕТСЯ ({e})"
+    c = {s: sum(1 for r in reqs if r.get("status") == s) for s in ("verified", "implemented", "planned", "waived")}
+    stub = sum(1 for r in reqs if r.get("status") == "verified" and r.get("stub_only"))
+    return (f"{len(reqs)} требований: verified {c['verified']}"
+            + (f" (на заглушке {stub})" if stub else "")
+            + f", implemented {c['implemented']}, planned {c['planned']}, waived {c['waived']}")
+
+
 # ---------------------------------------------------------------- команды
 
 
@@ -233,6 +250,9 @@ def cmd_brief(args, state):
             if g.get("blocks_finish"):
                 tag.append("не даёт закрыть " + ",".join(g["blocks_finish"]))
             print(f"  {g['id']} [{g['slice']}] {g.get('text', '')}" + (f"  <{'; '.join(tag)}>" if tag else ""))
+    rs = req_summary()
+    if rs:
+        print("\nРеестр требований: " + rs + " (подробно: python3 tools/reqs.py report)")
     pend = [a for a in state["assumptions"] if a["status"] == "pending-confirm"]
     if pend:
         print("\nДопущения, ждущие подтверждения:")
