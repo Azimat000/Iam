@@ -3,9 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from iam.domain import Event, Source, Transition
+from iam.domain import Event, Transition
 
-from .rules import ACTORS, event_source
+from .rules import ACTORS
 
 
 @dataclass(frozen=True)
@@ -51,9 +51,6 @@ class Proposal:
     def __post_init__(self):
         if self.actor not in ACTORS:
             raise ValueError(f"actor {self.actor!r}: нужно одно из {ACTORS}")
-
-    def source(self) -> Source:
-        return event_source(self.actor, self.actor_ref)
 
 
 @dataclass(frozen=True)

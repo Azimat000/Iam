@@ -64,6 +64,10 @@ class ApplyTest(StateCase):
         super().setUp()
         self.c = self.controller(running=True)
 
+    def test_unknown_actor_is_a_programmer_error(self):
+        with self.assertRaises(ValueError):
+            Proposal(self.tr(self.c, set_("traits", "x", 1)), "stranger")
+
     def test_applied_transition(self):
         c = self.c
         before = c.state_version
@@ -216,6 +220,16 @@ class ApplyTest(StateCase):
         # у остальных типов состояние меняют core, model и operator, но не world
         self.assertEqual(c.apply(self.prop(c, set_("traits", "x", 1), actor="world")).reason, "actor_forbidden")
 
+    def test_session_and_creation_events_are_written_only_by_controller_methods(self):
+        c = self.c
+        for t, key in (("session.started", "ses:ses_FORGED0001:start"), ("session.paused", "ses:ses_FORGED0001:pause:1"),
+                       ("time.moment_due", "due:mom_FORGED001:1")):
+            res = c.apply(self.prop(c, set_("traits", "x", 1), carrier=EventSpec(t, key)))
+            self.assertEqual(res.reason, "carrier_reserved", t)
+        companion = EventSpec("session.resumed", "ses:ses_FORGED0001:resume:1")
+        self.assertEqual(c.apply(self.prop(c, set_("traits", "x", 1), companions=(companion,))).reason, "carrier_reserved")
+        self.assertEqual(c.session_state, "running")
+
     def test_self_cause_only_for_operator_and_core(self):
         c = self.c
         for actor, ok in (("operator", True), ("core", True), ("world", False), ("model", False)):
@@ -299,6 +313,15 @@ class ApplyTest(StateCase):
         self.assertEqual((c.state, c.state_version, c.store.last_seq()), (base, 2, seq),
                          "ни события, ни части перехода не осталось, память перечитана из базы")
         self.assertTrue(c.apply(self.prop(c, set_("traits", "x", 1))).applied)
+
+    def test_event_that_was_not_really_written_aborts_the_whole_transition(self):
+        c = self.c
+        base, seq = c.state, c.store.last_seq()
+        real = c.store.append_event
+        with mock.patch.object(c.store, "append_event", side_effect=lambda ev: (real(ev)[0], False)):
+            with self.assertRaises(StateCorrupt):
+                c.apply(self.prop(c, set_("traits", "x", 1)))
+        self.assertEqual((c.state, c.store.last_seq()), (base, seq), "переход откатан целиком")
 
     def test_orphan_state_event_is_corruption(self):
         c = self.c

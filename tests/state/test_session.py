@@ -120,6 +120,32 @@ class SessionTest(StateCase):
         self.assertTrue(c.pause_session().applied)
 
 
+class FailedStepTest(StateCase):
+    """Если переход сеанса не прошёл проверку, часы остаются в прежнем состоянии: время не замирает и не идёт зря."""
+
+    def deny_session(self, c, target):
+        c.add_validator("deny", lambda ch: ["запрещено"] if ch.after["world_time"]["session_state"] == target else [])
+
+    def test_refused_pause_keeps_clock_running(self):
+        c = self.controller(running=True)
+        self.deny_session(c, "paused")
+        self.assertEqual(c.pause_session().reason, "validator:deny")
+        self.assertEqual((c.session_state, c.clock.running), ("running", True))
+
+    def test_refused_resume_keeps_clock_stopped(self):
+        c = self.controller(running=True)
+        c.pause_session()
+        self.deny_session(c, "running")
+        self.assertEqual(c.resume_session().reason, "validator:deny")
+        self.assertEqual((c.session_state, c.clock.running), ("paused", False))
+
+    def test_refused_stop_keeps_session(self):
+        c = self.controller(running=True)
+        self.deny_session(c, "stopped")
+        self.assertEqual(c.stop_session().reason, "validator:deny")
+        self.assertEqual((c.session_state, c.clock.running), ("running", True))
+
+
 class CrashTest(StateCase):
     def test_crash_recovery_keeps_life_time_and_records_pause(self):
         c = self.controller(running=True)

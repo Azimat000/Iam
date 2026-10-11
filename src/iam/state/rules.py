@@ -31,6 +31,12 @@ CARRIER_ACTORS: dict[str, frozenset[str]] = {
 # Остальные типы событий, меняющих состояние, нести переход могут core и model (через проверку ядром).
 DEFAULT_CARRIER_ACTORS = frozenset({"core", "model", "operator"})
 
+# События, которые пишут только методы самого контроллера (начало/пауза/возобновление/остановка сеанса,
+# создание личности, наступивший момент): через общий `apply` их не провести, иначе журнал мог бы
+# сообщить о сеансе или моменте, которых в состоянии нет.
+RESERVED_CARRIERS = frozenset({"persona.created", "session.started", "session.paused", "session.resumed",
+                               "session.stopped", "time.moment_due"})
+
 EVENT_SOURCE_KIND = {"operator": "operator_panel", "core": "core", "model": "core", "world": "world"}
 
 

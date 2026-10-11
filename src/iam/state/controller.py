@@ -64,6 +64,12 @@ def _ident(value) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
+def _require(condition: bool, message: str) -> None:
+    """Защита целостности: нарушение означает ошибку в самом привратнике, а не во входных данных."""
+    if not condition:
+        raise StateCorrupt(message)
+
+
 class StateController:
     def __init__(self, store: Store, *, clock: LifeClock | None = None, validators: Iterable[tuple[str, Validator]] = (),
                  recover: bool = True):
@@ -274,6 +280,8 @@ class StateController:
         v: list[Violation] = []
         if p.actor not in rules.CARRIER_ACTORS.get(carrier.type, rules.DEFAULT_CARRIER_ACTORS):
             v.append(Violation("actor_forbidden", f"{p.actor} не вправе проводить событие {carrier.type}"))
+        if not privileged and {carrier.type, *(s.type for s in p.companions)} & rules.RESERVED_CARRIERS:
+            v.append(Violation("carrier_reserved", "события сеанса, моментов и создания личности пишут методы контроллера"))
         for spec in (carrier, *p.companions):
             if not rules.permitted_in(self.session_state, spec.type):
                 v.append(Violation("session_forbids", f"{spec.type} недопустимо при сеансе {self.session_state}"))
@@ -379,8 +387,7 @@ class StateController:
         written = []
         for ev in self._events(p, carrier, version, stamp, out.changes):
             stored, created = self.store.append_event(ev)
-            if not created:
-                raise StateCorrupt(f"ключ {ev.idempotency_key} занят после проверки")
+            _require(created, f"ключ {ev.idempotency_key} занят после проверки: событие перехода не записано")
             written.append(stored)
         for how, rec in out.memory:
             (self.store.add_memory if how == "add" else self.store.update_memory)(rec)
@@ -604,7 +611,11 @@ class StateController:
             self._fault("response_conflict", _ident(body), {"request_id": rid, "existing_seq": have.seq})
             return ResponseResult("conflict", "response_conflict")
         received = self._log(EventSpec("proposal.received", key, body), causes=(asked.event_id,))
-        why = self._stale_reasons(response, asked.payload["request"], self._pending.pop(rid, None))
+        request = asked.payload["request"]
+        if (response["epoch"], response["state_version"]) != (request["epoch"], request["state_version"]):
+            self._fault("echo_mismatch", _ident(rid), {"request_id": rid})
+            return ResponseResult("rejected", "echo_mismatch", received)
+        why = self._stale_reasons(response, request, self._pending.pop(rid, None))
         if why:
             self._log(EventSpec("proposal.stale", f"{key}:stale", {
                 "request_id": rid, "reasons": why, "response_epoch": response["epoch"],
