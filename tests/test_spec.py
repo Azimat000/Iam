@@ -90,8 +90,30 @@ class EventCatalogTest(unittest.TestCase):
         self.assertEqual(len(keys), len(set(keys)))
 
     def test_model_never_produces_events_directly(self):
-        # В каталоге нет типа, который порождает «модель»: она только предлагает.
+        # Ни в каталоге, ни в источниках события нет «модели»: она только предлагает.
         self.assertNotIn("модель", " ".join(r[1] for r in self.catalog()))
+        kinds = load(SCHEMAS / "event.schema.json")["properties"]["source"]["properties"]["kind"]["enum"]
+        self.assertNotIn("model", kinds)
+
+    def test_epoch_in_all_versioned_schemas(self):
+        for name in ("event", "request", "response"):
+            sch = load(SCHEMAS / f"{name}.schema.json")
+            self.assertIn("epoch", sch["required"], name)
+        self.assertIn("base_epoch", load(SCHEMAS / "transition.schema.json")["required"])
+
+    def test_state_groups_match_transition_schema(self):
+        enum = load(SCHEMAS / "transition.schema.json")["properties"]["ops"]["items"]["properties"]["group"]["enum"]
+        self.assertEqual(enum, STATE_GROUPS + ["memory"])
+        prop = load(SCHEMAS / "proposal.schema.json")["allOf"]
+        sc = next(c for c in prop if c["if"]["properties"]["kind"]["const"] == "state_change")
+        self.assertEqual(sc["then"]["properties"]["body"]["properties"]["ops"]["items"]["properties"]["group"]["enum"], enum)
+
+    def test_pause_table_mentions_every_event_prefix(self):
+        # каждое семейство событий из каталога названо в таблице допустимости в time.md
+        time_md = (SPEC / "time.md").read_text(encoding="utf-8")
+        for t, *_ in self.catalog():
+            family = t.split(".")[0]
+            self.assertTrue(f"`{family}." in time_md or f"`{t}" in time_md, f"{t}: семейство {family} не упомянуто в time.md")
 
 
 class CompletenessTest(unittest.TestCase):
@@ -116,7 +138,7 @@ class CompletenessTest(unittest.TestCase):
 
     def test_origin_types_in_spec_and_schema(self):
         enum = load(SCHEMAS / "memory_record.schema.json")["properties"]["origin"]["enum"]
-        self.assertEqual(enum[:6], ORIGINS)
+        self.assertEqual(enum, ORIGINS + ["model_explanation"])
         text = (SPEC / "provenance.md").read_text(encoding="utf-8")
         for o in enum:
             self.assertIn(f"`{o}`", text)

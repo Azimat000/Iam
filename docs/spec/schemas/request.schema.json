@@ -17,7 +17,9 @@
     "allowed_actions",
     "limits",
     "response_schema",
-    "idempotency_key"
+    "idempotency_key",
+    "epoch",
+    "cycle_id"
   ],
   "properties": {
     "request_id": {
@@ -68,7 +70,7 @@
         "properties": {
           "ref": {
             "type": "string",
-            "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+            "pattern": "^(evt|mem|inp)_[A-Za-z0-9]{8,40}$"
           },
           "origin": {
             "enum": [
@@ -85,7 +87,8 @@
             "enum": [
               "personal",
               "interpretation",
-              "state"
+              "state",
+              "notice"
             ]
           },
           "text": {
@@ -106,7 +109,8 @@
           "memory_write",
           "intention",
           "creator_request",
-          "no_action"
+          "no_action",
+          "attend"
         ]
       }
     },
@@ -148,6 +152,44 @@
     "idempotency_key": {
       "type": "string",
       "pattern": "^req:req_[A-Za-z0-9]{8,40}$"
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "cycle_id": {
+      "type": "string",
+      "pattern": "^cyc_[A-Za-z0-9]{8,40}$"
+    },
+    "retry_of": {
+      "type": "string",
+      "pattern": "^req_[A-Za-z0-9]{8,40}$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "limits": {
+            "properties": {
+              "attempt": {
+                "const": 1
+              }
+            },
+            "required": [
+              "attempt"
+            ]
+          }
+        },
+        "required": [
+          "limits"
+        ]
+      },
+      "then": {
+        "required": [
+          "retry_of"
+        ]
+      }
+    }
+  ]
 }

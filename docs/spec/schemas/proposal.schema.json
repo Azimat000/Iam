@@ -24,7 +24,8 @@
         "memory_write",
         "intention",
         "creator_request",
-        "no_action"
+        "no_action",
+        "attend"
       ]
     },
     "rationale": {
@@ -93,6 +94,7 @@
         "properties": {
           "body": {
             "required": [
+              "capability_id",
               "to",
               "text"
             ],
@@ -104,6 +106,10 @@
               "text": {
                 "type": "string",
                 "minLength": 1
+              },
+              "capability_id": {
+                "type": "string",
+                "pattern": "^cap_[A-Za-z0-9]{8,40}$"
               }
             }
           }
@@ -324,6 +330,42 @@
             ],
             "properties": {
               "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "attend"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "focus"
+            ],
+            "properties": {
+              "focus": {
+                "enum": [
+                  "activity",
+                  "intention",
+                  "event",
+                  "dialogue",
+                  "rest"
+                ]
+              },
+              "ref": {
                 "type": "string",
                 "minLength": 1
               }

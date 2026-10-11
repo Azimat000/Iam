@@ -14,6 +14,7 @@
     "source",
     "causes",
     "idempotency_key",
+    "epoch",
     "state_version",
     "changes_state",
     "payload",
@@ -37,6 +38,7 @@
     },
     "type": {
       "enum": [
+        "persona.created",
         "input.arrived",
         "input.noticed",
         "input.read",
@@ -78,6 +80,7 @@
         "operator.intervention",
         "system.limit_reached",
         "system.error",
+        "system.rejected_sender",
         "system.backup_created",
         "system.restored"
       ]
@@ -104,7 +107,6 @@
             "external_person",
             "persona",
             "core",
-            "model",
             "world",
             "system",
             "receiver"
@@ -140,6 +142,10 @@
     },
     "schema_version": {
       "const": 1
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 1
     }
   }
 }

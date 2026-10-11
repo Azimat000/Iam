@@ -242,6 +242,42 @@
           "independence_group"
         ]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "restored_by_operator": {
+            "const": true
+          }
+        },
+        "required": [
+          "restored_by_operator"
+        ]
+      },
+      "then": {
+        "properties": {
+          "layer": {
+            "const": "personal"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "claim_kind": {
+            "const": "statement_made"
+          }
+        },
+        "required": [
+          "claim_kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "independence_group"
+        ]
+      }
     }
   ]
 }
