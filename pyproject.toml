@@ -14,6 +14,9 @@ dependencies = []
 # Только для разработки: измеритель покрытия (D-011). Версия зафиксирована.
 dev = ["coverage==7.10.6"]
 
+[project.scripts]
+iam = "iam.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -43,4 +46,5 @@ critical = [
     "src/iam/storage/*.py",
     "src/iam/state/*.py",
     "src/iam/clock/*.py",
+    "src/iam/backup/*.py",   # копии, восстановление, экспорт, сканер секретов, защита места (S06)
 ]

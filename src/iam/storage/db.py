@@ -13,6 +13,7 @@ import contextlib
 import itertools
 import sqlite3
 from pathlib import Path
+from urllib.parse import quote
 
 _DENY_ALWAYS = {sqlite3.SQLITE_DROP_TABLE, sqlite3.SQLITE_DROP_TRIGGER, sqlite3.SQLITE_DROP_INDEX,
                 sqlite3.SQLITE_DROP_VIEW, sqlite3.SQLITE_DROP_VTABLE, sqlite3.SQLITE_ALTER_TABLE,
@@ -62,7 +63,8 @@ class Connection(sqlite3.Connection):
 def connect(path: str | Path, *, readonly: bool = False) -> Connection:
     """Открыть базу с настройками ядра. Транзакциями управляет только `transaction()`."""
     if readonly:
-        con = sqlite3.connect(f"file:{Path(path)}?mode=ro", uri=True, isolation_level=None,
+        # Путь экранируется: «#», «?», «%» в имени каталога иначе ломают URI (найдено при проверке S06).
+        con = sqlite3.connect(f"file:{quote(str(Path(path).resolve()))}?mode=ro", uri=True, isolation_level=None,
                               factory=Connection)
     else:
         con = sqlite3.connect(str(path), isolation_level=None, factory=Connection)

@@ -2242,8 +2242,8 @@ kind = "functional"
 mechanism = "iam.backup (восстановление в отдельный каталог, событие «восстановлено»)"
 check = "scenarios/required/restore_backup.toml (создан в S03); прогон на ядре в S25."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_restore.py"
 
 [[req]]
 id = "R-188"
@@ -2398,8 +2398,8 @@ kind = "constraint"
 mechanism = "Хук «копия перед миграцией» в iam.storage / iam.backup"
 check = "Тест: миграция без свежей копии отклоняется."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_snapshots.py"
 
 [[req]]
 id = "R-201"
@@ -2410,8 +2410,8 @@ kind = "constraint"
 mechanism = "iam.backup (ротация до 3)"
 check = "Тест: после четвёртого снимка остаются три последних. Сценарии каталога: scenarios/required/restore_backup.toml."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_snapshots.py"
 
 [[req]]
 id = "R-202"
@@ -2422,8 +2422,8 @@ kind = "functional"
 mechanism = "CLI iam export"
 check = "Тест: экспорт создаёт пакет и проверяется на целостность."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_export.py; tests/backup/test_cli.py"
 
 [[req]]
 id = "R-203"
@@ -2434,8 +2434,8 @@ kind = "constraint"
 mechanism = "iam restore в отдельный каталог + проверка воспроизведения"
 check = "Сценарий «Восстановление копии». Сценарии каталога: scenarios/required/restore_backup.toml."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_restore.py"
 
 [[req]]
 id = "R-204"
@@ -2446,8 +2446,8 @@ kind = "constraint"
 mechanism = "Сканер секретов экспорта"
 check = "Тест с «канареечными» секретами: в пакете экспорта их нет."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_export.py; tests/backup/test_scan.py"
 
 [[req]]
 id = "R-205"
@@ -2458,8 +2458,8 @@ kind = "constraint"
 mechanism = "Проверка запаса места перед записью; чистая остановка"
 check = "Хаос-тест S10: нехватка места не повреждает базу."
 slice = "S06"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_space.py"
 
 [[req]]
 id = "R-206"
@@ -2625,8 +2625,8 @@ kind = "constraint"
 mechanism = "Сканер секретов (S06), токен только из окружения (S09), отдельное хранилище авторизации исполнителя (S08), правила запуска (RUNBOOK)"
 check = "Тест сканера на «канареечных» секретах (экспорт); тест: токен Telegram не появляется в логах и ответах панели; проверка репозитория сканером."
 slice = ["S06", "S08", "S09"]
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S06-backup.md; tests/backup/test_scan.py; tests/backup/test_export.py"
 
 [[req]]
 id = "R-220"
