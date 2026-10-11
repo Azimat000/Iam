@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "proposal.schema.json",
+  "title": "Предложение решения",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_id",
+    "kind",
+    "rationale",
+    "cites",
+    "body"
+  ],
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[A-Za-z0-9]{8,40}$"
+    },
+    "kind": {
+      "enum": [
+        "action",
+        "message",
+        "state_change",
+        "memory_write",
+        "intention",
+        "creator_request",
+        "no_action"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cites": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+      }
+    },
+    "body": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "action"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "capability_id",
+              "params"
+            ],
+            "properties": {
+              "capability_id": {
+                "type": "string",
+                "pattern": "^cap_[A-Za-z0-9]{8,40}$"
+              },
+              "params": {
+                "type": "object"
+              },
+              "expected_duration_ms": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "message"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "to",
+              "text"
+            ],
+            "properties": {
+              "to": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "state_change"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "ops"
+            ],
+            "properties": {
+              "ops": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "group",
+                    "path",
+                    "op"
+                  ],
+                  "properties": {
+                    "group": {
+                      "enum": [
+                        "traits",
+                        "affect",
+                        "beliefs",
+                        "relations",
+                        "intentions",
+                        "preferences",
+                        "selfmodel",
+                        "world_time",
+                        "memory"
+                      ]
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "op": {
+                      "enum": [
+                        "set",
+                        "add",
+                        "remove",
+                        "transition"
+                      ]
+                    },
+                    "value": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "memory_write"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "draft"
+            ],
+            "properties": {
+              "draft": {
+                "type": "object",
+                "required": [
+                  "kind",
+                  "origin",
+                  "content"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "sensory",
+                      "working",
+                      "episodic",
+                      "semantic",
+                      "autobiographical",
+                      "emotional_associative",
+                      "procedural",
+                      "social",
+                      "prospective"
+                    ]
+                  },
+                  "origin": {
+                    "enum": [
+                      "observation",
+                      "model_knowledge",
+                      "stated_by_other",
+                      "own_hypothesis",
+                      "imagination",
+                      "simulation_event",
+                      "model_explanation"
+                    ]
+                  },
+                  "content": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "intention"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "create",
+                  "update",
+                  "transition"
+                ]
+              },
+              "to_status": {
+                "enum": [
+                  "active",
+                  "waiting_opportunity",
+                  "deferred",
+                  "done",
+                  "abandoned"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "creator_request"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "request_key",
+              "text"
+            ],
+            "properties": {
+              "request_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "no_action"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "required": [
+              "reason"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
