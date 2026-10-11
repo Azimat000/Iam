@@ -34,6 +34,8 @@ KINDS = ("functional", "constraint", "process", "quality")
 STATUSES = ("planned", "implemented", "verified", "waived")
 REQUIRED = ("id", "source", "text", "kind", "mechanism", "check", "slice", "status", "evidence")
 ID_RE = re.compile(r"^R-\d{3,}$")
+MAX_RANGE = 10      # один диапазон lines не длиннее 10 строк: иначе одно требование «закрывает» целый раздел
+MIN_LEN = {"mechanism": 6, "check": 15}   # короче — отписка вместо механизма/проверки
 EXTRA_SOURCES = ("CLAUDE.md",)
 
 # Разделы плана: (ключ, начало строки-заголовка). Раздел длится до следующего заголовка из списка.
@@ -111,8 +113,28 @@ def parse_lines(spec, errs: list[str], where: str) -> set[int]:
         if a < 1 or b < a:
             errs.append(f"{where}: неверный диапазон «{part.strip()}»")
             continue
+        if b - a + 1 > MAX_RANGE:
+            errs.append(f"{where}: диапазон «{part.strip()}» длиннее {MAX_RANGE} строк — разбейте на несколько требований")
+            continue
         out.update(range(a, b + 1))
     return out
+
+
+def evidence_problem(p: str) -> str | None:
+    """None, если путь свидетельства — существующий непустой файл внутри репозитория."""
+    if p.startswith("/") or ".." in Path(p).parts:
+        return "путь должен быть относительным, без «..»"
+    full = ROOT / p
+    try:
+        real = full.resolve()
+        real.relative_to(ROOT)
+    except (ValueError, OSError):
+        return "путь выходит за пределы репозитория"
+    if not real.is_file():
+        return "файл не найден (каталог не считается свидетельством)"
+    if real.stat().st_size == 0:
+        return "файл пуст"
+    return None
 
 
 def evidence_paths(ev: str) -> list[str]:
@@ -144,26 +166,32 @@ def validate_data(data: dict, slices: set[str], plan: list[str] | None) -> list[
                 errs.append(f"{where}: нет поля {f}")
         if any(f not in r for f in REQUIRED):
             continue
-        if not isinstance(r["id"], str) or not ID_RE.match(r["id"]):
+        bad_types = [f for f in ("id", "source", "text", "kind", "mechanism", "check", "status", "evidence")
+                     if not isinstance(r[f], str)]
+        sl0 = r["slice"]
+        if not (isinstance(sl0, str) or (isinstance(sl0, list) and sl0 and all(isinstance(x, str) for x in sl0))):
+            bad_types.append("slice")
+        if bad_types:
+            errs.append(f"{where}: поля должны быть строками (slice — строка или непустой список строк): {', '.join(bad_types)}")
+            continue
+        if not ID_RE.match(r["id"]):
             errs.append(f"{where}: id должен иметь вид R-001")
         if r["id"] in seen:
             errs.append(f"{where}: id повторяется")
         seen.add(r["id"])
         for f in ("text", "mechanism", "check"):
-            if not isinstance(r[f], str) or not r[f].strip():
+            if not r[f].strip():
                 errs.append(f"{where}: поле {f} пустое")
+            elif f in MIN_LEN and len(r[f].strip()) < MIN_LEN[f]:
+                errs.append(f"{where}: поле {f} слишком короткое (меньше {MIN_LEN[f]} символов) — это не механизм/проверка")
         if r["kind"] not in KINDS:
             errs.append(f"{where}: kind «{r['kind']}» не из {KINDS}")
         if r["status"] not in STATUSES:
             errs.append(f"{where}: status «{r['status']}» не из {STATUSES}")
         sl = r["slice"]
-        sl_list = [sl] if isinstance(sl, str) else sl
-        if not isinstance(sl_list, list) or not sl_list:
-            errs.append(f"{where}: slice — строка или список строк")
-        else:
-            for s in sl_list:
-                if s not in slices:
-                    errs.append(f"{where}: срез «{s}» не существует в docs/state.json")
+        for s_ in ([sl] if isinstance(sl, str) else sl):
+            if s_ not in slices:
+                errs.append(f"{where}: срез «{s_}» не существует в docs/state.json")
         src = r["source"]
         if src not in SECTION_KEYS and src not in EXTRA_SOURCES:
             errs.append(f"{where}: source «{src}» неизвестен")
@@ -196,8 +224,9 @@ def validate_data(data: dict, slices: set[str], plan: list[str] | None) -> list[
                 errs.append(f"{where}: waived требует поле waiver с обоснованием")
         if r["status"] in ("verified", "implemented") and ev.strip():
             for p in evidence_paths(ev):
-                if p.startswith("/") or ".." in Path(p).parts or not (ROOT / p).exists():
-                    errs.append(f"{where}: свидетельство «{p}» не найдено в репозитории")
+                prob = evidence_problem(p)
+                if prob:
+                    errs.append(f"{where}: свидетельство «{p}»: {prob}")
         if "stub_only" in r and not isinstance(r["stub_only"], bool):
             errs.append(f"{where}: stub_only должно быть true/false")
     # пропуски
@@ -205,6 +234,9 @@ def validate_data(data: dict, slices: set[str], plan: list[str] | None) -> list[
     skip_lines: set[int] = set()
     for i, s in enumerate(skips, 1):
         where = f"skip #{i}"
+        if not isinstance(s, dict):
+            errs.append(f"{where}: пропуск должен быть таблицей с полями lines и why")
+            continue
         if not str(s.get("why", "")).strip():
             errs.append(f"{where}: нет обоснования why")
         skip_lines |= parse_lines(s.get("lines"), errs, where)

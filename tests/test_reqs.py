@@ -29,7 +29,7 @@ def heading(key):
 
 GOOD = {
     "id": "R-001", "source": "§1", "lines": str(body("§1")), "text": "т", "kind": "functional",
-    "mechanism": "m", "check": "c", "slice": "T1", "status": "planned", "evidence": "",
+    "mechanism": "iam.module", "check": "Тест: проверяемое поведение", "slice": "T1", "status": "planned", "evidence": "",
 }
 
 
@@ -169,7 +169,7 @@ class ValidateTest(Base):
         self.write([mk(status="verified", evidence="tests/nope.py — прогон")])
         code, out = self.run_tool("validate")
         self.assertEqual(code, 1)
-        self.assertIn("не найдено в репозитории", out)
+        self.assertIn("файл не найден", out)
 
     def test_verified_with_existing_evidence(self):
         (self.root / "ev.txt").write_text("ok", encoding="utf-8")
@@ -181,6 +181,68 @@ class ValidateTest(Base):
         self.write([mk(status="verified", evidence="../x")])
         code, out = self.run_tool("validate")
         self.assertEqual(code, 1)
+
+    def test_evidence_directory_rejected(self):
+        (self.root / "d").mkdir()
+        self.write([mk(status="verified", evidence="d")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("каталог не считается свидетельством", out)
+
+    def test_evidence_empty_file_rejected(self):
+        (self.root / "e.txt").write_text("", encoding="utf-8")
+        self.write([mk(status="verified", evidence="e.txt")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("файл пуст", out)
+
+    def test_evidence_symlink_outside_rejected(self):
+        outside = tempfile.NamedTemporaryFile(delete=False)
+        outside.write(b"x")
+        outside.close()
+        self.addCleanup(os.unlink, outside.name)
+        os.symlink(outside.name, self.root / "link.txt")
+        self.write([mk(status="verified", evidence="link.txt")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("выходит за пределы репозитория", out)
+
+    def test_implemented_evidence_checked_when_given(self):
+        self.write([mk(status="implemented", evidence="нет/такого.py")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("файл не найден", out)
+        self.write([mk(status="implemented", evidence="")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 0, out)
+
+    def test_wrong_types_do_not_crash(self):
+        self.write([mk(id=["R-001"]), mk(id="R-002", slice=[["T1"]]), mk(id="R-003", text=5)])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertNotIn("Traceback", out)
+        self.assertIn("поля должны быть строками", out)
+
+    def test_too_short_mechanism_and_check(self):
+        self.write([mk(mechanism="m", check="Тест.")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("поле mechanism слишком короткое", out)
+        self.assertIn("поле check слишком короткое", out)
+
+    def test_range_too_long_rejected(self):
+        self.plan()
+        self.write([mk(lines="1-40")])
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("длиннее 10 строк", out)
+
+    def test_skip_not_a_table(self):
+        (self.root / "requirements.toml").write_text(
+            "skip = [1]\n\n" + dump([mk()]), encoding="utf-8")
+        code, out = self.run_tool("validate")
+        self.assertEqual(code, 1)
+        self.assertNotIn("Traceback", out)
 
     def test_waived_needs_waiver(self):
         self.write([mk(status="waived")])
@@ -363,6 +425,33 @@ class RealRegistryTest(unittest.TestCase):
         import tomllib
         data = tomllib.loads((REPO / "requirements.toml").read_text(encoding="utf-8"))
         self.assertGreaterEqual(len(data["req"]), 120)
+
+    def test_real_skips_are_only_headings_table_heads_and_leadins(self):
+        import tomllib
+        data = tomllib.loads((REPO / "requirements.toml").read_text(encoding="utf-8"))
+        plan = (REPO / "docs" / "PLAN.md").read_text(encoding="utf-8").splitlines()
+        for sk in data.get("skip", []):
+            for n in reqs_tool.parse_lines(sk["lines"], [], ""):
+                line = plan[n - 1].strip()
+                ok = (line.startswith("#")                       # заголовок
+                      or (line.startswith("|") and "---" not in line and plan[n].strip().startswith("|---"))  # шапка таблицы
+                      or line.startswith("|---")                 # разделитель таблицы
+                      or line.endswith(":"))                     # вводная строка списка
+                self.assertTrue(ok, f"пропуск строки {n} не похож на заголовок/шапку/вводную: {line[:60]}")
+
+    def test_real_report_and_unverified(self):
+        for cmd in (("report",), ("unverified",), ("unverified", "--slice", "S18")):
+            code, out = self.run_real(*cmd)
+            self.assertEqual(code, 0, out)
+        code, out = self.run_real("report")
+        self.assertIn("требований", out)
+
+    def test_real_thresholds_present(self):
+        import tomllib
+        data = tomllib.loads((REPO / "requirements.toml").read_text(encoding="utf-8"))
+        blob = " ".join(r["text"] + " " + r["check"] for r in data["req"])
+        for needle in ("30 минут", "10 обращ", "три последних", "8 сценариев", "ниже 3", "≥ 10", "14 календарных"):
+            self.assertIn(needle, blob, needle)
 
     def test_all_19_required_scenarios_registered(self):
         import tomllib
