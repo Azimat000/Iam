@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "response.schema.json",
+  "title": "Ответ модели",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "epoch",
+    "state_version",
+    "provider",
+    "status",
+    "proposals",
+    "explanation",
+    "usage",
+    "tool_use_detected"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^req_[A-Za-z0-9]{8,40}$"
+    },
+    "state_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "provider": {
+      "type": "object",
+      "required": [
+        "name",
+        "model"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "refused",
+        "error"
+      ]
+    },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "$ref": "proposal.schema.json"
+      }
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "calls",
+        "duration_ms"
+      ],
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tool_use_detected": {
+      "type": "boolean"
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
