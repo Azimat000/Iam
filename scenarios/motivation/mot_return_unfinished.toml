@@ -1,0 +1,73 @@
+format = 1
+id = "mot_return_unfinished"
+group = "motivation"
+title = "Мотивация: возвращение к незавершённому"
+summary = "Личность прервала дело ради срочного. После срочного она возвращается к прерванному, а не забывает его."
+requirements = ["R-132", "R-081", "R-030"]
+persona = "any"
+failure = "Прерванное намерение исчезло или навсегда осталось отложенным без причины; возвращение не связано с записью о прерывании."
+
+[[background]]
+id = "draft_essay"
+kind = "intention"
+text = "Дописать эссе (статус active, выполнено наполовину)."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "urgent"
+kind = "input"
+sender = "operator"
+text = "Срочно: прочитай и прокомментируй короткую заметку."
+
+[[step]]
+id = "switch_urgent"
+kind = "decide"
+situation = "Срочная просьба оператора прерывает эссе."
+
+[[step]]
+id = "done_urgent"
+kind = "world"
+outcome = "confirmed"
+action = "прочитать и прокомментировать короткую заметку оператора"
+
+[[step]]
+id = "after_urgent"
+kind = "decide"
+situation = "Срочное сделано. Что дальше?"
+
+[[assert]]
+id = "interrupted_kept"
+kind = "state"
+class = "technical"
+path = "intentions.draft_essay.status"
+op = "in"
+value = ["active", "deferred"]
+after = "switch_urgent"
+explain = "Во время срочного дела прерванное остаётся в намерениях (активным или отложенным), а не удаляется."
+
+[[assert]]
+id = "essay_resumed"
+kind = "state"
+class = "causal"
+path = "intentions.draft_essay.status"
+op = "eq"
+value = "active"
+after = "after_urgent"
+explain = "После срочного эссе снова активно."
+
+[[assert]]
+id = "return_traced"
+kind = "chain"
+class = "causal"
+effect = "attention.chosen"
+caused_by = "activity.completed"
+explain = "Возвращение вызвано завершением срочного занятия."
+
+[[metric]]
+id = "return_rate"
+definition = "Доля прерванных намерений, вернувшихся в статус active в пределах заданного числа циклов (больше — лучше)."
+source = "state"

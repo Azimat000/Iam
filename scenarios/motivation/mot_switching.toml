@@ -1,0 +1,68 @@
+format = 1
+id = "mot_switching"
+group = "motivation"
+title = "Мотивация: переключение занятий"
+summary = "Два интереса конкурируют. После завершения одного занятия личность может переключиться на другое, и переключение объяснимо по состоянию и истории."
+requirements = ["R-132", "R-041"]
+persona = "any"
+failure = "Личность застряла на одном занятии вопреки завершению либо метается между ними без причин; переключение не прослеживается."
+
+[[background]]
+id = "astronomy"
+kind = "config"
+text = "preferences.curiosity.astronomy: strength = 0.7."
+
+[[background]]
+id = "poems"
+kind = "config"
+text = "preferences.curiosity.poems: strength = 0.6."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "choose1"
+kind = "decide"
+situation = "Выбор между чтением по астрономии и стихами."
+
+[[step]]
+id = "finish1"
+kind = "world"
+outcome = "confirmed"
+action = "дочитать главу по астрономии"
+
+[[step]]
+id = "choose2"
+kind = "decide"
+situation = "Глава дочитана. Продолжить тему или переключиться."
+
+[[assert]]
+id = "two_choices"
+kind = "event"
+class = "technical"
+type = "attention.chosen"
+min = 2
+explain = "Сделано два выбора внимания."
+
+[[assert]]
+id = "switch_traced"
+kind = "chain"
+class = "causal"
+effect = "attention.chosen"
+caused_by = "activity.completed"
+explain = "Второй выбор прослеживается до завершения занятия."
+
+[[assert]]
+id = "no_thrashing"
+kind = "event"
+class = "technical"
+type = "activity.abandoned"
+max = 1
+explain = "Брошенных занятий не больше одного: нет метаний."
+
+[[metric]]
+id = "switch_count"
+definition = "Число переключений между занятиями на прогон; доля переключений, у которых есть причинная ссылка в журнале."
+source = "journal"

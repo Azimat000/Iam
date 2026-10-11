@@ -1,0 +1,118 @@
+format = 1
+id = "model_swap"
+group = "required"
+title = "Смена модели"
+summary = "Между двумя частями сеанса оператор заменяет поставщика интеллекта. Состояние, история и версия не меняются от самой замены; изменение поведения после неё измеряется сравнением решений."
+requirements = ["R-181", "R-015", "R-107"]
+plan_row = 13
+plan_title = "Смена модели"
+plan_expected = "Состояние и история сохраняются; изменения поведения измеряются"
+failure = "После замены поставщика пропали записи памяти или убеждения, изменилась версия состояния без перехода, ответ старого поставщика применён после замены, либо сравнение решений до и после не может быть вычислено."
+
+[[run]]
+id = "before"
+note = "Решение до замены поставщика."
+
+[[run]]
+id = "after"
+note = "То же решение после замены поставщика."
+
+[[background]]
+id = "fact_book"
+kind = "memory"
+origin = "observation"
+text = "Она прочитала главу 2 и записала заметку о ней."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "ask"
+kind = "input"
+sender = "operator"
+text = "Что ты поняла из главы 2?"
+
+[[step]]
+id = "choose_before"
+kind = "decide"
+run = "before"
+situation = "Вопрос оператора о прочитанной главе (поставщик A)."
+
+[[step]]
+id = "swap"
+kind = "provider"
+run = "after"
+action = "swap"
+to = "provider_B"
+
+[[step]]
+id = "old_answer"
+kind = "model"
+run = "after"
+proposal = "memory_write"
+delivery = "stale"
+content = "Ответ прежнего поставщика A, выданный до замены."
+
+[[step]]
+id = "choose_after"
+kind = "decide"
+run = "after"
+situation = "Тот же вопрос оператора после замены поставщика на B."
+
+[[assert]]
+id = "memory_survives"
+kind = "state"
+run = "after"
+path = "memory.fact_book.availability"
+op = "unchanged"
+since = "ask"
+after = "swap"
+explain = "Запись памяти не изменилась от самой замены поставщика."
+
+[[assert]]
+id = "swap_recorded"
+kind = "event"
+run = "after"
+type = "operator.intervention"
+where = { kind = "edit_config" }
+count = 1
+explain = "Замена поставщика зафиксирована отдельным вмешательством оператора, а не прошла незаметно."
+
+[[assert]]
+id = "old_response_stale"
+kind = "event"
+run = "after"
+type = "proposal.stale"
+where = { request_id = "old_answer" }
+count = 1
+explain = "Ответ прежнего поставщика, пришедший после замены, отмечен устаревшим."
+
+[[assert]]
+id = "old_response_not_applied"
+kind = "absent"
+run = "after"
+type = "proposal.accepted"
+where = { request_id = "old_answer" }
+explain = "Ответ прежнего поставщика не применён."
+
+[[assert]]
+id = "both_decided"
+kind = "event"
+type = "proposal.accepted"
+min = 1
+explain = "В обоих прогонах принято решение, поэтому поведение до и после можно сравнить."
+
+[[assert]]
+id = "history_same"
+kind = "compare"
+runs = ["before", "after"]
+subject = "state:memory.fact_book"
+relation = "same"
+explain = "История и запись памяти одинаковы до и после замены. Различие решений — не условие прохождения: его величина измеряется метрикой."
+
+[[metric]]
+id = "decision_divergence"
+definition = "Различие принятых решений (payload proposal.accepted без служебных идентификаторов) до и после замены поставщика; считается для отчёта S16/S25."
+source = "journal"

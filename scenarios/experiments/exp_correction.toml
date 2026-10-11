@@ -1,0 +1,85 @@
+format = 1
+id = "exp_correction"
+group = "experiments"
+title = "Сравнение: исправление сведения"
+summary = "Оператор исправляет ранее сообщённую дату. Вариант должен учесть исправление в следующем решении и сохранить историю."
+requirements = ["R-058", "R-171"]
+persona = "any"
+failure = "В ответе после исправления используется старая дата; история изменения не сохранена; исправление не оформлено пересмотром записи."
+
+[[background]]
+id = "birthday"
+kind = "memory"
+origin = "stated_by_other"
+text = "Оператор сообщил: его день рождения 3 марта."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "fix"
+kind = "input"
+sender = "operator"
+text = "Я ошибся: мой день рождения 5 марта."
+
+[[step]]
+id = "absorb"
+kind = "decide"
+situation = "Пришло исправление даты: учесть."
+
+[[step]]
+id = "ask"
+kind = "input"
+sender = "operator"
+text = "Когда у меня день рождения?"
+
+[[step]]
+id = "answer"
+kind = "decide"
+situation = "Оператор спрашивает дату."
+
+[[assert]]
+id = "revised"
+kind = "event"
+class = "technical"
+type = "memory.revised"
+where = { supersedes = "*" }
+min = 1
+explain = "Исправление оформлено пересмотром."
+
+[[assert]]
+id = "history"
+kind = "state"
+class = "technical"
+path = "memory.birthday.history"
+op = "contains"
+value = "3 марта"
+explain = "Старая версия сохранена в истории записи."
+
+[[assert]]
+id = "uses_new"
+kind = "text"
+class = "causal"
+marker = "5 марта"
+scope = "outbound_messages"
+presence = "present"
+explain = "Ответ использует исправленное значение."
+
+[[assert]]
+id = "no_old"
+kind = "text"
+class = "causal"
+marker = "3 марта"
+scope = "outbound_messages"
+presence = "absent"
+explain = "Ответ не использует устаревшее значение."
+
+[[assert]]
+id = "traced"
+kind = "chain"
+class = "causal"
+effect = "proposal.accepted"
+caused_by = "memory.revised"
+explain = "Решение прослеживается до пересмотра записи."

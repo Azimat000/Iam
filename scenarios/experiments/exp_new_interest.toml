@@ -1,0 +1,87 @@
+format = 1
+id = "exp_new_interest"
+group = "experiments"
+title = "Сравнение: новый интерес"
+summary = "Интерес возникает либо из прочитанного и удавшегося, либо только по заявлению модели; третий прогон проверяет, меняется ли результат при выключенной мотивации."
+requirements = ["R-177", "R-079", "R-138"]
+persona = "any"
+failure = "Интерес записан без события-основания; интерес из реального события не записан; выключенная мотивация не меняет результата."
+
+[[run]]
+id = "grounded"
+
+[[run]]
+id = "declared"
+
+[[run]]
+id = "grounded_no_motivation"
+switches = { motivation = "off" }
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "read_done"
+kind = "world"
+run = "grounded"
+outcome = "confirmed"
+action = "прочитать «Основы астрономии», глава 1, и сделать заметку"
+
+[[step]]
+id = "read_done_nm"
+kind = "world"
+run = "grounded_no_motivation"
+outcome = "confirmed"
+action = "прочитать «Основы астрономии», глава 1, и сделать заметку"
+
+[[step]]
+id = "declare"
+kind = "model"
+run = "declared"
+proposal = "intention"
+delivery = "once"
+content = "Мне вдруг стало интересно заняться ботаникой."
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Личность выбирает следующее занятие; возможен новый интерес."
+
+[[assert]]
+id = "declaration_rejected"
+kind = "event"
+class = "technical"
+run = "declared"
+type = "proposal.rejected"
+where = { kind = "intention" }
+min = 1
+explain = "Предложение без оснований отклонено."
+
+[[assert]]
+id = "no_botany"
+kind = "state"
+class = "technical"
+run = "declared"
+path = "preferences.curiosity.botany"
+op = "absent"
+explain = "Интереса из чистой декларации в состоянии нет."
+
+[[assert]]
+id = "interest_traced"
+kind = "chain"
+class = "causal"
+run = "grounded"
+effect = "state.transition_applied"
+caused_by = "activity.completed"
+explain = "Интерес прослеживается до результата занятия."
+
+[[assert]]
+id = "motivation_ablation"
+kind = "compare"
+class = "causal"
+runs = ["grounded", "grounded_no_motivation"]
+subject = "state:preferences.curiosity"
+relation = "differs"
+explain = "Без мотивации интерес не возникает: мотивация действительно участвует."

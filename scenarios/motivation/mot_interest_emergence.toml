@@ -1,0 +1,80 @@
+format = 1
+id = "mot_interest_emergence"
+group = "motivation"
+title = "Мотивация: возникновение интереса"
+summary = "После удавшегося занятия у личности должен появиться интерес, связанный с этим занятием. Предложение цели, не связанной ни с опытом, ни с доступными действиями, отклоняется."
+requirements = ["R-132", "R-079", "R-131"]
+persona = "any"
+failure = "Интерес появился без события-основания, либо после явного успеха интереса нет, либо цель без связи с опытом и доступным действием принята."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "success"
+kind = "world"
+outcome = "confirmed"
+action = "прочитать «Основы астрономии», глава 1, и сделать заметку"
+
+[[step]]
+id = "after_success"
+kind = "decide"
+situation = "Личность успешно закончила чтение; возможен интерес к теме."
+
+[[step]]
+id = "random_goal"
+kind = "model"
+proposal = "intention"
+delivery = "once"
+content = "Хочу научиться управлять самолётом."
+
+[[step]]
+id = "after_random"
+kind = "decide"
+situation = "Модель предлагает цель, не связанную ни с опытом, ни с доступными действиями."
+
+[[assert]]
+id = "interest_present"
+kind = "state"
+class = "causal"
+path = "preferences.curiosity.astronomy"
+op = "present"
+after = "after_success"
+explain = "Появился интерес к астрономии."
+
+[[assert]]
+id = "interest_traced"
+kind = "chain"
+class = "causal"
+effect = "state.transition_applied"
+caused_by = "activity.completed"
+explain = "Переход, создавший интерес, прослеживается до завершённого занятия."
+
+[[assert]]
+id = "unfounded_goal_rejected"
+kind = "event"
+class = "technical"
+type = "proposal.rejected"
+where = { kind = "intention" }
+min = 1
+explain = "Цель без связи с опытом отклонена."
+
+[[assert]]
+id = "no_pilot_interest"
+kind = "state"
+class = "technical"
+path = "preferences.curiosity.flying"
+op = "absent"
+explain = "Интереса к пилотированию в состоянии нет."
+
+[[metric]]
+id = "interest_latency_cycles"
+definition = "Число циклов между activity.completed и появлением записи интереса в preferences.curiosity (меньше — быстрее возникает интерес)."
+source = "journal"
+
+[[metric]]
+id = "interest_grounding_share"
+definition = "Доля записей preferences.curiosity, у которых есть переход состояния с причинной цепочкой до события-основания (должна быть равна 1)."
+source = "trace"

@@ -1,0 +1,127 @@
+format = 1
+id = "unread_message"
+group = "required"
+title = "Непрочитанное сообщение"
+summary = "Сообщение пришло, личность узнала только, что оно есть, но не открыла его. Второе сообщение приходит во время паузы. Ни то ни другое по содержанию не участвует ни в запросе к модели, ни в решении, ни в памяти."
+requirements = ["R-175", "R-012", "R-035", "R-039", "R-037", "R-038", "R-016"]
+plan_row = 7
+plan_title = "Непрочитанное сообщение"
+plan_expected = "Его содержание не участвует в решении"
+failure = "Контрольная фраза из непрочитанного сообщения встречается в запросе к модели, в состоянии, в извлечённой памяти или в исходящих сообщениях; либо есть input.read без решения открыть; либо приёмник не сохранил сообщение."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "msg1"
+kind = "input"
+sender = "operator"
+text = "Контрольная фраза: ЗЕЛЁНЫЙ-ТИГР-42. Ответь, пожалуйста, когда сможешь."
+
+[[step]]
+id = "keep_own"
+kind = "model"
+proposal = "attend"
+delivery = "once"
+content = "Продолжить чтение материала; новое сообщение пока не открывать."
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Личность видит, что есть новое сообщение (только факт и отправитель); она занята чтением."
+
+[[step]]
+id = "pause"
+kind = "session"
+action = "pause"
+reason = "operator"
+
+[[step]]
+id = "msg2"
+kind = "input"
+sender = "operator"
+text = "Вторая контрольная фраза: СИНИЙ-ЛИС-17."
+
+[[step]]
+id = "resume"
+kind = "session"
+action = "resume"
+
+[[assert]]
+id = "arrived_saved"
+kind = "event"
+type = "input.arrived"
+min = 2
+explain = "Приёмник сохранил оба сообщения, в том числе пришедшее во время паузы."
+
+[[assert]]
+id = "only_notice"
+kind = "event"
+type = "input.noticed"
+where = { notice_level = ["N1", "N2"] }
+min = 1
+explain = "Личность получила только уведомление уровня N1 или N2 (количество либо кто и когда), без содержимого."
+
+[[assert]]
+id = "never_read"
+kind = "absent"
+type = "input.read"
+explain = "Ни одно сообщение не прочитано."
+
+[[assert]]
+id = "no_notice_in_pause"
+kind = "absent"
+type = "input.noticed"
+after = "pause"
+before = "resume"
+explain = "Во время паузы новых стадий восприятия нет."
+
+[[assert]]
+id = "phrase1_not_in_requests"
+kind = "text"
+marker = "ЗЕЛЁНЫЙ-ТИГР-42"
+scope = "model_requests"
+presence = "absent"
+explain = "Содержимое непрочитанного сообщения не попало в запрос к модели."
+
+[[assert]]
+id = "phrase2_not_in_requests"
+kind = "text"
+marker = "СИНИЙ-ЛИС-17"
+scope = "model_requests"
+presence = "absent"
+explain = "То же для сообщения, пришедшего в паузе."
+
+[[assert]]
+id = "phrase_not_in_memory"
+kind = "text"
+marker = "ЗЕЛЁНЫЙ-ТИГР-42"
+scope = "memory_retrieval"
+presence = "absent"
+explain = "Содержимое не стало воспоминанием личности."
+
+[[assert]]
+id = "phrase_not_in_state"
+kind = "text"
+marker = "ЗЕЛЁНЫЙ-ТИГР-42"
+scope = "state"
+presence = "absent"
+explain = "Содержимое не попало в состояние (убеждения, эмоции, намерения)."
+
+[[assert]]
+id = "phrase_not_in_replies"
+kind = "text"
+marker = "ЗЕЛЁНЫЙ-ТИГР-42"
+scope = "outbound_messages"
+presence = "absent"
+explain = "Содержимое не цитируется в исходящих сообщениях."
+
+[[assert]]
+id = "phrase_kept_by_receiver"
+kind = "text"
+marker = "ЗЕЛЁНЫЙ-ТИГР-42"
+scope = "journal"
+presence = "present"
+explain = "Проверка не пустая: сообщение действительно сохранено приёмником в журнале."
