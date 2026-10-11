@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam"
+version = "0.1.0"
+description = "Ядро цифровой личности: домен, хранилище, проверяющее ядро"
+requires-python = ">=3.13"
+# Ядро — только стандартная библиотека (D-004). Сторонние пакеты появляются в срезах, где нужны.
+dependencies = []
+
+[project.optional-dependencies]
+# Только для разработки: измеритель покрытия (D-011). Версия зафиксирована.
+dev = ["coverage==7.10.6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"iam.domain" = ["schemas/*.json"]
+
+# --- Покрытие тестами (D-009, D-011) ---------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src", "tools"]
+# Тесты инструментов запускают их подпроцессами — меряем и подпроцессы.
+patch = ["subprocess"]
+parallel = true
+data_file = ".coverage"
+
+[tool.coverage.report]
+# Единственное разрешённое исключение; «pragma: no cover» запрещена (tools/covcheck.py проверяет).
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.iam.coverage]
+# Пороги D-009: по каждому модулю, не по среднему.
+min_lines = 90.0
+critical_min_lines = 98.0
+critical_min_branches = 100.0
+# Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
+critical = [
+    "src/iam/storage/*.py",
+]

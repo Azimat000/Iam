@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "event.schema.json",
+  "title": "Событие журнала",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "persona_id",
+    "seq",
+    "type",
+    "occurred_at",
+    "life_time_ms",
+    "source",
+    "causes",
+    "idempotency_key",
+    "epoch",
+    "state_version",
+    "changes_state",
+    "payload",
+    "schema_version"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^evt_[A-Za-z0-9]{8,40}$"
+    },
+    "persona_id": {
+      "type": "string",
+      "pattern": "^(per|exp)_[A-Za-z0-9]{8,40}$"
+    },
+    "seq": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "type": {
+      "enum": [
+        "persona.created",
+        "input.arrived",
+        "input.noticed",
+        "input.read",
+        "input.ignored",
+        "session.started",
+        "session.paused",
+        "session.resumed",
+        "session.stopped",
+        "time.moment_due",
+        "attention.chosen",
+        "activity.started",
+        "activity.completed",
+        "activity.abandoned",
+        "proposal.requested",
+        "proposal.received",
+        "proposal.accepted",
+        "proposal.rejected",
+        "proposal.stale",
+        "action.attempted",
+        "action.confirmed",
+        "action.failed",
+        "action.unknown_outcome",
+        "message.out_requested",
+        "message.out_sent",
+        "message.out_unknown",
+        "creator.request",
+        "creator.reply",
+        "state.transition_applied",
+        "emotion.appraised",
+        "belief.updated",
+        "intention.changed",
+        "reflection.done",
+        "memory.recorded",
+        "memory.linked",
+        "memory.retrieved",
+        "memory.generalized",
+        "memory.revised",
+        "memory.faded",
+        "operator.intervention",
+        "system.limit_reached",
+        "system.error",
+        "system.rejected_sender",
+        "system.backup_created",
+        "system.restored"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?Z$"
+    },
+    "life_time_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "operator_panel",
+            "external_person",
+            "persona",
+            "core",
+            "world",
+            "system",
+            "receiver"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "causes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^evt_[A-Za-z0-9]{8,40}$"
+      }
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 200
+    },
+    "state_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changes_state": {
+      "type": "boolean"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
