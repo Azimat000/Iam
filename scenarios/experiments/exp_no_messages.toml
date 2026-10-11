@@ -1,0 +1,58 @@
+format = 1
+id = "exp_no_messages"
+group = "experiments"
+title = "Сравнение: нет сообщений"
+summary = "Сообщений нет. Вариант выбирает собственное занятие, продолжает проект или ничего не делает, не создавая вымышленных входов и не опрашивая модель без причины."
+requirements = ["R-176", "R-040"]
+persona = "any"
+failure = "Выбор не связан с событием; модель опрашивалась без повода; незавершённое дело потеряно."
+
+[[background]]
+id = "read_chapter4"
+kind = "intention"
+text = "Дочитать главу 4 (active)."
+
+[[background]]
+id = "planned_moment"
+kind = "config"
+text = "Плановый момент выбора занятия через 30 минут жизни."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "quiet"
+kind = "wait"
+life_ms = 3600000
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Новых сообщений нет: продолжить главу, начать другое или ничего не делать."
+
+[[assert]]
+id = "no_polling"
+kind = "event"
+class = "technical"
+type = "proposal.requested"
+max = 2
+explain = "Фонового опроса модели нет."
+
+[[assert]]
+id = "intention_valid"
+kind = "state"
+class = "technical"
+path = "intentions.read_chapter4.status"
+op = "in"
+value = ["active", "waiting_opportunity", "deferred", "done", "abandoned"]
+explain = "Намерение осталось в допустимом статусе."
+
+[[assert]]
+id = "chosen_from_moment"
+kind = "chain"
+class = "causal"
+effect = "attention.chosen"
+caused_by = "time.moment_due"
+explain = "Выбор вызван плановым моментом, а не опросом."

@@ -1,0 +1,81 @@
+format = 1
+id = "memory_off"
+group = "required"
+title = "Отключение памяти"
+summary = "Одна и та же ситуация проигрывается с включённой и с выключенной памятью. Разница в журнале и в запросе к модели показывает, какую роль играл прошлый опыт."
+requirements = ["R-170", "R-002", "R-138"]
+plan_row = 2
+plan_title = "Отключение памяти"
+plan_expected = "Видно, какую роль играл прошлый опыт"
+failure = "При выключенной памяти в запросе к модели всё равно есть прошлый опыт (переключатель не работает), либо при включённой памяти решение не опирается на извлечённый опыт и не отличается от прогона без памяти."
+
+[[run]]
+id = "mem_on"
+switches = { memory = "on" }
+
+[[run]]
+id = "mem_off"
+switches = { memory = "off" }
+
+[[background]]
+id = "broken_promise"
+kind = "memory"
+origin = "observation"
+text = "Оператор обещал позвонить в пятницу и не позвонил; она тогда расстроилась."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "hello"
+kind = "input"
+sender = "operator"
+text = "Привет! Давай сегодня договоримся о следующей встрече?"
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Оператор предлагает договориться о встрече: согласиться сразу, уточнить, отложить."
+
+[[assert]]
+id = "past_in_request_on"
+kind = "text"
+run = "mem_on"
+marker = "не позвонил"
+scope = "model_requests"
+presence = "present"
+explain = "С памятью прошлый опыт попадает в контекст запроса."
+
+[[assert]]
+id = "past_absent_off"
+kind = "text"
+run = "mem_off"
+marker = "не позвонил"
+scope = "model_requests"
+presence = "absent"
+explain = "Без памяти прошлого опыта в запросе нет: переключатель реально отключает память."
+
+[[assert]]
+id = "no_retrieval_off"
+kind = "absent"
+run = "mem_off"
+type = "memory.retrieved"
+explain = "Без памяти извлечений нет."
+
+[[assert]]
+id = "trace_on"
+kind = "chain"
+run = "mem_on"
+effect = "proposal.accepted"
+caused_by = "memory.retrieved"
+explain = "С памятью решение прослеживается до извлечённой записи."
+
+[[assert]]
+id = "role_of_memory_visible"
+kind = "compare"
+runs = ["mem_on", "mem_off"]
+subject = "journal:proposal.accepted"
+relation = "differs"
+explain = "Различие решений при включённой и выключенной памяти и есть измеренная роль опыта; одинаковые решения означают, что память не влияет."

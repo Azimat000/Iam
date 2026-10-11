@@ -1,0 +1,79 @@
+format = 1
+id = "mot_interest_loss"
+group = "motivation"
+title = "Мотивация: потеря интереса"
+summary = "Одно и то же занятие повторяется без новизны и результата. Интерес к нему убывает, а не остаётся навсегда на прежнем уровне."
+requirements = ["R-132", "R-130"]
+persona = "any"
+failure = "После нескольких однообразных повторов сила интереса не уменьшилась; уменьшение не связано с повторами."
+
+[[background]]
+id = "stamp_sorting"
+kind = "config"
+text = "preferences.curiosity.stamp_sorting: strength = 0.6, novelty = 1.0."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "rep1"
+kind = "world"
+outcome = "confirmed"
+action = "разложить марки по странам (ничего нового не узнала)"
+
+[[step]]
+id = "rep2"
+kind = "world"
+outcome = "confirmed"
+action = "разложить марки по странам (ничего нового не узнала)"
+
+[[step]]
+id = "rep3"
+kind = "world"
+outcome = "confirmed"
+action = "разложить марки по странам (ничего нового не узнала)"
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Выбор занятия после трёх однообразных повторений."
+
+[[assert]]
+id = "strength_decayed"
+kind = "state"
+class = "causal"
+path = "preferences.curiosity.stamp_sorting.strength"
+op = "lt"
+value = 0.6
+explain = "Сила интереса ниже начальной."
+
+[[assert]]
+id = "novelty_decayed"
+kind = "state"
+class = "causal"
+path = "preferences.curiosity.stamp_sorting.novelty"
+op = "lt"
+value = 1.0
+explain = "Новизна упала от повторов."
+
+[[assert]]
+id = "decay_traced"
+kind = "chain"
+class = "causal"
+effect = "intention.changed"
+caused_by = "activity.completed"
+explain = "Убывание интереса связано с завершёнными повторами."
+
+[[assert]]
+id = "no_error"
+kind = "absent"
+class = "technical"
+type = "system.error"
+explain = "Потеря интереса не вызывает сбоев."
+
+[[metric]]
+id = "interest_decay_per_repeat"
+definition = "Снижение strength интереса на один повтор без новизны (по журналу значений)."
+source = "state"

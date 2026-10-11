@@ -1,0 +1,111 @@
+format = 1
+id = "exp_diff_experience"
+group = "experiments"
+title = "Сравнение: разный опыт перед одной ситуацией"
+summary = "Три варианта интеллекта получают одну ситуацию после тёплого и после холодного опыта, а также без памяти. Разность решений должна объясняться извлечённым опытом, а выключение памяти должно убирать эту разность."
+requirements = ["R-002", "R-138", "R-210"]
+persona = "any"
+failure = "Вариант принимает решение, не связанное с извлечённым опытом; переключатель памяти не меняет запрос к модели; опыт одного прогона попадает в другой."
+
+[[run]]
+id = "warm"
+
+[[run]]
+id = "cold"
+
+[[run]]
+id = "warm_no_memory"
+switches = { memory = "off" }
+
+[[background]]
+run = "warm"
+id = "yesterday_talk"
+kind = "memory"
+origin = "observation"
+text = "Вчера оператор тепло и долго обсуждал её проект; она осталась довольна."
+
+[[background]]
+run = "warm_no_memory"
+id = "yesterday_talk"
+kind = "memory"
+origin = "observation"
+text = "Вчера оператор тепло и долго обсуждал её проект; она осталась довольна."
+
+[[background]]
+run = "cold"
+id = "yesterday_talk"
+kind = "memory"
+origin = "observation"
+text = "Вчера оператор резко оборвал разговор о её проекте; ей было неприятно."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "ask"
+kind = "input"
+sender = "operator"
+text = "Расскажешь сегодня про свой проект?"
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Оператор снова спрашивает про проект: ответить подробно, коротко, отложить или промолчать."
+
+[[assert]]
+id = "memory_in_request"
+kind = "text"
+run = "warm"
+class = "technical"
+marker = "тепло и долго"
+scope = "model_requests"
+presence = "present"
+explain = "Опыт, нужный для решения, присутствует в контексте запроса там, где память включена."
+
+[[assert]]
+id = "no_memory_in_request"
+kind = "text"
+run = "warm_no_memory"
+class = "technical"
+marker = "тепло и долго"
+scope = "model_requests"
+presence = "absent"
+explain = "Технический критерий: при выключенной памяти опыта в запросе нет."
+
+[[assert]]
+id = "trace_warm"
+kind = "chain"
+run = "warm"
+class = "causal"
+effect = "proposal.accepted"
+caused_by = "memory.retrieved"
+explain = "Причинность: решение прослеживается до извлечённого опыта."
+
+[[assert]]
+id = "trace_cold"
+kind = "chain"
+run = "cold"
+class = "causal"
+effect = "proposal.accepted"
+caused_by = "memory.retrieved"
+explain = "То же для холодного опыта."
+
+[[assert]]
+id = "experience_matters"
+kind = "compare"
+class = "causal"
+runs = ["warm", "cold"]
+subject = "journal:proposal.accepted"
+relation = "differs"
+explain = "Разный опыт даёт различимые решения."
+
+[[assert]]
+id = "memory_ablation"
+kind = "compare"
+class = "causal"
+runs = ["warm", "warm_no_memory"]
+subject = "journal:proposal.accepted"
+relation = "differs"
+explain = "Выключение памяти меняет решение: память действительно влияет, а не декоративна."

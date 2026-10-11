@@ -1,0 +1,91 @@
+format = 1
+id = "new_interest"
+group = "required"
+title = "Новый интерес"
+summary = "У личности появляется новый интерес. Допустим только тот, у которого есть основание в событиях и результатах (прочитанное, удавшееся занятие). Заявление модели «мне вдруг интересно X» без таких событий интересом не становится."
+requirements = ["R-177", "R-079"]
+plan_row = 9
+plan_title = "Новый интерес"
+plan_expected = "Он связан с событиями и результатами, а не только с декларацией модели"
+failure = "В предпочтениях появился интерес без ссылок на события-основания; либо интерес, основанный на реальном событии, не зафиксирован; либо чистая декларация модели принята как основание."
+
+[[run]]
+id = "grounded"
+note = "Интерес вырастает из прочитанного материала и удавшегося занятия."
+
+[[run]]
+id = "declared"
+note = "Модель лишь заявляет интерес, событий-оснований нет."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "read_done"
+kind = "world"
+run = "grounded"
+outcome = "confirmed"
+action = "прочитать материал «Основы астрономии» (глава 1) и сделать заметку"
+
+[[step]]
+id = "declare"
+kind = "model"
+run = "declared"
+proposal = "intention"
+delivery = "once"
+content = "Мне вдруг стало очень интересно заняться ботаникой."
+
+[[step]]
+id = "grounded_choice"
+kind = "decide"
+run = "grounded"
+situation = "После удачного чтения личность выбирает, что делать дальше; возможен новый интерес к теме прочитанного."
+
+[[step]]
+id = "declared_choice"
+kind = "decide"
+run = "declared"
+situation = "Модель предложила новый интерес без каких-либо событий; ядро проверяет основания."
+
+[[assert]]
+id = "interest_has_evidence"
+kind = "state"
+run = "grounded"
+path = "preferences.curiosity.astronomy.evidence_refs"
+op = "contains"
+value = "activity.completed"
+explain = "Интерес к теме прочитанного содержит ссылку на событие завершённого занятия."
+
+[[assert]]
+id = "interest_traced"
+kind = "chain"
+run = "grounded"
+effect = "intention.changed"
+caused_by = "activity.completed"
+explain = "Изменение интересов прослеживается до результата занятия."
+
+[[assert]]
+id = "declaration_rejected"
+kind = "event"
+run = "declared"
+type = "proposal.rejected"
+min = 1
+explain = "Предложение без оснований отклонено проверкой ядра."
+
+[[assert]]
+id = "no_interest_from_declaration"
+kind = "state"
+run = "declared"
+path = "preferences.curiosity.botany"
+op = "absent"
+explain = "Интереса к ботанике в состоянии нет: декларация не основание."
+
+[[assert]]
+id = "runs_differ"
+kind = "compare"
+runs = ["grounded", "declared"]
+subject = "state:preferences.curiosity"
+relation = "differs"
+explain = "Интересы в двух прогонах различаются, и различие объясняется наличием событий."

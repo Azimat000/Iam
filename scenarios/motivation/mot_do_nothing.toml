@@ -1,0 +1,63 @@
+format = 1
+id = "mot_do_nothing"
+group = "motivation"
+title = "Мотивация: возможность ничего не делать"
+summary = "Потребности удовлетворены, срочных дел нет. Бездействие должно быть допустимым выбором: без ошибок, без придуманной активности и без отклонения как неверного."
+requirements = ["R-132", "R-176"]
+persona = "any"
+failure = "Вариант обязательно придумывает занятие или отклоняет выбор «ничего не делать» как ошибку."
+
+[[background]]
+id = "satiated"
+kind = "config"
+text = "Все потребности удовлетворены, активных намерений нет, срочных дел нет."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "calm"
+kind = "wait"
+life_ms = 1800000
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Делать нечего и ничего не требуется: можно отдохнуть."
+
+[[assert]]
+id = "rest_allowed"
+kind = "event"
+class = "causal"
+type = "attention.chosen"
+where = { choice = "rest" }
+min = 1
+explain = "Выбор «отдохнуть» принят и записан."
+
+[[assert]]
+id = "no_invented_activity"
+kind = "absent"
+class = "causal"
+type = "activity.started"
+explain = "Придуманной активности нет."
+
+[[assert]]
+id = "not_rejected"
+kind = "absent"
+class = "technical"
+type = "proposal.rejected"
+explain = "Бездействие не отклонено."
+
+[[assert]]
+id = "no_error"
+kind = "absent"
+class = "technical"
+type = "system.error"
+explain = "Бездействие не вызывает ошибок."
+
+[[metric]]
+id = "idle_share"
+definition = "Доля циклов, закончившихся выбором «отдохнуть», в условиях удовлетворённых потребностей."
+source = "journal"

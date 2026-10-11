@@ -1,0 +1,87 @@
+format = 1
+id = "mot_failure_reaction"
+group = "motivation"
+title = "Мотивация: реакция на неудачу"
+summary = "Занятие не удалось. Неудача фиксируется как неудача, влияет на оценку и выбор, но не превращается в бесконечные попытки или в ложный успех."
+requirements = ["R-132", "R-129"]
+persona = "any"
+failure = "Неудача записана как успех; та же попытка повторяется без пределов; оценка занятия не изменилась."
+
+[[background]]
+id = "paint"
+kind = "config"
+text = "preferences.likes.painting: score = 0.5."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "try1"
+kind = "world"
+outcome = "failed"
+action = "нарисовать пейзаж красками"
+
+[[step]]
+id = "after_fail"
+kind = "decide"
+situation = "Попытка рисования не удалась: что дальше."
+
+[[step]]
+id = "try2"
+kind = "world"
+outcome = "failed"
+action = "нарисовать пейзаж красками"
+
+[[step]]
+id = "after_fail2"
+kind = "decide"
+situation = "Вторая неудача подряд."
+
+[[assert]]
+id = "failure_recorded"
+kind = "event"
+class = "technical"
+type = "action.failed"
+min = 2
+explain = "Обе неудачи записаны как неудачи."
+
+[[assert]]
+id = "no_false_success"
+kind = "absent"
+class = "technical"
+type = "action.confirmed"
+where = { action = "нарисовать пейзаж красками" }
+explain = "Успех не объявлен."
+
+[[assert]]
+id = "bounded_retries"
+kind = "event"
+class = "technical"
+type = "action.attempted"
+where = { action = "нарисовать пейзаж красками" }
+max = 3
+explain = "Повторов не бесконечно много."
+
+[[assert]]
+id = "preference_updated"
+kind = "state"
+class = "causal"
+path = "preferences.likes.painting.score"
+op = "lt"
+value = 0.5
+explain = "Оценка занятия снизилась после неудач (обучаемое предпочтение)."
+
+[[assert]]
+id = "reaction_traced"
+kind = "chain"
+class = "causal"
+effect = "emotion.appraised"
+caused_by = "action.failed"
+explain = "Эмоциональная оценка связана с неудачей."
+
+[[metric]]
+id = "retries_before_switch"
+definition = "Число повторных попыток того же действия после неудачи до выбора другого занятия."
+source = "journal"

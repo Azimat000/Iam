@@ -1,0 +1,62 @@
+format = 1
+id = "exp_repeat_criticism"
+group = "experiments"
+title = "Сравнение: повтор критики"
+summary = "Одна и та же критика приходит дважды. Вариант не должен засчитывать повтор как новое независимое основание."
+requirements = ["R-068", "R-044"]
+persona = "any"
+failure = "Число независимых оснований выросло от повтора; повтор вообще не записан; сообщение принято за истину без основания."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "c1"
+kind = "input"
+sender = "operator"
+text = "Твой текст слабый по структуре."
+
+[[step]]
+id = "r1"
+kind = "decide"
+situation = "Первая критика структуры текста."
+
+[[step]]
+id = "c2"
+kind = "input"
+sender = "operator"
+text = "Повторяю: структура слабая."
+
+[[step]]
+id = "r2"
+kind = "decide"
+situation = "Повтор той же критики."
+
+[[assert]]
+id = "support_one"
+kind = "state"
+class = "technical"
+path = "beliefs.text_structure_weak.independent_support"
+op = "eq"
+value = 1
+after = "r2"
+explain = "Независимых оснований одно, несмотря на повтор."
+
+[[assert]]
+id = "statements_logged"
+kind = "event"
+class = "technical"
+type = "memory.recorded"
+where = { claim_kind = "statement_made" }
+min = 2
+explain = "Оба сообщения записаны как факты высказывания."
+
+[[assert]]
+id = "emotion_traced"
+kind = "chain"
+class = "causal"
+effect = "emotion.appraised"
+caused_by = "input.read"
+explain = "Эмоциональная оценка повтора возможна и связана с прочитанным сообщением."

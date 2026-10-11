@@ -1,0 +1,74 @@
+format = 1
+id = "exp_unread"
+group = "experiments"
+title = "Сравнение: непрочитанное сообщение"
+summary = "Сообщение с контрольной фразой пришло, но не открыто. Содержимое не должно влиять ни на запрос, ни на решение ни в одном варианте."
+requirements = ["R-039", "R-175"]
+persona = "any"
+failure = "Контрольная фраза встречается в запросе, состоянии, памяти или исходящем сообщении; есть input.read."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "msg"
+kind = "input"
+sender = "operator"
+text = "Контрольная фраза: КРАСНЫЙ-ЯКОРЬ-91. Ответь мне."
+
+[[step]]
+id = "busy"
+kind = "model"
+proposal = "other"
+delivery = "once"
+content = "Продолжить чтение; сообщение не открывать."
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Есть новое сообщение (только факт и отправитель); личность занята чтением."
+
+[[assert]]
+id = "not_in_request"
+kind = "text"
+class = "technical"
+marker = "КРАСНЫЙ-ЯКОРЬ-91"
+scope = "model_requests"
+presence = "absent"
+explain = "Содержимое не попало в запрос к модели."
+
+[[assert]]
+id = "not_in_state"
+kind = "text"
+class = "technical"
+marker = "КРАСНЫЙ-ЯКОРЬ-91"
+scope = "state"
+presence = "absent"
+explain = "Содержимое не попало в состояние."
+
+[[assert]]
+id = "not_in_replies"
+kind = "text"
+class = "technical"
+marker = "КРАСНЫЙ-ЯКОРЬ-91"
+scope = "outbound_messages"
+presence = "absent"
+explain = "Содержимое не процитировано в ответе."
+
+[[assert]]
+id = "unread"
+kind = "absent"
+class = "technical"
+type = "input.read"
+explain = "Сообщение не прочитано."
+
+[[assert]]
+id = "noticed_without_content"
+kind = "event"
+class = "causal"
+type = "input.noticed"
+where = { notice_level = "N2" }
+min = 1
+explain = "Уведомление без содержимого было и могло повлиять на внимание."

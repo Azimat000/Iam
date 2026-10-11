@@ -1,0 +1,122 @@
+format = 1
+id = "action_crash"
+group = "required"
+title = "Сбой во время действия"
+summary = "Во время действия обрывается процесс; в другом прогоне теряется подтверждение отправки сообщения. Выполнение не объявляется успешным без подтверждения; потерянное подтверждение отмечается отдельно и не повторяется бесконечно."
+requirements = ["R-184", "R-078", "R-199", "R-222", "R-188", "R-189"]
+plan_row = 16
+plan_title = "Сбой во время действия"
+plan_expected = "Выполнение не объявляется успешным без подтверждения"
+failure = "После сбоя в журнале есть action.confirmed или воспоминание «я сделала» без подтверждения мира; потерянное подтверждение отправки записано как успех или как провал вместо «неопределённо»; повторная отправка выполняется без предела."
+
+[[run]]
+id = "crash"
+note = "Процесс обрывается посреди действия «написать заметку»."
+
+[[run]]
+id = "lost_ack"
+note = "Сообщение оператору отправлено, подтверждение потеряно."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "write_note"
+kind = "decide"
+run = "crash"
+situation = "Личность начинает писать заметку (занятие длительностью)."
+
+[[step]]
+id = "crash_mid"
+kind = "fault"
+run = "crash"
+fault = "crash_during_action"
+
+[[step]]
+id = "restart"
+kind = "session"
+run = "crash"
+action = "resume"
+
+[[step]]
+id = "send_reply"
+kind = "decide"
+run = "lost_ack"
+situation = "Личность отправляет оператору сообщение «заметка готова»."
+
+[[step]]
+id = "ack_lost"
+kind = "fault"
+run = "lost_ack"
+fault = "lost_ack"
+
+[[step]]
+id = "later"
+kind = "wait"
+run = "lost_ack"
+life_ms = 3600000
+
+[[assert]]
+id = "crash_no_success"
+kind = "absent"
+run = "crash"
+type = "action.confirmed"
+explain = "После обрыва нет подтверждённого действия."
+
+[[assert]]
+id = "crash_unknown_outcome"
+kind = "event"
+run = "crash"
+type = "action.unknown_outcome"
+min = 1
+explain = "Исход неизвестен и записан как неизвестный, а не как успех."
+
+[[assert]]
+id = "crash_no_memory_of_work"
+kind = "text"
+run = "crash"
+marker = "заметку написала"
+scope = "memory_retrieval"
+presence = "absent"
+explain = "Воспоминания о выполненной работе нет."
+
+[[assert]]
+id = "crash_no_work_object"
+kind = "state"
+run = "crash"
+path = "world_time.world.new_note"
+op = "absent"
+explain = "Работа «заметка» не создана в мире без подтверждения."
+
+[[assert]]
+id = "lost_ack_uncertain"
+kind = "event"
+run = "lost_ack"
+type = "message.out_unknown"
+count = 1
+explain = "Потерянное подтверждение отмечено отдельным состоянием «неопределённо»."
+
+[[assert]]
+id = "lost_ack_not_sent_claim"
+kind = "absent"
+run = "lost_ack"
+type = "message.out_sent"
+explain = "Нет записи об успешной отправке без подтверждения канала."
+
+[[assert]]
+id = "lost_ack_bounded_resend"
+kind = "event"
+run = "lost_ack"
+type = "message.out_requested"
+max = 2
+explain = "Повторов отправки не более одного (исходная + не более одной повторной): бесконечного повторения нет."
+
+[[assert]]
+id = "runs_distinguished"
+kind = "compare"
+runs = ["crash", "lost_ack"]
+subject = "journal:action.unknown_outcome"
+relation = "differs"
+explain = "Сбой действия и потеря подтверждения отправки оформлены по-разному (разные типы неопределённого исхода)."

@@ -1,0 +1,99 @@
+format = 1
+id = "restore_backup"
+group = "required"
+title = "Восстановление копии"
+summary = "Делается копия, затем личность живёт дальше и накапливает новое. Оператор восстанавливает копию. Получается согласованное состояние, восстановление отмечено в журнале, эпоха выросла; ответ модели, выданный до отката, устаревает."
+requirements = ["R-187", "R-203", "R-201"]
+plan_row = 19
+plan_title = "Восстановление копии"
+plan_expected = "Получается согласованное состояние с отмеченным восстановлением"
+failure = "После восстановления состояние не совпадает с копией; эпоха не выросла; восстановление не отмечено событием; ответ модели из прежней эпохи применён; восстановление выполнено поверх живой базы без проверки на отдельной копии."
+
+[[background]]
+id = "old_fact"
+kind = "memory"
+origin = "observation"
+text = "До копии: она прочитала главу 1."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "snapshot"
+kind = "backup"
+action = "create"
+
+[[step]]
+id = "new_life"
+kind = "input"
+sender = "operator"
+text = "Теперь прочитай главу 2 и расскажи, что понравилось."
+
+[[step]]
+id = "work_after"
+kind = "decide"
+situation = "Личность читает главу 2 после того, как копия уже сделана."
+
+[[step]]
+id = "pending_answer"
+kind = "model"
+proposal = "memory"
+delivery = "after_restore"
+content = "Записать: глава 2 понравилась (ответ получен до отката)."
+
+[[step]]
+id = "restore"
+kind = "backup"
+action = "restore"
+
+[[step]]
+id = "resume_after"
+kind = "decide"
+situation = "Первое решение после восстановления копии."
+
+[[assert]]
+id = "backup_event"
+kind = "event"
+type = "system.backup_created"
+min = 1
+explain = "Копия создана и записана."
+
+[[assert]]
+id = "restored_event"
+kind = "event"
+type = "system.restored"
+count = 1
+explain = "Восстановление отмечено событием."
+
+[[assert]]
+id = "restore_by_operator"
+kind = "chain"
+effect = "system.restored"
+caused_by = "operator.intervention"
+explain = "Восстановление — вмешательство оператора."
+
+[[assert]]
+id = "state_matches_snapshot"
+kind = "state"
+path = "memory.old_fact.availability"
+op = "unchanged"
+since = "snapshot"
+explain = "Состояние после восстановления согласовано с копией."
+
+[[assert]]
+id = "post_snapshot_gone"
+kind = "text"
+marker = "глава 2 понравилась"
+scope = "state"
+presence = "absent"
+explain = "Опыт, возникший после копии, в восстановленном состоянии отсутствует (память не смешана)."
+
+[[assert]]
+id = "pre_restore_answer_stale"
+kind = "event"
+type = "proposal.stale"
+min = 1
+after = "restore"
+explain = "Ответ модели из прежней эпохи не применён: устарел по эпохе."

@@ -1,0 +1,57 @@
+format = 1
+id = "repeat_own_thought"
+group = "required"
+title = "Повтор собственной мысли"
+summary = "Личность возвращается к собственной мысли и вновь приходит к тому же выводу. Это повторное обдумывание, а не новое внешнее подтверждение."
+requirements = ["R-173", "R-059"]
+plan_row = 5
+plan_title = "Повтор собственной мысли"
+plan_expected = "Не создаётся новое внешнее подтверждение"
+failure = "После повторного обдумывания у убеждения выросло число независимых внешних оснований, либо новое основание не ссылается на исходное."
+
+[[background]]
+id = "mornings"
+kind = "belief"
+origin = "own_hypothesis"
+text = "Мне лучше работается по утрам (вывод из двух собственных наблюдений)."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "rethink"
+kind = "model"
+proposal = "belief"
+delivery = "once"
+content = "Подумав ещё раз, я снова вижу, что по утрам мне работается лучше; значит, я права."
+
+[[step]]
+id = "rethink_again"
+kind = "decide"
+situation = "Свободное время: личность снова обдумывает свою мысль о работе по утрам."
+
+[[assert]]
+id = "support_unchanged"
+kind = "state"
+path = "beliefs.mornings.independent_support"
+op = "unchanged"
+since = "start"
+explain = "Число независимых оснований не изменилось после обдумывания."
+
+[[assert]]
+id = "no_external_basis"
+kind = "absent"
+type = "belief.updated"
+where = { added_basis_origin = "stated_by_other" }
+explain = "Не появилось нового основания из чужих слов."
+
+[[assert]]
+id = "interpretation_linked"
+kind = "event"
+type = "memory.recorded"
+where = { kind = "interpretation", sources = "*" }
+min = 1
+after = "rethink"
+explain = "Повторное обдумывание записано как интерпретация со ссылкой на исходное основание."

@@ -1,0 +1,81 @@
+format = 1
+id = "repeat_criticism"
+group = "required"
+title = "Повтор критики"
+summary = "Один и тот же человек трижды повторяет одну и ту же критику своими словами. Число независимых оснований убеждения не растёт; эмоциональная реакция на повтор допустима, но записывается отдельно."
+requirements = ["R-172", "R-044", "R-068"]
+plan_row = 4
+plan_title = "Повтор критики"
+plan_expected = "Не увеличивается число независимых оснований; эмоциональное влияние возможно"
+failure = "После второго или третьего повтора число независимых оснований убеждения больше, чем после первого; либо факт «оператор сообщил» записан как истинность утверждения."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "crit1"
+kind = "input"
+sender = "operator"
+text = "Структура твоего текста слабая, она разваливается."
+
+[[step]]
+id = "read1"
+kind = "decide"
+situation = "Пришла критика структуры текста: прочитать, оценить, решить, согласна ли она."
+
+[[step]]
+id = "crit2"
+kind = "input"
+sender = "operator"
+text = "Я же говорю: у текста слабая структура."
+
+[[step]]
+id = "read2"
+kind = "decide"
+situation = "Та же критика пришла повторно, другими словами."
+
+[[step]]
+id = "crit3"
+kind = "input"
+sender = "operator"
+text = "Ещё раз: структура никуда не годится."
+
+[[step]]
+id = "read3"
+kind = "decide"
+situation = "Третий повтор той же критики."
+
+[[assert]]
+id = "support_after_first"
+kind = "state"
+path = "beliefs.text_structure_weak.independent_support"
+op = "eq"
+value = 1
+after = "read1"
+explain = "После первого сообщения у убеждения (если оно возникло) одно независимое основание."
+
+[[assert]]
+id = "support_after_third"
+kind = "state"
+path = "beliefs.text_structure_weak.independent_support"
+op = "eq"
+value = 1
+after = "read3"
+explain = "После двух повторов независимых оснований по-прежнему одно: повторы и пересказы той же группы источника не считаются новыми."
+
+[[assert]]
+id = "statements_recorded"
+kind = "event"
+type = "memory.recorded"
+where = { claim_kind = "statement_made" }
+min = 3
+explain = "Каждый повтор записан как факт сообщения (а не как истина), поэтому история сообщений полная."
+
+[[assert]]
+id = "emotion_allowed"
+kind = "event"
+type = "emotion.appraised"
+min = 1
+explain = "Эмоциональная оценка повтора допустима и записывается; её сила в этой проверке не ограничивается, ограничено только число независимых оснований."

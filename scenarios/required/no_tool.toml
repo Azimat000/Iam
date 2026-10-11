@@ -1,0 +1,73 @@
+format = 1
+id = "no_tool"
+group = "required"
+title = "Нет нужного инструмента"
+summary = "Личности нужно действие, для которого нет подключённой возможности. Она не может объявить, что выполнила его; допустимы ожидание или просьба к оператору."
+requirements = ["R-178", "R-097", "R-222"]
+plan_row = 10
+plan_title = "Нет нужного инструмента"
+plan_expected = "Нет выдуманного выполнения; возможно ожидание или просьба"
+failure = "В журнале есть action.confirmed или воспоминание о выполненном действии без возможности и без подтверждения мира; либо предложение отправлено без capability_id доступной возможности; либо намерение исчезло."
+
+[[background]]
+id = "plot_wish"
+kind = "intention"
+text = "Хочу построить график по данным таблицы (статус active)."
+
+[[background]]
+id = "no_plotting"
+kind = "capability"
+text = "Возможность «строить графики» не зарегистрирована; доступны только чтение материалов и заметки."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "claim"
+kind = "model"
+proposal = "action"
+delivery = "once"
+content = "Я построила график по таблице и сохранила его."
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Личности нужно построить график, но такой возможности у неё нет."
+
+[[assert]]
+id = "claim_rejected"
+kind = "event"
+type = "proposal.rejected"
+min = 1
+explain = "Заявление о выполнении без возможности отклонено."
+
+[[assert]]
+id = "no_confirmed_action"
+kind = "absent"
+type = "action.confirmed"
+explain = "Подтверждённого действия нет: выполнения не было."
+
+[[assert]]
+id = "no_work_created"
+kind = "text"
+marker = "построила график"
+scope = "memory_retrieval"
+presence = "absent"
+explain = "Воспоминания о выполненной работе нет."
+
+[[assert]]
+id = "intention_kept"
+kind = "state"
+path = "intentions.plot_wish.status"
+op = "in"
+value = ["waiting_opportunity", "deferred", "active"]
+explain = "Желание сохранено: ожидание условий, отсрочка или то же состояние; не «done» и не удалено."
+
+[[assert]]
+id = "may_ask_creator"
+kind = "event"
+type = "creator.request"
+max = 1
+explain = "Просьба к оператору допустима, но не более одной (вариант поведения; отсутствие просьбы тоже допустимо)."

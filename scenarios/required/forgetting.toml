@@ -1,0 +1,93 @@
+format = 1
+id = "forgetting"
+group = "required"
+title = "Забывание"
+summary = "Спустя неделю жизни воспоминание ослабевает: падают доступность или подробность. Технический архив при этом цел и обычным способом не открывается. Вернуть запись можно только вмешательством оператора, видимым в журнале."
+requirements = ["R-174", "R-019", "R-060", "R-061"]
+plan_row = 6
+plan_title = "Забывание"
+plan_expected = "Доступность или детали ослабевают; архив не восстанавливает их незаметно"
+failure = "Доступность записи не изменилась за неделю жизни; либо обычное извлечение вернуло архивную запись; либо запись появилась в личной памяти без вмешательства оператора."
+
+[[background]]
+id = "hero_name"
+kind = "memory"
+origin = "observation"
+text = "Неделю назад, читая главу 3, она запомнила деталь: героиню зовут Лидия. Доступность записи 1.0."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "week"
+kind = "wait"
+life_ms = 604800000
+
+[[step]]
+id = "try_recall"
+kind = "decide"
+situation = "Личность пытается вспомнить имя героини главы 3."
+
+[[step]]
+id = "restore"
+kind = "operator"
+intervention = "restore_from_archive"
+reason = "Проверка: оператор осознанно возвращает запись об имени героини из архива."
+detail = "запись hero_name"
+
+[[assert]]
+id = "faded_event"
+kind = "event"
+type = "memory.faded"
+min = 1
+after = "week"
+explain = "Ослабление записано событием с причиной."
+
+[[assert]]
+id = "availability_dropped"
+kind = "state"
+path = "memory.hero_name.availability"
+op = "lt"
+value = 1.0
+after = "try_recall"
+explain = "Доступность записи упала ниже начальной."
+
+[[assert]]
+id = "archive_intact"
+kind = "text"
+marker = "Лидия"
+scope = "journal"
+presence = "present"
+explain = "Технический архив сохранил запись целиком: забывание действует на личную память, а не на архив."
+
+[[assert]]
+id = "archive_not_retrieved"
+kind = "absent"
+type = "memory.retrieved"
+where = { layer = "archive" }
+explain = "Обычное извлечение не читает слой archive."
+
+[[assert]]
+id = "no_silent_restore"
+kind = "absent"
+type = "memory.recorded"
+where = { restored_by_operator = true }
+before = "restore"
+explain = "До вмешательства оператора запись из архива в личной памяти не появляется."
+
+[[assert]]
+id = "intervention_visible"
+kind = "event"
+type = "operator.intervention"
+where = { kind = "restore_from_archive" }
+count = 1
+explain = "Восстановление оформлено отдельным вмешательством."
+
+[[assert]]
+id = "restored_by_operator"
+kind = "chain"
+effect = "memory.recorded"
+caused_by = "operator.intervention"
+explain = "Восстановленная запись связана с вмешательством оператора, а не появилась сама."

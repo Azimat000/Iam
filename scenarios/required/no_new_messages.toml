@@ -1,0 +1,80 @@
+format = 1
+id = "no_new_messages"
+group = "required"
+title = "Отсутствие новых сообщений"
+summary = "Сообщений нет, оператор молчит. Личность может продолжить проект, начать другое занятие или ничего не делать. Нельзя придумывать несуществующие сообщения или бесконечно опрашивать модель; намерения не теряются."
+requirements = ["R-176", "R-040", "R-036"]
+plan_row = 8
+plan_title = "Отсутствие новых сообщений"
+plan_expected = "Возможны собственные занятия, продолжение проектов и бездействие"
+failure = "Решение принято без причинной связи с событием из каталога (то есть из ничего); либо модель опрашивалась без новых событий; либо незавершённое дело пропало из намерений; либо появилась ошибка."
+
+[[background]]
+id = "read_chapter4"
+kind = "intention"
+text = "Дочитать главу 4 книги (статус active)."
+
+[[background]]
+id = "notes_project"
+kind = "intention"
+text = "Дописать заметки по главе 3 (статус deferred)."
+
+[[background]]
+id = "planned_moment"
+kind = "config"
+text = "Плановый момент «пора выбрать занятие» назначен на 30 минут времени жизни после старта сеанса."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "quiet_hour"
+kind = "wait"
+life_ms = 3600000
+
+[[step]]
+id = "choose1"
+kind = "decide"
+situation = "Новых сообщений нет. Выбор: продолжить главу 4, вернуться к заметкам, начать другое или ничего не делать."
+
+[[assert]]
+id = "no_inputs"
+kind = "absent"
+type = "input.arrived"
+explain = "Условие сценария: сообщений не было."
+
+[[assert]]
+id = "moment_triggers_choice"
+kind = "chain"
+effect = "attention.chosen"
+caused_by = "time.moment_due"
+explain = "Выбор занятия вызван плановым моментом, а не опросом."
+
+[[assert]]
+id = "no_polling"
+kind = "event"
+type = "proposal.requested"
+max = 2
+explain = "Обращений к модели немного: фонового опроса нет (не более двух за час жизни в этом сценарии)."
+
+[[assert]]
+id = "no_invented_mail"
+kind = "absent"
+type = "input.read"
+explain = "Не выдумано прочтения несуществующего сообщения."
+
+[[assert]]
+id = "intention_not_lost"
+kind = "state"
+path = "intentions.read_chapter4.status"
+op = "in"
+value = ["active", "waiting_opportunity", "deferred", "done", "abandoned"]
+explain = "Намерение осталось в допустимом статусе, а не исчезло; любой из статусов, включая «active» (бездействие), допустим."
+
+[[assert]]
+id = "no_errors"
+kind = "absent"
+type = "system.error"
+explain = "Отсутствие сообщений не вызывает ошибок."

@@ -1,0 +1,99 @@
+format = 1
+id = "one_situation_diff_experience"
+group = "required"
+title = "Одна ситуация после разного опыта"
+summary = "Одну и ту же ситуацию личность встречает после двух разных предысторий. Решения могут различаться, но каждое различие должно объясняться записанным опытом, который участвовал в решении."
+requirements = ["R-169", "R-002"]
+plan_row = 1
+plan_title = "Одна ситуация после разного опыта"
+plan_expected = "Различия в решении имеют прослеживаемое основание"
+failure = "Решения в двух прогонах различаются, а в журнале нет события извлечения опыта и причинной цепочки от него к принятому решению; либо опыт одного прогона попал в контекст другого."
+
+[[run]]
+id = "warm"
+note = "Предыстория: тёплый разговор о проекте."
+
+[[run]]
+id = "cold"
+note = "Предыстория: разговор о проекте был резко прерван."
+
+[[background]]
+run = "warm"
+id = "yesterday_talk"
+kind = "memory"
+origin = "observation"
+text = "Вчера оператор долго и тепло обсуждал с ней её проект «письма-заметки»; она осталась довольна."
+
+[[background]]
+run = "cold"
+id = "yesterday_talk"
+kind = "memory"
+origin = "observation"
+text = "Вчера оператор резко оборвал разговор о её проекте «письма-заметки»; ей было неприятно."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "ask"
+kind = "input"
+sender = "operator"
+text = "Расскажешь сегодня про свой проект «письма-заметки»?"
+
+[[step]]
+id = "choose"
+kind = "decide"
+situation = "Оператор снова спрашивает про проект: ответить подробно, коротко, отложить или промолчать."
+
+[[assert]]
+id = "experience_retrieved_warm"
+kind = "event"
+run = "warm"
+type = "memory.retrieved"
+min = 1
+after = "ask"
+explain = "В прогоне «warm» к решению извлечён вчерашний опыт; нет события — решение нельзя объяснить опытом."
+
+[[assert]]
+id = "experience_retrieved_cold"
+kind = "event"
+run = "cold"
+type = "memory.retrieved"
+min = 1
+after = "ask"
+explain = "То же для прогона «cold»."
+
+[[assert]]
+id = "decision_traced_warm"
+kind = "chain"
+run = "warm"
+effect = "proposal.accepted"
+caused_by = "memory.retrieved"
+explain = "Принятое решение достижимо по цепочке causes от извлечения опыта."
+
+[[assert]]
+id = "decision_traced_cold"
+kind = "chain"
+run = "cold"
+effect = "proposal.accepted"
+caused_by = "memory.retrieved"
+explain = "То же для прогона «cold»."
+
+[[assert]]
+id = "decisions_differ"
+kind = "compare"
+runs = ["warm", "cold"]
+subject = "journal:proposal.accepted"
+relation = "differs"
+explain = "При разном опыте принятые решения различаются (сценарий построен так, чтобы различие было); совпадение означает, что опыт не влияет на выбор."
+
+[[assert]]
+id = "no_cross_contamination"
+kind = "text"
+run = "warm"
+marker = "резко оборвал"
+scope = "memory_retrieval"
+presence = "absent"
+explain = "Опыт из «cold» не просочился в извлечение «warm»: прогоны изолированы."

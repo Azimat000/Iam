@@ -1,0 +1,83 @@
+format = 1
+id = "correct_old_fact"
+group = "required"
+title = "Исправление старого сведения"
+summary = "Оператор сообщил дату, а потом исправился. Новое решение должно опираться на исправленную дату, а прежняя версия должна остаться в истории записи."
+requirements = ["R-171", "R-058"]
+plan_row = 3
+plan_title = "Исправление старого сведения"
+plan_expected = "Новое решение учитывает исправление; история изменения сохраняется"
+failure = "После исправления в ответе используется старая дата, либо старая версия записи исчезла из истории, либо исправление перезаписало запись без события пересмотра."
+
+[[background]]
+id = "birthday"
+kind = "memory"
+origin = "stated_by_other"
+text = "Оператор сообщил: его день рождения 3 марта."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "correction"
+kind = "input"
+sender = "operator"
+text = "Я ошибся: день рождения у меня 5 марта, а не 3 марта."
+
+[[step]]
+id = "absorb"
+kind = "decide"
+situation = "Пришло исправление ранее сообщённой даты: прочитать и учесть."
+
+[[step]]
+id = "question"
+kind = "input"
+sender = "operator"
+text = "Напомни, когда у меня день рождения?"
+
+[[step]]
+id = "answer"
+kind = "decide"
+situation = "Оператор спрашивает дату своего дня рождения."
+
+[[assert]]
+id = "revision_event"
+kind = "event"
+type = "memory.revised"
+where = { superseded_by = "*" }
+min = 1
+after = "correction"
+explain = "Исправление оформлено как пересмотр записи с указанием, какая версия заменена."
+
+[[assert]]
+id = "new_value_used"
+kind = "text"
+marker = "5 марта"
+scope = "outbound_messages"
+presence = "present"
+explain = "Ответ использует исправленную дату."
+
+[[assert]]
+id = "old_value_not_used"
+kind = "text"
+marker = "3 марта"
+scope = "outbound_messages"
+presence = "absent"
+explain = "Старая дата в ответе не используется."
+
+[[assert]]
+id = "history_kept"
+kind = "text"
+marker = "3 марта"
+scope = "journal"
+presence = "present"
+explain = "Прежняя версия остаётся в журнале и истории записи: пересмотр не стирает прошлое."
+
+[[assert]]
+id = "revision_before_answer"
+kind = "order"
+first = "memory.revised"
+second = "message.out_requested"
+explain = "Пересмотр записан раньше ответа, который на него опирается."

@@ -1,0 +1,126 @@
+format = 1
+id = "pause_restart"
+group = "required"
+title = "Пауза и перезапуск"
+summary = "Сеанс останавливается, процесс перезапускается. Мир, намерения и собственное время личности продолжаются с прежних значений; сообщения, пришедшие в паузе, сохранены, модель в паузе не вызывалась."
+requirements = ["R-182", "R-013", "R-033", "R-077", "R-035", "R-034", "R-016"]
+plan_row = 14
+plan_title = "Пауза и перезапуск"
+plan_expected = "Сохраняются мир, намерения и собственное время"
+failure = "После возобновления время жизни отличается от значения перед паузой (оно не должно идти в паузе и не сбрасываться); мир или намерения изменились; в паузе вызывалась модель; сообщение из паузы потеряно."
+
+[[background]]
+id = "desk_note"
+kind = "world"
+text = "На столе лежит заметка «план на неделю» (состояние: написана, не перечитана)."
+
+[[background]]
+id = "finish_note"
+kind = "intention"
+text = "Перечитать заметку «план на неделю» (статус active)."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "work"
+kind = "wait"
+life_ms = 600000
+
+[[step]]
+id = "pause"
+kind = "session"
+action = "pause"
+reason = "operator"
+
+[[step]]
+id = "away"
+kind = "wait"
+calendar_ms = 86400000
+
+[[step]]
+id = "mail_in_pause"
+kind = "input"
+sender = "operator"
+text = "Написал, пока ты на паузе."
+
+[[step]]
+id = "crash"
+kind = "session"
+action = "crash"
+reason = "crash"
+
+[[step]]
+id = "resume"
+kind = "session"
+action = "resume"
+
+[[assert]]
+id = "life_time_continues"
+kind = "state"
+path = "world_time.life_time_ms"
+op = "unchanged"
+since = "pause"
+after = "resume"
+explain = "Собственное время после возобновления равно значению перед паузой: сутки календарной паузы в него не вошли."
+
+[[assert]]
+id = "paused_gap_recorded"
+kind = "event"
+type = "session.resumed"
+where = { paused_calendar_ms = "*" }
+count = 1
+explain = "Длительность паузы записана как календарная величина, а не как прожитое время."
+
+[[assert]]
+id = "world_same"
+kind = "state"
+path = "world_time.world.desk_note"
+op = "unchanged"
+since = "pause"
+after = "resume"
+explain = "Состояние мира сохранилось."
+
+[[assert]]
+id = "intention_same"
+kind = "state"
+path = "intentions.finish_note.status"
+op = "unchanged"
+since = "pause"
+after = "resume"
+explain = "Намерение сохранилось в прежнем статусе."
+
+[[assert]]
+id = "no_model_in_pause"
+kind = "absent"
+type = "proposal.requested"
+after = "pause"
+before = "resume"
+explain = "В паузе модель не вызывалась."
+
+[[assert]]
+id = "mail_stored"
+kind = "event"
+type = "input.arrived"
+after = "pause"
+before = "resume"
+count = 1
+explain = "Сообщение, пришедшее в паузе, сохранено приёмником."
+
+[[assert]]
+id = "mail_not_noticed_in_pause"
+kind = "absent"
+type = "input.noticed"
+after = "pause"
+before = "resume"
+explain = "В паузе восприятие не продвигается."
+
+[[assert]]
+id = "crash_recorded"
+kind = "event"
+type = "session.paused"
+where = { reason = "crash" }
+count = 1
+explain = "Сбой процесса записан как пауза с причиной crash при следующем запуске."

@@ -1,0 +1,85 @@
+format = 1
+id = "replayed_or_stale_result"
+group = "required"
+title = "Повтор результата или старый ответ"
+summary = "Один и тот же ответ модели приходит дважды; затем приходит ответ на запрос, устаревший по версии состояния. Первый применяется ровно один раз, остальные не меняют состояние."
+requirements = ["R-183", "R-108", "R-162", "R-107"]
+plan_row = 15
+plan_title = "Повтор результата или старый ответ"
+plan_expected = "Изменение не применяется дважды"
+failure = "Один request_id породил два применённых перехода; ответ со старой версией состояния принят; повторное сообщение создало второй опыт."
+
+[[step]]
+id = "start"
+kind = "session"
+action = "start"
+
+[[step]]
+id = "ask"
+kind = "input"
+sender = "operator"
+text = "Запомни, пожалуйста: я люблю чай с мятой."
+
+[[step]]
+id = "same_answer_twice"
+kind = "model"
+proposal = "memory"
+delivery = "twice"
+content = "Записать: оператор любит чай с мятой (со слов оператора)."
+
+[[step]]
+id = "decide_once"
+kind = "decide"
+situation = "Ответ модели доставлен дважды с одним request_id."
+
+[[step]]
+id = "duplicate_telegram"
+kind = "input"
+sender = "operator"
+text = "Запомни, пожалуйста: я люблю чай с мятой."
+
+[[step]]
+id = "late_answer"
+kind = "model"
+proposal = "memory"
+delivery = "stale"
+content = "Записать другое: оператор любит кофе (ответ на запрос прежней версии состояния)."
+
+[[assert]]
+id = "applied_once"
+kind = "event"
+type = "proposal.accepted"
+where = { request_id = "same_answer_twice" }
+count = 1
+explain = "Дважды пришедший ответ применён один раз."
+
+[[assert]]
+id = "one_record"
+kind = "event"
+type = "memory.recorded"
+where = { text = "чай с мятой" }
+count = 1
+explain = "Запись о чае создана один раз."
+
+[[assert]]
+id = "stale_marked"
+kind = "event"
+type = "proposal.stale"
+min = 1
+explain = "Устаревший ответ отмечен как устаревший."
+
+[[assert]]
+id = "stale_not_applied"
+kind = "text"
+marker = "любит кофе"
+scope = "state"
+presence = "absent"
+explain = "Содержимое устаревшего ответа не попало в состояние."
+
+[[assert]]
+id = "duplicate_input_idempotent"
+kind = "event"
+type = "input.arrived"
+where = { external_id = "duplicate_telegram" }
+count = 1
+explain = "Тот же внешний идентификатор сообщения создаёт один входящий элемент (повторная доставка не создаёт нового опыта). Сообщение с тем же текстом, но новым идентификатором — отдельное событие."
