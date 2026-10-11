@@ -6,7 +6,7 @@
 
 Команды:
   brief                      сводка для старта сессии
-  sync                       найти самую свежую память среди веток origin/claude/*
+  sync                       найти самую свежую память среди веток origin/*
   start SLICE                начать срез (проверяет зависимости и барьеры)
   finish SLICE -m "итог"     закрыть срез (проверяет зависимости, барьеры, «Итог», целостность)
   block SLICE -m "причина"   пометить срез заблокированным
@@ -253,7 +253,8 @@ def cmd_brief(args, state):
 
 def cmd_sync(args, state):
     git("fetch", "origin", timeout=60)
-    refs = git("for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/claude").splitlines()
+    refs = [r for r in git("for-each-ref", "--format=%(refname:short)", "refs/remotes/origin").splitlines()
+            if r not in ("origin", "origin/HEAD")]
     here = state.get("revision", 0)
     branch = current_branch()
     print(f"локальная ревизия памяти: {here} (ветка {branch})")
