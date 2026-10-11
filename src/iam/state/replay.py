@@ -75,28 +75,29 @@ def replay(store: Store) -> Iterator[ReplayResult]:
 
 def verify(store: Store) -> list[str]:
     """Полная проверка согласованности: воспроизведение журнала с нуля, сверка со снимком каждой версии
-    (состояние, место в журнале), с записями памяти и с последним снимком. Пустой список — всё сходится."""
+    (состояние и место в журнале), с записями памяти и с последним снимком. Пустой список — всё сходится."""
     problems: list[str] = []
-    final = None
+    final, snaps = None, {}
     try:
         for step in replay(store):
             final = step
             try:
-                snap = store.get_snapshot(step.epoch, step.state_version)
+                snaps[step.state_version] = snap = store.get_snapshot(step.epoch, step.state_version)
             except NotFound:
                 problems.append(f"нет снимка версии {step.state_version}")
                 continue
             if canonical_json(snap.state) != canonical_json(step.state):
                 problems.append(f"снимок версии {step.state_version} не совпадает с воспроизведённым состоянием")
-            if snap.at_seq != step.snapshots_at[step.state_version]:
-                problems.append(f"снимок версии {step.state_version}: at_seq={snap.at_seq}, "
-                                f"последнее событие перехода seq={step.snapshots_at[step.state_version]}")
     except ReplayError as e:
         problems.append(str(e))
     if final is None:
         latest = store.latest_snapshot()
         return problems + ([f"снимок есть, а переходов в журнале нет: версия {latest.state_version}"] if latest else [])
     problems += final.problems
+    for version, snap in snaps.items():   # последнее событие каждой версии известно только после полного прохода
+        if snap.at_seq != final.snapshots_at[version]:
+            problems.append(f"снимок версии {version}: at_seq={snap.at_seq}, последнее событие перехода "
+                            f"seq={final.snapshots_at[version]}")
     latest = store.latest_snapshot()
     if latest is None or latest.state_version != final.state_version:
         problems.append("последний снимок не соответствует последнему переходу")
