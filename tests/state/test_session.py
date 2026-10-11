@@ -35,6 +35,14 @@ class SessionTest(StateCase):
         self.assertEqual(c.resume_session().reason, "bad_session_state")
         self.assertEqual(self.types(c).count("system.error"), 5)
 
+    def test_session_id_is_never_reused(self):
+        c = self.controller(running=True)
+        sid = c.session_id
+        c.stop_session()
+        res = c.start_session(session_id=sid)
+        self.assertEqual((res.status, res.reason), ("rejected", "session_id_used"))
+        self.assertTrue(c.start_session(session_id="ses_BrandNewOne1").applied)
+
     def test_start_before_persona_created(self):
         c = self.controller(created=False)
         self.assertEqual(c.start_session().reason, "persona_not_created")
@@ -93,7 +101,6 @@ class SessionTest(StateCase):
         c.pause_session()
         v = c.state_version
         self.assertEqual(c.apply(self.prop(c, set_("traits", "x", 1))).reason, "session_forbids")
-        self.assertEqual(c.record_event(EventSpec("proposal.requested", "req:req_ABCDEFGH")).reason, "session_forbids")
         self.assertEqual(c.record_event(EventSpec("memory.retrieved", "rtv:cyc_ABCDEFGH:1")).reason, "session_forbids")
         self.assertEqual(c.state_version, v)
         self.assertNotIn("proposal.requested", self.types(c))
@@ -254,6 +261,15 @@ class MomentsTest(StateCase):
         self.assertEqual(c.state_version, v + 3)
         self.assertEqual(c.state["world_time"]["moments"], {})
         self.assertEqual(verify(c.store), [])
+
+    def test_moment_id_cannot_be_reused_after_firing(self):
+        c = self.c
+        c.schedule_moment(life_moment(MOM_A, 10, "o"))
+        self.time.advance(10)
+        c.fire_due_moments()
+        self.assertEqual(c.schedule_moment(life_moment(MOM_A, 500, "o")).reason, "moment_exists")
+        self.time.advance(1000)
+        self.assertEqual(c.fire_due_moments(), [])
 
     def test_schedule_validation_and_cancel(self):
         c = self.c

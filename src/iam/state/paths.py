@@ -42,10 +42,45 @@ class StateMachine:
     pattern: tuple[str, ...]
     table: dict[str, frozenset[str]]
     needs_cause: dict[str, frozenset[str]] = field(default_factory=dict)
+    initial: frozenset[str] = frozenset()   # с каких статусов запись может появиться
 
     def matches(self, group: str, segs: list[str]) -> bool:
         return (group == self.group and len(segs) == len(self.pattern)
                 and all(p in ("*", s) for p, s in zip(self.pattern, segs)))
+
+
+def status_map(state: dict, machine: StateMachine) -> dict[tuple[str, ...], object]:
+    """Все статусы, которыми управляет автомат: конкретный путь (ключи внутри группы) → значение."""
+    found: dict[tuple[str, ...], object] = {}
+
+    def walk(node, depth: int, trail: tuple[str, ...]) -> None:
+        if depth == len(machine.pattern):
+            found[trail] = node
+        elif isinstance(node, dict):
+            for key in (node if machine.pattern[depth] == "*" else [k for k in (machine.pattern[depth],) if k in node]):
+                walk(node[key], depth + 1, (*trail, key))
+
+    walk(state[machine.group], 0, ())
+    return found
+
+
+def machine_violations(before: dict, after: dict, moved: set[tuple[str, str, ...]],
+                       machines: Iterable[StateMachine]) -> list[str]:
+    """Статусы под автоматом меняются только операцией `transition`: запись создаётся с начального статуса,
+    статус не правится через set/add/remove (в том числе записью целого родителя) и запись не исчезает.
+    `moved` — пути (группа, ключи…), по которым в этом переходе прошла операция `transition`."""
+    errs = []
+    for m in machines:
+        was, now = status_map(before, m), status_map(after, m)
+        for path, value in now.items():
+            where = ".".join((m.group, *path))
+            if path not in was:
+                if value not in m.initial:
+                    errs.append(f"{where}: запись создаётся со статуса {sorted(m.initial)}, а не {value!r}")
+            elif value != was[path] and (m.group, *path) not in moved:
+                errs.append(f"{where}: статус меняется только операцией transition ({was[path]!r} → {value!r})")
+        errs += [f"{'.'.join((m.group, *path))}: запись со статусом нельзя удалить" for path in was if path not in now]
+    return errs
 
 
 def split_path(path: str) -> list[str]:

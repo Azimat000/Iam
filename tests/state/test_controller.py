@@ -271,6 +271,69 @@ class ApplyTest(StateCase):
         again = c.apply(self.prop(c, Op("intentions", "int_AAAAAAAA.status", "transition", "active", True)))
         self.assertEqual(again.reason, "bad_transition")
 
+    def test_status_cannot_be_changed_around_the_state_machine(self):
+        """Автомат нельзя обойти записью статуса напрямую — ни моделью, ни оператором, ни записью целого родителя."""
+        c = self.c
+        c.apply(self.prop(c, set_("intentions", "int_AAAAAAAA", {"text": "дописать", "status": "active"})))
+        status = "int_AAAAAAAA.status"
+        attempts = {
+            "model set done": self.prop(c, set_("intentions", "int_AAAAAAAA.status", "done"), actor="model"),
+            "operator set done": self.prop(c, set_("intentions", "int_AAAAAAAA.status", "done"), actor="operator"),
+            "replace record": self.prop(c, set_("intentions", "int_AAAAAAAA", {"text": "x", "status": "done"})),
+            "replace group": self.prop(c, set_("intentions", "int_AAAAAAAA", {"text": "x", "status": "active"}),
+                                       set_("intentions", "int_BBBBBBBB", {"status": "done"})),
+            "create finished": self.prop(c, set_("intentions", "int_CCCCCCCC", {"status": "done"})),
+            "delete record": self.prop(c, Op("intentions", "int_AAAAAAAA", "remove")),
+            "set then finish in one": self.prop(c, set_("intentions", "int_DDDDDDDD", {"status": "active"}),
+                                                Op("intentions", "int_DDDDDDDD.status", "transition", "done", True)),
+        }
+        for name, p in attempts.items():
+            res = c.apply(p)
+            expected = "needs_confirmation" if name == "set then finish in one" else "machine_bypass"
+            self.assertEqual(res.reason, expected, f"{name}: {res.violations}")
+        r = c.apply(self.prop(c, Op("intentions", status, "add", "x", True)))
+        self.assertEqual(r.reason, "not_a_list")
+        self.assertEqual(c.state["intentions"]["int_AAAAAAAA"]["status"], "active")
+        # допустимое: создать с начального статуса, менять другие поля записи, переводить автоматом
+        self.assertTrue(c.apply(self.prop(c, set_("intentions", "int_AAAAAAAA.text", "переписать"))).applied)
+        self.assertTrue(c.apply(self.prop(c, set_("intentions", "int_EEEEEEEE", {"status": "active"}))).applied)
+        self.assertTrue(c.apply(self.prop(c, set_("intentions", "note", "не запись намерения"))).applied,
+                        "не-словарь на месте записи автомату не подчиняется")
+        self.assertTrue(c.apply(self.prop(c, Op("intentions", status, "transition", "deferred", True))).applied)
+        again = c.apply(self.prop(c, set_("intentions", "int_AAAAAAAA.status", "active")))
+        self.assertEqual(again.reason, "machine_bypass", "возврат из deferred только через transition")
+
+    def test_companion_events_need_the_same_rights_as_carrier(self):
+        c = self.c
+        fake = EventSpec("action.confirmed", "act:act_FORGED001:ok", {"result": "готово"})
+        res = c.apply(self.prop(c, set_("traits", "x", 1), actor="model", companions=(fake,)))
+        self.assertEqual(res.reason, "actor_forbidden")
+        self.assertIsNone(c.store.find_event(key="act:act_FORGED001:ok"))
+        intervention = EventSpec("operator.intervention", "opr:opr_FORGED001")
+        self.assertEqual(c.apply(self.prop(c, set_("traits", "x", 1), actor="model", companions=(intervention,))).reason,
+                         "actor_forbidden")
+
+    def test_operator_intervention_only_through_intervene(self):
+        c = self.c
+        carrier = EventSpec("operator.intervention", "opr:opr_FORGED002", {"kind": "grant_capability"})
+        res = c.apply(self.prop(c, set_("traits", "x", 1), actor="operator", carrier=carrier))
+        self.assertEqual(res.reason, "carrier_reserved")
+
+    def test_validators_get_copies(self):
+        c = self.c
+
+        def vandal(ch):
+            ch.before["traits"]["curious"]["value"] = 99
+            ch.after["traits"]["injected"] = 1
+            ch.changes[0]["after"] = "подмена"
+            return []
+        c.add_validator("vandal", vandal)
+        res = c.apply(self.prop(c, set_("beliefs", "b", 1)))
+        self.assertTrue(res.applied)
+        self.assertEqual(c.state["traits"], {"curious": {"value": 0.5}})
+        self.assertEqual(res.changes[0]["after"], 1)
+        self.assertEqual(verify(c.store), [])
+
     def test_custom_validators(self):
         c = self.c
         c.add_validator("range", lambda ch: [f"{x['path']}: вне 0..1" for x in ch.changes
@@ -421,9 +484,13 @@ class RecordEventTest(StateCase):
         c.pause_session()
         self.assertEqual(c.record_event(EventSpec("input.arrived", "rx:tg:5")).status, "recorded")
         self.assertEqual(c.record_event(EventSpec("system.backup_created", "bak:snp_ABCDEFGH")).status, "recorded")
-        for t, k in (("proposal.requested", "req:req_ABCDEFGH"), ("memory.retrieved", "rtv:cyc_ABCDEFGH:1")):
-            res = c.record_event(EventSpec(t, k))
-            self.assertEqual((res.status, res.reason), ("rejected", "session_forbids"), t)
+        res = c.record_event(EventSpec("memory.retrieved", "rtv:cyc_ABCDEFGH:1"))
+        self.assertEqual((res.status, res.reason), ("rejected", "session_forbids"))
+
+    def test_request_and_response_events_only_through_their_methods(self):
+        for t, k in (("proposal.requested", "req:req_ABCDEFGH"), ("proposal.received", "resp:req_ABCDEFGH")):
+            with self.assertRaises(ValueError):
+                self.c.record_event(EventSpec(t, k, {}))
 
 
 if __name__ == "__main__":

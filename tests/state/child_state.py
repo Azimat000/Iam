@@ -4,6 +4,7 @@
                               переходы с сопутствующими событиями; после первого напечатать READY
   child_state.py try <db>   — попытаться открыть личность для записи: печатает OPENED или LOCKED
 """
+import os
 import sys
 from pathlib import Path
 
@@ -36,8 +37,8 @@ def main(mode: str, db: str) -> None:
     elif c.session_state == "paused":
         c.resume_session()
     root = store.get_event(1).event_id
-    i = 0
-    while True:
+    parent, i = os.getppid(), 0
+    while os.getppid() == parent:   # осиротевший подпроцесс (родитель-тест умер) не должен крутиться вечно
         i += 1
         t = Transition(new_id("trn"), PID, c.epoch, c.state_version,
                        (Op("beliefs", f"b{i % 7}", "set", {"n": i, "text": BULK}, True),

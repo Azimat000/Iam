@@ -24,7 +24,7 @@ from iam.storage import IdempotencyConflict, NotFound, Snapshot, Store
 
 from . import rules
 from .errors import ClockRegression, NotSupported, StateCorrupt, StateError
-from .paths import OpError, apply_op, empty_state, overlaps, split_path, touched
+from .paths import OpError, apply_op, empty_state, machine_violations, overlaps, split_path, touched
 from .types import ApplyResult, EventSpec, Proposal, RecordResult, ResponseResult, Violation
 
 Validator = Callable[["Check"], "Iterable[str]"]
@@ -182,6 +182,11 @@ class StateController:
         kind = CATALOG.get(spec.type)
         if kind is None or kind.changes_state:
             raise ValueError(f"{spec.type!r}: не событие без изменения состояния (меняющие состояние идут через apply)")
+        if spec.type in ("proposal.requested", "proposal.received"):
+            raise ValueError(f"{spec.type}: запись только через record_request / receive_response")
+        return self._record(spec, actor, actor_ref)
+
+    def _record(self, spec: EventSpec, actor: str = "core", actor_ref: str = "state_controller") -> RecordResult:
         with self._atomic():
             if not rules.permitted_in(self.session_state, spec.type):
                 return self._refuse(spec, "session_forbids",
@@ -210,7 +215,10 @@ class StateController:
         менять нельзя — только методами управления сеансом."""
         return self._apply(proposal, privileged=False)
 
-    def _apply(self, p: Proposal, *, privileged: bool, life: int | None = None) -> ApplyResult:
+    def _apply(self, p: Proposal, *, privileged: bool, internal: bool | None = None,
+               life: int | None = None) -> ApplyResult:
+        """`privileged` — можно писать защищённые поля сеанса; `internal` (по умолчанию как privileged) — можно
+        проводить зарезервированные события (вызывают только методы самого контроллера)."""
         with self._atomic():
             t = p.transition
             carrier = p.carrier or EventSpec("state.transition_applied", f"trn:{t.transition_id}")
@@ -234,7 +242,7 @@ class StateController:
             if (t.base_epoch, t.base_version) != (self._epoch, self._version):
                 return self._stale(p)
             stamp = self._stamp(life)
-            out = self._check(p, carrier, privileged, stamp)
+            out = self._check(p, carrier, privileged, privileged if internal is None else internal, stamp)
             if out.violations:
                 return self._reject(p, out.violations)
             return self._commit(p, carrier, out, stamp)
@@ -275,12 +283,15 @@ class StateController:
 
     # --- проверка содержимого перехода ---------------------------------------------------------
 
-    def _check(self, p: Proposal, carrier: EventSpec, privileged: bool, stamp: _Stamp) -> _Outcome:
+    def _check(self, p: Proposal, carrier: EventSpec, privileged: bool, internal: bool, stamp: _Stamp) -> _Outcome:
         t = p.transition
         v: list[Violation] = []
         if p.actor not in rules.CARRIER_ACTORS.get(carrier.type, rules.DEFAULT_CARRIER_ACTORS):
             v.append(Violation("actor_forbidden", f"{p.actor} не вправе проводить событие {carrier.type}"))
-        if not privileged and {carrier.type, *(s.type for s in p.companions)} & rules.RESERVED_CARRIERS:
+        for spec in p.companions:
+            if p.actor not in rules.CARRIER_ACTORS.get(spec.type, rules.DEFAULT_CARRIER_ACTORS):
+                v.append(Violation("actor_forbidden", f"{p.actor} не вправе проводить событие {spec.type}"))
+        if not internal and {carrier.type, *(s.type for s in p.companions)} & rules.RESERVED_CARRIERS:
             v.append(Violation("carrier_reserved", "события сеанса, моментов и создания личности пишут методы контроллера"))
         for spec in (carrier, *p.companions):
             if not rules.permitted_in(self.session_state, spec.type):
@@ -334,9 +345,12 @@ class StateController:
                 v.append(Violation(getattr(e, "code", "bad_memory"), str(e)))
         out = _Outcome(v, state, changes, memory)
         if not v:
+            moved = {(o.group, *o.path.split(".")) for o in ops if o.op == "transition"}
+            out.violations += [Violation("machine_bypass", m) for m in machine_violations(base, state, moved, rules.MACHINES)]
+        if not out.violations:
             for name, fn in self._validators:
-                out.violations += [Violation(f"validator:{name}", msg)
-                                   for msg in fn(Check(base, state, tuple(changes), actor, carrier_type))]
+                out.violations += [Violation(f"validator:{name}", msg) for msg in fn(
+                    Check(copy.deepcopy(base), copy.deepcopy(state), copy.deepcopy(tuple(changes)), actor, carrier_type))]
         return out
 
     def _memory_op(self, op: Op, overlay: dict, writes: list) -> dict:
@@ -448,6 +462,8 @@ class StateController:
         if bad:
             return bad
         sid, life = session_id or new_id("ses"), self.clock.now_ms()
+        if self.store.find_event(key=f"ses:{sid}:start") is not None:
+            return self._refuse_call("start", "session_id_used", f"сеанс {sid} уже был: идентификатор не повторяется")
         ops = [Op("world_time", "session_state", "transition", "running", True), self._wt("session_id", sid),
                self._wt("life_time_ms", life), self._wt("pause_reason", None), self._wt("paused_at", None),
                self._wt("pause_count", 0), self._wt("resume_count", 0)]
@@ -519,8 +535,10 @@ class StateController:
         errs = moment_errors(moment)
         if errs:
             return self._refuse_call("schedule_moment", "bad_moment", "; ".join(errs))
-        if moment["moment_id"] in self._state["world_time"]["moments"]:
-            return self._refuse_call("schedule_moment", "moment_exists", f"момент {moment['moment_id']} уже назначен")
+        if (moment["moment_id"] in self._state["world_time"]["moments"]
+                or self.store.find_event(key=f"due:{moment['moment_id']}:1") is not None):
+            return self._refuse_call("schedule_moment", "moment_exists",
+                                     f"момент {moment['moment_id']} уже назначен или уже наступал: id не повторяется")
         return self._moment_step(Op("world_time", f"moments.{moment['moment_id']}", "set", moment, True),
                                  f"назначен момент {moment['moment_id']}")
 
@@ -568,7 +586,7 @@ class StateController:
         carrier = EventSpec("operator.intervention", f"opr:{iid}", {
             "intervention_id": iid, "kind": kind, "operator_channel": "panel", "reason": reason.strip(),
             "target": target, "visible_to_persona": True}, event_id=ev_id)
-        return self._apply(Proposal(t, "operator", "panel", carrier), privileged=False)
+        return self._apply(Proposal(t, "operator", "panel", carrier), privileged=False, internal=True)
 
     # --- запросы и ответы модели ---------------------------------------------------------------
 
@@ -581,7 +599,7 @@ class StateController:
         spec = EventSpec("proposal.requested", request["idempotency_key"], {"request": request})
         if request["persona_id"] != self.persona_id or request["session_id"] != self.session_id:
             return self._refuse(spec, "wrong_context", "запрос другой личности или не текущего сеанса")
-        res = self.record_event(spec)
+        res = self._record(spec)
         if res.event is not None:
             self._pending.setdefault(request["request_id"], self.clock.monotonic_ms())
         return res
@@ -664,6 +682,10 @@ class StateController:
         принятыми и нарушающие правила отклоняются поодиночке; принятые — один переход (E-10)."""
         rid, working, claimed = response["request_id"], self._state, []
         accepted, rejected, ops = [], {}, []
+        ids = [pr["proposal_id"] for pr in response["proposals"]]
+        if len(ids) != len(set(ids)):
+            self._fault("duplicate_proposal_id", _ident(rid), {"request_id": rid})
+            return ResponseResult("rejected", "duplicate_proposal_id", received)
         for pr in response["proposals"]:
             bad, working_after, new_ops = self._judge(pr, working, claimed, received.event_id)
             if bad:
@@ -687,6 +709,9 @@ class StateController:
                           privileged=False)
         ok = res.applied
         names = tuple(pr["proposal_id"] for pr in accepted)
+        if not ok:   # принятые по отдельности, но не записанные вместе: каждому — запись об отказе (E-9)
+            rejected = {**rejected, **{n: res.reason for n in names}}
+            self._log_rejections(response, rejected, received)
         status = ("partial" if rejected else "applied") if ok else "rejected"
         return ResponseResult(status, None if ok else res.reason, received, names if ok else (), rejected, res)
 

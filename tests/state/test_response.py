@@ -174,6 +174,18 @@ class StaleTest(ResponseCase):
         self.assertEqual(c.receive_response(late).status, "duplicate")
         self.assertEqual(self.types(c).count("proposal.stale"), 1)
 
+    def test_epoch_alone_makes_answer_stale(self):
+        """Версия состояния та же, но эпоха другая (после отката из копии): ответ устарел."""
+        from iam.storage import Snapshot
+        c = self.c
+        req = self.ask()
+        snap = c.store.latest_snapshot()
+        c.store.put_snapshot(Snapshot(2, snap.state_version, snap.at_seq, snap.life_time_ms, snap.created_at, snap.state))
+        c._reload()
+        self.assertEqual((c.epoch, c.state_version), (2, snap.state_version))
+        res = c.receive_response(self.answer(req, [proposal([op("traits", "a", "set", 1)])]))
+        self.assertEqual((res.status, res.reason), ("stale", "version"))
+
     def test_other_epoch_is_stale_too(self):
         c = self.c
         req = self.ask()
@@ -328,12 +340,24 @@ class RejectTest(ResponseCase):
         res = self.c.receive_response(self.answer(req, []))
         self.assertEqual((res.status, res.reason), ("rejected", "no_proposal_accepted"))
 
+    def test_duplicate_proposal_ids_in_one_answer_are_refused(self):
+        c = self.c
+        req = self.ask()
+        twin = [proposal([op("traits", "a", "set", 1)], pid="prop_TWIN00001"),
+                proposal([op("traits", "b", "set", 1)], pid="prop_TWIN00001")]
+        res = c.receive_response(self.answer(req, twin))
+        self.assertEqual((res.status, res.reason), ("rejected", "duplicate_proposal_id"))
+        self.assertEqual(c.state["traits"].keys(), {"curious"})
+        self.assertEqual(c.receive_response(self.answer(req, twin)).status, "duplicate", "повтор уже не падает")
+
     def test_reused_proposal_id_cannot_be_accepted_twice(self):
         c = self.c
         first = c.receive_response(self.answer(self.ask(), [proposal([op("traits", "a", "set", 1)], pid="prop_REUSED001")]))
         self.assertEqual(first.status, "applied")
         second = c.receive_response(self.answer(self.ask(), [proposal([op("traits", "b", "set", 1)], pid="prop_REUSED001")]))
         self.assertEqual((second.status, second.reason), ("rejected", "key_taken"))
+        self.assertEqual(second.rejected, {"prop_REUSED001": "key_taken"})
+        self.assertEqual(c.store.find_event(key="prop:prop_REUSED001:reject").payload["reason"], "key_taken")
         self.assertNotIn("b", c.state["traits"])
 
 
