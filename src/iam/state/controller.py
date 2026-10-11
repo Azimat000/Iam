@@ -25,9 +25,11 @@ from iam.storage import IdempotencyConflict, NotFound, Snapshot, Store
 from . import rules
 from .errors import ClockRegression, NotSupported, StateCorrupt, StateError
 from .paths import OpError, apply_op, empty_state, machine_violations, overlaps, split_path, touched
-from .types import ApplyResult, EventSpec, Proposal, RecordResult, ResponseResult, Violation
+from .types import (ApplyResult, EventSpec, KindContext, KindDecision, Proposal, RecordResult, ResponseResult,
+                    Violation)
 
 Validator = Callable[["Check"], "Iterable[str]"]
+KindHandler = Callable[[dict, KindContext], KindDecision]
 
 
 @dataclass(frozen=True)
@@ -79,6 +81,7 @@ class StateController:
         if store.store_kind == "permanent" and self.clock.time_scale != 1:
             raise ValueError("постоянная личность живёт только с time_scale = 1 (R-165)")
         self._validators: list[tuple[str, Validator]] = list(validators)
+        self._kinds: dict[str, KindHandler] = {}
         self._pending: dict[str, int] = {}
         self._reload()
         if not store.readonly:
@@ -117,6 +120,23 @@ class StateController:
     def add_validator(self, name: str, fn: Validator) -> None:
         """Подключить проверку группы (диапазоны, происхождение…): возвращает список текстов нарушений."""
         self._validators.append((name, fn))
+
+    def register_kind(self, kind: str, handler: KindHandler) -> None:
+        """Подключить разборщик вида предложения (`action`, `message`, …): превращает предложение в операции
+        состояния или отклоняет его. Без разборщика вид отклоняется как `kind_not_supported`; `state_change`
+        разбирает сам привратник."""
+        if kind == "state_change":
+            raise ValueError("state_change разбирает сам привратник")
+        self._kinds[kind] = handler
+
+    # --- чтение журнала (для цикла: сам он в хранилище не заходит) -----------------------------
+
+    def find_event(self, *, event_id: str | None = None, key: str | None = None) -> Event | None:
+        return self.store.find_event(event_id=event_id, key=key)
+
+    def events_after(self, seq: int) -> list[Event]:
+        """События журнала с номером больше `seq`, по порядку."""
+        return list(self.store.events(seq + 1))
 
     def _reload(self) -> None:
         snap = self.store.latest_snapshot()
@@ -647,7 +667,7 @@ class StateController:
             rejected = {pr["proposal_id"]: "tool_use_detected" for pr in response["proposals"]}
             self._log_rejections(response, rejected, received)
             return ResponseResult("rejected", "tool_use_detected", received, rejected=rejected)
-        return self._judge_proposals(response, received)
+        return self._judge_proposals(response, received, request)
 
     def _stale_reasons(self, response: dict, request: dict, sent_at: int | None) -> list[str]:
         why = []
@@ -677,7 +697,7 @@ class StateController:
                     "proposal_id": pr["proposal_id"], "request_id": response["request_id"], "kind": pr["kind"],
                     "reason": rejected[pr["proposal_id"]]}), causes=(received.event_id,))
 
-    def _judge_proposals(self, response: dict, received: Event) -> ResponseResult:
+    def _judge_proposals(self, response: dict, received: Event, request: dict) -> ResponseResult:
         """Предложения по порядку: поддержанные проверяются на копии «рабочего» состояния, конфликтующие с уже
         принятыми и нарушающие правила отклоняются поодиночке; принятые — один переход (E-10)."""
         rid, working, claimed = response["request_id"], self._state, []
@@ -687,7 +707,8 @@ class StateController:
             self._fault("duplicate_proposal_id", _ident(rid), {"request_id": rid})
             return ResponseResult("rejected", "duplicate_proposal_id", received)
         for pr in response["proposals"]:
-            bad, working_after, new_ops = self._judge(pr, working, claimed, received.event_id)
+            bad, working_after, new_ops = self._judge(pr, working, claimed, received.event_id, request,
+                                                      tuple(p["kind"] for p in accepted))
             if bad:
                 rejected[pr["proposal_id"]] = bad.code
                 continue
@@ -715,11 +736,20 @@ class StateController:
         status = ("partial" if rejected else "applied") if ok else "rejected"
         return ResponseResult(status, None if ok else res.reason, received, names if ok else (), rejected, res)
 
-    def _judge(self, pr: dict, working: dict, claimed: list, received_id: str):
+    def _judge(self, pr: dict, working: dict, claimed: list, received_id: str, request: dict, accepted_kinds: tuple):
         """(нарушение | None, состояние после, операции) для одного предложения."""
-        if pr["kind"] != "state_change":
-            return Violation("kind_not_supported", f"предложения вида {pr['kind']} разбирает цикл (S07)"), working, ()
-        ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
+        if pr["kind"] == "state_change":
+            ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
+        else:
+            handler = self._kinds.get(pr["kind"])
+            if handler is None:
+                return Violation("kind_not_supported", f"предложения вида {pr['kind']} не подключены"), working, ()
+            decision = handler(pr, KindContext(request, working, accepted_kinds, self.clock.now_ms()))
+            if decision.violation is not None:
+                return decision.violation, working, ()
+            ops = tuple(decision.ops)
+        if pr["kind"] not in request["allowed_proposals"]:
+            return Violation("kind_not_allowed", f"вид {pr['kind']} не разрешён этим запросом"), working, ()
         if any(overlaps(touched(o), c) for o in ops for c in claimed):
             return Violation("conflicts_with_accepted", "то же поле уже меняет принятое предложение"), working, ()
         lost = [c for c in pr["cites"] if not self._cite_exists(c)]

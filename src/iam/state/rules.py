@@ -27,6 +27,9 @@ CARRIER_ACTORS: dict[str, frozenset[str]] = {
     "action.confirmed": frozenset({"world"}),
     "action.failed": frozenset({"world"}),
     "activity.completed": frozenset({"world"}),
+    # Успешный исход пишет только подтверждающий источник; «исход неизвестен» — ядро (или канал, потерявший ответ).
+    "message.out_sent": frozenset({"world"}),
+    "message.out_unknown": frozenset({"core", "world"}),
 }
 # Остальные типы событий, меняющих состояние, нести переход могут core и model (через проверку ядром).
 DEFAULT_CARRIER_ACTORS = frozenset({"core", "model", "operator"})
@@ -87,7 +90,19 @@ SESSION_MACHINE = StateMachine(
      "paused": frozenset({"running", "stopped"})},
     initial=frozenset({"stopped"}))
 
-MACHINES = (INTENTION_MACHINE, SESSION_MACHINE)
+# Исход действия (R-184, R-199, R-222): принято → попытка → ровно один исход. «confirmed» только после попытки,
+# попытка — только после принятого предложения; сам исход пишет подтверждающий источник (CARRIER_ACTORS).
+_ATTEMPTS = frozenset({"action.attempted", "message.out_requested"})
+ACTION_MACHINE = StateMachine(
+    "action_status", "world_time", ("world", "actions", "*", "status"),
+    {"accepted": frozenset({"attempted"}),
+     "attempted": frozenset({"confirmed", "failed", "unknown_outcome"}),
+     "confirmed": frozenset(), "failed": frozenset(), "unknown_outcome": frozenset()},
+    needs_cause={"attempted": frozenset({"proposal.accepted"}), "confirmed": _ATTEMPTS, "failed": _ATTEMPTS,
+                 "unknown_outcome": _ATTEMPTS},
+    initial=frozenset({"accepted"}))
+
+MACHINES = (INTENTION_MACHINE, SESSION_MACHINE, ACTION_MACHINE)
 
 # Начальное значение группы world_time (docs/spec/state.md#world-time): личность создана, сеанса нет.
 WORLD_TIME_DEFAULT = {
