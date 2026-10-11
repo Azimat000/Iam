@@ -1,6 +1,6 @@
 # Свидетельство S04: хранилище, домен, покрытие
 
-Снято командами ниже в сессии S04 (2026-10-11T19:47Z), коммит-основа: 043160b (плюс незакоммиченные правки среза). Python 3.13.16, SQLite 3.45.1, coverage.py 7.10.6.
+Снято командами ниже в сессии S04 (2026-10-11T19:58Z) на чистом рабочем дереве, коммит c8987f7. Python 3.13.16, SQLite 3.45.1, coverage.py 7.10.6.
 
 ## `cd tests && python3 -m unittest storage.test_crash_lock storage.test_journal storage.test_migrations -v`
 код возврата: 0
@@ -11,6 +11,7 @@ test_create_while_locked_is_refused (storage.test_crash_lock.LockTest.test_creat
 test_lock_object (storage.test_crash_lock.LockTest.test_lock_object) ... ok
 test_same_process_second_writer_refused (storage.test_crash_lock.LockTest.test_same_process_second_writer_refused) ... ok
 test_second_process_is_refused_until_first_dies (storage.test_crash_lock.LockTest.test_second_process_is_refused_until_first_dies) ... ok
+test_symlink_to_same_base_shares_lock (storage.test_crash_lock.LockTest.test_symlink_to_same_base_shares_lock) ... ok
 test_archive_layer_immutable_personal_mutable (storage.test_journal.AppendOnlyTest.test_archive_layer_immutable_personal_mutable) ... ok
 test_clock_monotonic (storage.test_journal.AppendOnlyTest.test_clock_monotonic) ... ok
 test_inbox_immutable (storage.test_journal.AppendOnlyTest.test_inbox_immutable) ... ok
@@ -19,6 +20,7 @@ test_outbox_status_machine (storage.test_journal.AppendOnlyTest.test_outbox_stat
 test_raw_connection_without_api_is_still_guarded_by_triggers (storage.test_journal.AppendOnlyTest.test_raw_connection_without_api_is_still_guarded_by_triggers) ... ok
 test_replace_and_upsert_cannot_bypass (storage.test_journal.AppendOnlyTest.test_replace_and_upsert_cannot_bypass) ... ok
 test_schema_changes_denied_on_core_connections (storage.test_journal.AppendOnlyTest.test_schema_changes_denied_on_core_connections) ... ok
+test_search_index_written_only_by_triggers (storage.test_journal.AppendOnlyTest.test_search_index_written_only_by_triggers) ... ok
 test_seq_gap_and_foreign_persona_rejected (storage.test_journal.AppendOnlyTest.test_seq_gap_and_foreign_persona_rejected) ... ok
 test_simulation_never_in_permanent_store (storage.test_journal.AppendOnlyTest.test_simulation_never_in_permanent_store) ... ok
 test_snapshots_form_one_line (storage.test_journal.AppendOnlyTest.test_snapshots_form_one_line)
@@ -36,7 +38,7 @@ test_target_limits_migrations (storage.test_migrations.MigrateTest.test_target_l
 test_too_new_refused (storage.test_migrations.MigrateTest.test_too_new_refused) ... ok
 
 ----------------------------------------------------------------------
-Ran 28 tests in 5.581s
+Ran 30 tests in 8.082s
 
 OK
 ```
@@ -44,7 +46,7 @@ OK
 ## `python3 -m unittest discover -s tests`
 код возврата: 0
 ```
-Ran 248 tests in 12.453s
+Ran 255 tests in 14.839s
 
 OK
 ```
