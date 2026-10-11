@@ -43,6 +43,7 @@ class StateMachine:
     table: dict[str, frozenset[str]]
     needs_cause: dict[str, frozenset[str]] = field(default_factory=dict)
     initial: frozenset[str] = frozenset()   # с каких статусов запись может появиться
+    via: dict[str, frozenset[str]] = field(default_factory=dict)   # новый статус → типы события-носителя перехода
 
     def matches(self, group: str, segs: list[str]) -> bool:
         return (group == self.group and len(segs) == len(self.pattern)

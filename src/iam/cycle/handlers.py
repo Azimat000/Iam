@@ -64,7 +64,8 @@ def make_kind_handlers(capabilities: Capabilities, *, max_actions: int = 1) -> d
         key = pr["body"]["request_key"]
         if not REQUEST_KEY_RE.match(key):
             return _no("bad_request_key", "request_key: 1–40 символов из букв, цифр, «_» и «-»")
-        if key in ctx.state["world_time"].get("world", {}).get("creator_requests", {}):
+        have = ctx.state["world_time"].get("world", {}).get("creator_requests", {}).get(key)
+        if have is not None and have["status"] == "open":
             return _no("duplicate_request", f"просьба {key} уже отправлялась: без новых обстоятельств не повторяется")
         return KindDecision((_set("world_time", f"world.creator_requests.{key}",
                                   {"status": "accepted", "text": pr["body"]["text"],

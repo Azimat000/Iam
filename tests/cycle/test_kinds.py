@@ -119,6 +119,34 @@ class ActionMachineTest(ResponseCase):
                                      actor="world", cause=accepted.event_id, carrier=EventSpec("action.confirmed", f"act:{AID}:ok")))
         self.assertEqual((res.status, res.reason), ("rejected", "needs_confirmation"))
 
+    def test_outcome_must_be_carried_by_its_own_event(self):
+        """Даже с верными основаниями статус не получить переходом, который несёт общее событие."""
+        self.accepted()
+        req = self.ask(allowed_proposals=["state_change"])
+        got = self.c.receive_response(self.answer(req, [proposal([{"group": "preferences", "path": "q", "op": "set", "value": 1}])]))
+        accepted = next(e for e in got.transition.events if e.type == "proposal.accepted")
+        res = self.c.apply(self.prop(self.c, Op("world_time", f"world.actions.{AID}.status", "transition", "attempted", True),
+                                     cause=accepted.event_id))
+        self.assertEqual((res.status, res.reason), ("rejected", "wrong_carrier"))
+        up = self.c.apply(self.prop(self.c, Op("world_time", f"world.actions.{AID}.status", "transition", "attempted", True),
+                                    cause=accepted.event_id, carrier=EventSpec("action.attempted", f"act:{AID}:try")))
+        self.assertTrue(up.applied)
+        attempted = up.events[0].event_id
+        for actor in ("core", "world"):
+            res = self.c.apply(self.prop(self.c, Op("world_time", f"world.actions.{AID}.status", "transition", "confirmed", True),
+                                         actor=actor, cause=attempted))
+            self.assertEqual(res.status, "rejected", actor)
+            self.assertIn("wrong_carrier", {v.code for v in res.violations}, actor)
+
+    def test_model_state_change_cannot_touch_action_records(self):
+        self.accepted()
+        req = self.ask(allowed_proposals=["state_change"])
+        for path in (f"world.actions.{AID}.outcome", "world.actions", "world", "world.creator_requests.k1"):
+            bad = proposal([{"group": "world_time", "path": path, "op": "set", "value": {}}])
+            res = self.c.receive_response(self.answer(req, [bad]))
+            self.assertEqual(list(res.rejected.values()), ["reserved_path"], path)
+            req = self.ask(allowed_proposals=["state_change"])
+
     def test_only_the_world_confirms(self):
         self.accepted()
         for actor in ("core", "model", "operator"):

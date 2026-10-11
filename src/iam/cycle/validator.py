@@ -15,7 +15,6 @@ from typing import Any
 BODY_FIELDS: dict[str, frozenset[str]] = {
     "action": frozenset({"capability_id", "params", "expected_duration_ms"}),
     "message": frozenset({"capability_id", "to", "text"}),
-    "state_change": frozenset({"ops"}),
     "memory_write": frozenset({"draft"}),
     "intention": frozenset({"op", "intention_id", "text", "to_status"}),
     "creator_request": frozenset({"request_key", "text"}),
@@ -31,11 +30,20 @@ CLAIM_KEYS = frozenset({"executed", "execution", "result", "outcome", "confirmed
                         "success", "done"})
 
 
+def _norm(key: Any) -> str:
+    """Регистр и разделители не должны прятать признак: `Tool_Calls`, `toolCalls`, `STDOUT`."""
+    return str(key).lower().replace("_", "").replace("-", "")
+
+
+_TOOL = frozenset(map(_norm, TOOL_KEYS))
+_CLAIM = frozenset(map(_norm, CLAIM_KEYS))
+
+
 def _deep_keys(value: Any) -> set[str]:
     found: set[str] = set()
     if isinstance(value, dict):
         for k, v in value.items():
-            found.add(str(k))
+            found.add(_norm(k))
             found |= _deep_keys(v)
     elif isinstance(value, list):
         for v in value:
@@ -54,8 +62,8 @@ def tool_use_signs(response: Any) -> list[str]:
         if not isinstance(body, dict):
             continue
         # В state_change значения операций — данные состояния, их ключи не показатель; смотрим верхний уровень.
-        keys = set(body) if pr.get("kind") == "state_change" else _deep_keys(body)
-        hits = sorted(keys & TOOL_KEYS) + sorted(set(body) & CLAIM_KEYS)
+        keys = {_norm(k) for k in body} if pr.get("kind") == "state_change" else _deep_keys(body)
+        hits = sorted(keys & _TOOL) + sorted({_norm(k) for k in body} & _CLAIM)
         signs += [f"{pr.get('proposal_id')}: {h}" for h in hits]
     return signs
 

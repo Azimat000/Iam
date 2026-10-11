@@ -128,7 +128,7 @@ class Cycle:
                        tuple(ops), reason, tuple(caused_by))
         return self.ctl.apply(Proposal(t, actor, actor_ref, spec))
 
-    def _fault(self, fault: str, ident: str, payload: dict) -> None:
+    def record_fault(self, fault: str, ident: str, payload: dict) -> None:
         self.ctl.record_event(EventSpec("system.error", f"err:{fault}:{ident}", {"fault": fault, **payload}))
 
     # --- стадии 2–3: внимание и память ---------------------------------------------------------
@@ -196,10 +196,10 @@ class Cycle:
             try:
                 response = self.provider.propose(request)
             except Exception as e:   # любой сбой механизма: ошибка в журнал, решения нет
-                self._fault("provider_error", request["request_id"], {"request_id": request["request_id"],
+                self.record_fault("provider_error", request["request_id"], {"request_id": request["request_id"],
                                                                       "error": f"{type(e).__name__}: {e}"})
                 self._stage(rep, "proposal", "failed", (), {"error": type(e).__name__})
-                self._end(rep, "failed", "provider_error")
+                self._end(rep, "no_decision", "provider_error")
                 return
             if tool_use_signs(response):   # R-117: вместе с ответом непригодны все его предложения
                 response = {**response, "tool_use_detected": True}
@@ -260,7 +260,7 @@ class Cycle:
             if not isinstance(outcome, ActionOutcome):
                 raise TypeError(f"мир вернул {type(outcome).__name__} вместо ActionOutcome")
         except Exception as e:   # обрыв или мусор вместо ответа: исход неизвестен, не успех
-            self._fault("action_crash", aid, {"action_id": aid, "error": f"{type(e).__name__}: {e}"})
+            self.record_fault("action_crash", aid, {"action_id": aid, "error": f"{type(e).__name__}: {e}"})
             outcome = ActionOutcome("unknown", "обрыв при выполнении")
         done = self._settle(aid, kind, outcome, attempted_id, common)
         confirmed = outcome.status == "confirmed" and done.applied
@@ -317,7 +317,7 @@ class Cycle:
         except Exception as e:
             delivery = Delivery(False, f"{type(e).__name__}: {e}")
         if not delivery.delivered:   # просьба остаётся открытой, но «доставлена» не объявляется
-            self._fault("creator_undelivered", crq, {"crq_id": crq, "detail": delivery.detail})
+            self.record_fault("creator_undelivered", crq, {"crq_id": crq, "detail": delivery.detail})
 
     # --- после сбоя: что осталось «в попытке» --------------------------------------------------
 

@@ -358,6 +358,10 @@ class StateController:
                     machine = next((m for m in rules.MACHINES if op.op == "transition"
                                     and m.matches(op.group, split_path(op.path))), None)
                     need = machine.needs_cause.get(op.value) if machine else None
+                    via = machine.via.get(op.value) if machine else None
+                    if via and carrier_type not in via:
+                        v.append(Violation("wrong_carrier", f"{op.group}.{op.path} → {op.value!r}: переход должно нести "
+                                           f"событие {' / '.join(sorted(via))}, а не {carrier_type}"))
                     if need and not need & causes:
                         v.append(Violation("needs_confirmation", f"{op.group}.{op.path} → {op.value!r}: нужно "
                                            f"основание-подтверждение ({', '.join(sorted(need))})"))
@@ -740,6 +744,8 @@ class StateController:
         """(нарушение | None, состояние после, операции) для одного предложения."""
         if pr["kind"] == "state_change":
             ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
+            if any(overlaps(touched(o), r) for o in ops for r in rules.RESERVED_MODEL_PATHS):
+                return Violation("reserved_path", "исход действий и просьб ведёт цикл, а не state_change"), working, ()
         else:
             handler = self._kinds.get(pr["kind"])
             if handler is None:

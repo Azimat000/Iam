@@ -89,8 +89,27 @@ class ToolUseTest(CycleCase):
             again = cycle.run(self.due())
             self.assertEqual(again.outcome, "rejected", again)
         rej = [e.payload["reason"] for e in self.c.store.events() if e.type == "proposal.rejected"]
-        self.assertEqual(rej, ["machine_bypass", "machine_bypass"])
+        self.assertEqual(rej, ["reserved_path", "reserved_path"])
         self.assertEqual(status_of(self.c, aid), "confirmed")
+
+
+    def test_model_cannot_build_the_outcome_by_a_chain_of_state_changes(self):
+        """Три ответа подряд (accepted → attempted → confirmed) со ссылками на «нужные» события исход не дают."""
+        cycle = self.build(Reply((act(CAP_NOTES),)), allowed_proposals=(*DEFAULT_ALLOWED, "state_change"))
+        report = cycle.run(self.due())
+        accepted = next(e for e in self.c.store.events() if e.type == "proposal.accepted")
+        attempted = next(e for e in self.c.store.events() if e.type == "action.attempted")
+        fake = "act_Forged00001"
+        steps = [{"group": "world_time", "path": f"world.actions.{fake}", "op": "set", "value": {"status": "accepted"}},
+                 {"group": "world_time", "path": f"world.actions.{fake}.status", "op": "transition", "value": "attempted"},
+                 {"group": "world_time", "path": f"world.actions.{fake}.status", "op": "transition", "value": "confirmed"}]
+        for step, cite in zip(steps, (accepted, accepted, attempted)):
+            p = change([step], cites=[cite.event_id])
+            self.provider.queue(Reply((p,)))
+            self.assertEqual(cycle.run(self.due()).outcome, "rejected")
+        self.assertNotIn(fake, self.c.state["world_time"]["world"]["actions"])
+        self.assertEqual(len(self.world.executed), 1)
+        self.assertEqual(report.actions[0].status, "confirmed")
 
 
 class NoToolTest(CycleCase):
@@ -309,7 +328,7 @@ class ProviderFailureTest(CycleCase):
     def test_provider_error_is_logged_and_nothing_changes(self):
         cycle = self.build(Reply(error=ProviderError("лимит")))
         report = cycle.run(self.due())
-        self.assertEqual((report.outcome, report.reason), ("failed", "provider_error"))
+        self.assertEqual((report.outcome, report.reason), ("no_decision", "provider_error"))
         self.assertIn("system.error", self.types())
         self.assertNotIn("proposal.received", self.types())
 

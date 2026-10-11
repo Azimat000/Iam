@@ -100,7 +100,14 @@ ACTION_MACHINE = StateMachine(
      "confirmed": frozenset(), "failed": frozenset(), "unknown_outcome": frozenset()},
     needs_cause={"attempted": frozenset({"proposal.accepted"}), "confirmed": _ATTEMPTS, "failed": _ATTEMPTS,
                  "unknown_outcome": _ATTEMPTS},
+    # Сам переход несёт событие исхода: цепочкой state_change со ссылками на «нужные» события статус не получить.
+    via={"attempted": _ATTEMPTS, "confirmed": frozenset({"action.confirmed", "message.out_sent"}),
+         "failed": frozenset({"action.failed"}),
+         "unknown_outcome": frozenset({"action.unknown_outcome", "message.out_unknown"})},
     initial=frozenset({"accepted"}))
+
+# Пути, которые ведёт только цикл через разборщики видов и события исхода; модель не правит их как state_change.
+RESERVED_MODEL_PATHS = (("world_time", "world", "actions"), ("world_time", "world", "creator_requests"))
 
 MACHINES = (INTENTION_MACHINE, SESSION_MACHINE, ACTION_MACHINE)
 

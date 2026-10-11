@@ -75,6 +75,18 @@ class GatekeeperRefusesTest(CycleCase):
         self.assertEqual(self.creator.submitted, [])
 
 
+    def test_request_stuck_before_sending_may_be_proposed_again(self):
+        cycle = self.build(Reply((ask("k1", "помоги"),)), Reply((ask("k1", "помоги ещё раз"),)))
+        self.c.add_validator("no-crq", refuse("creator.request"))
+        cycle.run(self.due())
+        self.assertEqual(self.c.state["world_time"]["world"]["creator_requests"]["k1"]["status"], "accepted")
+        self.c._validators.clear()
+        report = cycle.run(self.due())
+        self.assertEqual(report.outcome, "done")
+        self.assertEqual([r.request_key for r in self.creator.submitted], ["k1"])
+        self.assertEqual(self.c.state["world_time"]["world"]["creator_requests"]["k1"]["status"], "open")
+
+
 class BodyFieldsTest(CycleCase):
     def test_extra_field_in_every_executable_kind_is_rejected(self):
         proposals = [act(CAP_NOTES), ask("k1", "помоги"), attend("rest"), rest("тихо")]
@@ -94,6 +106,9 @@ class BodyFieldsTest(CycleCase):
         self.assertIn("лишние", body_violation("no_action", {"reason": "x", "y": 1}))
         for broken in (None, "text", [], {}, {"proposals": "x"}, {"proposals": [5, "x", {"body": 3}, {"kind": "action"}]}):
             self.assertEqual(tool_use_signs(broken), [], broken)
+        mixed = {"proposals": [{"proposal_id": "prop_C", "kind": "action", "body": {"params": {"Tool_Calls": 1, "stdOut": 2}}},
+                               {"proposal_id": "prop_D", "kind": "message", "body": {"Executed": True}}]}
+        self.assertEqual(tool_use_signs(mixed), ["prop_C: stdout", "prop_C: toolcalls", "prop_D: executed"])
         sample = {"proposals": [{"proposal_id": "prop_A", "kind": "action", "body": {"params": [{"stderr": 1}]}},
                                 {"proposal_id": "prop_B", "kind": "state_change", "body": {"ops": [{"stdout": 1}], "result": 1}}]}
         self.assertEqual(tool_use_signs(sample), ["prop_A: stderr", "prop_B: result"])

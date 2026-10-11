@@ -5,6 +5,7 @@ from dataclasses import replace
 
 from iam.cycle import TRIGGERS, input_id_for
 from iam.domain import MemoryRecord, Source
+from iam.interfaces import ProviderError
 from iam.stubs import Reply, StubMemory, act, rest
 
 from state.helpers import PID
@@ -144,6 +145,54 @@ class LimitTest(CycleCase):
         report = cycle.run(replace(self.c.store.get_event(1), type="activity.completed"))
         self.assertEqual(report.outcome, "done")
         self.assertEqual(self.provider.calls[0]["context"][0]["text"], "Событие activity.completed.")
+
+
+class RobustnessTest(CycleCase):
+    def test_provider_error_keeps_the_trigger_for_a_later_round(self):
+        self.build(Reply(error=ProviderError("лимит")), Reply((rest(),)))
+        self.due()
+        first = self.runner.run_pending()
+        self.assertEqual([(r.outcome, r.reason) for r in first], [("no_decision", "provider_error")])
+        second = self.runner.run_pending()
+        self.assertEqual([r.outcome for r in second], ["done"])
+        self.assertEqual(self.runner.run_pending(), [])
+
+    def test_endless_failures_give_up_after_max_rounds(self):
+        self.build(*[Reply(error=ProviderError("лимит")) for _ in range(10)])
+        self.due()
+        passes = [self.runner.run_pending() for _ in range(6)]
+        self.assertEqual([len(p) for p in passes], [1, 1, 1, 0, 0, 0])
+        self.assertEqual(len(self.provider.calls), 3)
+        gave_up = [e for e in self.c.store.events() if e.type == "system.error" and e.payload["fault"] == "cycle_gave_up"]
+        self.assertEqual(len(gave_up), 1)
+
+    def test_exception_in_one_cycle_does_not_stop_the_others_and_is_not_retried(self):
+        class Broken(StubMemory):
+            calls = 0
+
+            def retrieve(self, query, *, limit=5):
+                Broken.calls += 1
+                if Broken.calls == 1:
+                    raise RuntimeError("память упала")
+                return []
+        self.build(Reply((rest(),)), memory=Broken())
+        first, second = self.due(), self.due()
+        reports = self.runner.run_pending()
+        self.assertEqual([r.trigger for r in reports], [second.event_id])
+        crash = [e for e in self.c.store.events() if e.type == "system.error" and e.payload["fault"] == "cycle_crash"]
+        self.assertEqual([e.payload["trigger"] for e in crash], [first.event_id])
+        self.assertEqual(self.runner.run_pending(), [])
+        self.assertEqual(len(self.provider.calls), 1)
+
+    def test_skipped_old_triggers_do_not_use_up_the_decision_limit(self):
+        self.build(*[Reply((rest(),)) for _ in range(8)])
+        old = [self.due() for _ in range(4)]
+        for e in old:                      # эти поводы уже были обработаны раньше
+            self.assertEqual(self.cycle.run(e).outcome, "done")
+        fresh = self.due()
+        self.runner.max_cycles = 1
+        reports = self.runner.run_pending()
+        self.assertEqual([r.trigger for r in reports], [fresh.event_id])
 
 
 if __name__ == "__main__":
