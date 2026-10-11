@@ -286,8 +286,8 @@ kind = "constraint"
 mechanism = "iam.storage (persona_id, монотонная версия состояния) [spec: docs/spec/events.md#ids] [spec: docs/spec/state.md#groups] [spec: docs/spec/state.md#versioning]"
 check = "Тест: версии строго возрастают без пропусков; в базе один persona_id."
 slice = "S04"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S04-storage.md; tests/storage/test_journal.py::test_snapshots_form_one_line; tests/storage/test_store.py"
 
 [[req]]
 id = "R-025"
@@ -1762,8 +1762,8 @@ kind = "constraint"
 mechanism = "pyproject.toml; iam.storage"
 check = "Тест: версия Python и наличие FTS5 проверяются при запуске."
 slice = "S04"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S04-storage.md; tests/storage/test_store.py::RuntimeTest"
 
 [[req]]
 id = "R-148"
@@ -2374,8 +2374,8 @@ kind = "constraint"
 mechanism = "iam.storage (транзакции SQLite)"
 check = "Тест: сбой посреди перехода не оставляет частичного состояния."
 slice = "S04"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S04-storage.md; tests/storage/test_crash_lock.py"
 
 [[req]]
 id = "R-199"
@@ -2669,8 +2669,8 @@ kind = "quality"
 mechanism = "tools/covcheck.py (S04): замер по модулям, пороги и список критичных модулей в конфигурации; проверка при закрытии каждого среза"
 check = "Запуск tools/covcheck.py на всём коде: все модули ≥ 90 %, критичные ≥ 98 %; тест самого измерителя на искусственных данных (ниже порога — код возврата 1)."
 slice = "S04"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S04-storage.md; tests/test_covcheck.py"
 
 [[skip]]
 lines = "1"
