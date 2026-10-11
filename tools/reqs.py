@@ -37,6 +37,11 @@ ID_RE = re.compile(r"^R-\d{3,}$")
 MAX_RANGE = 10      # один диапазон lines не длиннее 10 строк: иначе одно требование «закрывает» целый раздел
 MIN_LEN = {"mechanism": 6, "check": 15}   # короче — отписка вместо механизма/проверки
 EXTRA_SOURCES = ("CLAUDE.md",)
+SPEC_DIR = "docs/spec"
+SPEC_PATH_RE = re.compile(r"docs/spec/[\w./-]*?\.md(?:#[\w-]+)?")
+SPEC_ANCHOR_RE = re.compile(r"\{#([\w-]+)\}")
+SPEC_REQS_RE = re.compile(r"^Требования:\s*(.+)$")
+REQ_ID_RE = re.compile(r"R-\d{3,}")
 
 # Разделы плана: (ключ, начало строки-заголовка). Раздел длится до следующего заголовка из списка.
 SECTIONS = [
@@ -147,7 +152,62 @@ def evidence_paths(ev: str) -> list[str]:
     return paths
 
 
-def validate_data(data: dict, slices: set[str], plan: list[str] | None) -> list[str]:
+def spec_sections(root: Path) -> tuple[dict[str, set[str]], list[str]]:
+    """Разделы спецификации: «docs/spec/файл.md#якорь» → множество ID из строки «Требования:». Вторым — ошибки."""
+    out: dict[str, set[str]] = {}
+    errs: list[str] = []
+    d = root / SPEC_DIR
+    if not d.is_dir():
+        return out, errs
+    for f in sorted(d.glob("*.md")):
+        lines = f.read_text(encoding="utf-8").splitlines()
+        rel = f"{SPEC_DIR}/{f.name}"
+        for i, line in enumerate(lines):
+            if not line.startswith("#"):
+                continue
+            m = SPEC_ANCHOR_RE.search(line)
+            if not m:
+                continue
+            key = f"{rel}#{m.group(1)}"
+            if key in out:
+                errs.append(f"{key}: якорь повторяется")
+            ids: set[str] = set()
+            for nxt in lines[i + 1:i + 4]:
+                mm = SPEC_REQS_RE.match(nxt.strip())
+                if mm:
+                    ids = set(REQ_ID_RE.findall(mm.group(1)))
+                    break
+            out[key] = ids
+    return out, errs
+
+
+def spec_problems(reqs: list[dict], root: Path) -> list[str]:
+    """Ссылки «docs/spec/x.md#якорь» в mechanism указывают на существующий раздел; связь с «Требования:» двусторонняя."""
+    sections, errs = spec_sections(root)
+    ids = {r["id"] for r in reqs if isinstance(r.get("id"), str)}
+    referenced: dict[str, set[str]] = defaultdict(set)
+    for r in reqs:
+        mech = r.get("mechanism")
+        if not isinstance(mech, str):
+            continue
+        for ref in SPEC_PATH_RE.findall(mech):
+            if "#" not in ref:
+                errs.append(f"{r['id']}: ссылка «{ref}» без якоря раздела (нужно файл.md#якорь)")
+            elif ref not in sections:
+                errs.append(f"{r['id']}: ссылка «{ref}» не указывает на существующий раздел спецификации")
+            else:
+                referenced[ref].add(r["id"])
+    for ref, listed in sections.items():
+        for rid in sorted(listed - ids):
+            errs.append(f"{ref}: в «Требования:» указан несуществующий {rid}")
+        for rid in sorted((listed & ids) - referenced.get(ref, set())):
+            errs.append(f"{ref}: {rid} перечислен в разделе, но его mechanism не ссылается на раздел")
+        for rid in sorted(referenced.get(ref, set()) - listed):
+            errs.append(f"{ref}: {rid} ссылается на раздел, но не перечислен в его «Требования:»")
+    return errs
+
+
+def validate_data(data: dict, slices: set[str], plan: list[str] | None, root: Path | None = None) -> list[str]:
     errs: list[str] = []
     reqs = data.get("req")
     if not isinstance(reqs, list) or not reqs:
@@ -229,6 +289,8 @@ def validate_data(data: dict, slices: set[str], plan: list[str] | None) -> list[
                     errs.append(f"{where}: свидетельство «{p}»: {prob}")
         if "stub_only" in r and not isinstance(r["stub_only"], bool):
             errs.append(f"{where}: stub_only должно быть true/false")
+    if root is not None:
+        errs += spec_problems(reqs, root)
     # пропуски
     skips = data.get("skip", [])
     skip_lines: set[int] = set()
@@ -283,7 +345,7 @@ def get_inputs():
 
 def cmd_validate(args) -> int:
     data, slices, plan = get_inputs()
-    errs = validate_data(data, slices, plan)
+    errs = validate_data(data, slices, plan, ROOT)
     if errs:
         print(f"РЕЕСТР НЕ ПРОХОДИТ ПРОВЕРКУ ({len(errs)}):")
         for e in errs:
@@ -311,7 +373,7 @@ def summary_line(reqs: list[dict]) -> str:
 
 def cmd_report(args) -> int:
     data, slices, plan = get_inputs()
-    errs = validate_data(data, slices, plan)
+    errs = validate_data(data, slices, plan, ROOT)
     if errs:
         print(f"ВНИМАНИЕ: реестр не проходит проверку ({len(errs)} замечаний); запустите validate")
     reqs = data["req"]
@@ -409,7 +471,7 @@ def _ids_compact(ids: list[str]) -> str:
 
 def cmd_coverage(args) -> int:
     data, slices, plan = get_inputs()
-    errs = validate_data(data, slices, plan)
+    errs = validate_data(data, slices, plan, ROOT)
     if errs:
         print("ОШИБКА: реестр не проходит проверку, покрытие не строится; запустите validate", file=sys.stderr)
         return 1

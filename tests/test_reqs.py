@@ -316,6 +316,61 @@ class ValidateTest(Base):
         self.assertEqual(code, 1)
 
 
+class SpecRefTest(Base):
+    """Ссылки mechanism → разделы docs/spec и двусторонняя связь с «Требования:»."""
+
+    def spec(self, text="# Док\n\n## Раздел {#sec}\n\nТребования: R-001\n\nтекст\n", name="x.md"):
+        d = self.root / "docs" / "spec"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_text(text, encoding="utf-8")
+
+    def check(self, reqs):
+        self.plan()
+        self.write(reqs, self.skips_except(reqs))
+        return self.run_tool("validate")
+
+    def test_valid_link(self):
+        self.spec()
+        code, out = self.check([mk(mechanism="iam.x [spec: docs/spec/x.md#sec]")])
+        self.assertEqual(code, 0, out)
+
+    def test_missing_file(self):
+        code, out = self.check([mk(mechanism="iam.x [spec: docs/spec/nope.md#sec]")])
+        self.assertEqual(code, 1)
+        self.assertIn("не указывает на существующий раздел", out)
+
+    def test_missing_anchor(self):
+        self.spec()
+        code, out = self.check([mk(mechanism="iam.x [spec: docs/spec/x.md#other]")])
+        self.assertEqual(code, 1)
+        self.assertIn("не указывает на существующий раздел", out)
+
+    def test_link_without_anchor(self):
+        self.spec()
+        code, out = self.check([mk(mechanism="iam.x docs/spec/x.md")])
+        self.assertEqual(code, 1)
+        self.assertIn("без якоря", out)
+
+    def test_section_lists_requirement_not_linking(self):
+        self.spec()
+        code, out = self.check([mk(mechanism="iam.module")])
+        self.assertEqual(code, 1)
+        self.assertIn("mechanism не ссылается на раздел", out)
+
+    def test_requirement_links_but_not_listed(self):
+        self.spec("# Док\n\n## Раздел {#sec}\n\nТребования: R-009\n")
+        code, out = self.check([mk(mechanism="iam.x [spec: docs/spec/x.md#sec]")])
+        self.assertEqual(code, 1)
+        self.assertIn("не перечислен в его «Требования:»", out)
+        self.assertIn("несуществующий R-009", out)
+
+    def test_duplicate_anchor(self):
+        self.spec("## A {#sec}\n\nТребования: R-001\n\n## B {#sec}\n\nТребования: R-001\n")
+        code, out = self.check([mk(mechanism="iam.x [spec: docs/spec/x.md#sec]")])
+        self.assertEqual(code, 1)
+        self.assertIn("якорь повторяется", out)
+
+
 class ReportTest(Base):
     def setUp(self):
         super().setUp()

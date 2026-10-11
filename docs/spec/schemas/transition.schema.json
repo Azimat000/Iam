@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transition.schema.json",
+  "title": "Переход состояния",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "transition_id",
+    "persona_id",
+    "base_epoch",
+    "base_version",
+    "ops",
+    "reason",
+    "caused_by"
+  ],
+  "properties": {
+    "transition_id": {
+      "type": "string",
+      "pattern": "^trn_[A-Za-z0-9]{8,40}$"
+    },
+    "persona_id": {
+      "type": "string",
+      "pattern": "^(per|exp)_[A-Za-z0-9]{8,40}$"
+    },
+    "base_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "group",
+          "path",
+          "op"
+        ],
+        "properties": {
+          "group": {
+            "enum": [
+              "traits",
+              "affect",
+              "beliefs",
+              "relations",
+              "intentions",
+              "preferences",
+              "selfmodel",
+              "world_time",
+              "memory"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "op": {
+            "enum": [
+              "set",
+              "add",
+              "remove",
+              "transition"
+            ]
+          },
+          "value": {}
+        }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 3
+    },
+    "caused_by": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^evt_[A-Za-z0-9]{8,40}$"
+      }
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[A-Za-z0-9]{8,40}$"
+    },
+    "base_epoch": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}
