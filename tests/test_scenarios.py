@@ -579,6 +579,44 @@ class CatalogTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("R-003", out)
 
+    def call(self, *args):
+        """Тот же вызов командной строки, но в этом же процессе (для измерения охвата)."""
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with mock.patch.object(sc, "ROOT", self.root), contextlib.redirect_stdout(buf):
+            code = sc.main(list(args))
+        return code, buf.getvalue()
+
+    def test_inprocess_commands(self):
+        code, out = self.call("validate")
+        self.assertEqual(code, 1)
+        self.assertIn("НЕ ПРОХОДИТ", out)
+        code, out = self.call("list", "--group", "required")
+        self.assertEqual(code, 0)
+        self.assertIn("required/demo", out)
+        (self.root / "scenarios" / "weird").mkdir()
+        code, out = self.call("list")
+        self.assertIn("ВНИМАНИЕ", out)
+        self.assertIn("experiments/demo_exp", out)
+        (self.root / "scenarios" / "weird").rmdir()
+        code, out = self.call("coverage")
+        self.assertEqual(code, 0, out)
+        self.assertIn("закрыто сценарием каталога: 1", out)
+        self.write_reqs(REQS + [{"id": "R-003", "text": "голое", "kind": "functional", "check": "Посмотреть."}])
+        code, out = self.call("coverage")
+        self.assertEqual(code, 1)
+        self.assertIn("R-003", out)
+        (self.root / "scenarios" / "weird").mkdir()
+        code, out = self.call("coverage")
+        self.assertIn("ВНИМАНИЕ", out)
+
+    def test_inprocess_missing_requirements_file(self):
+        (self.root / "requirements.toml").unlink()
+        with self.assertRaises(SystemExit) as cm:
+            self.call("validate")
+        self.assertIn("нет requirements.toml", str(cm.exception))
+
     def test_cli_missing_requirements_file(self):
         (self.root / "requirements.toml").unlink()
         code, out = self.run_tool("validate")
