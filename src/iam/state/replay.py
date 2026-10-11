@@ -103,7 +103,7 @@ def verify(store: Store) -> list[str]:
             try:
                 snaps[key] = snap = store.get_snapshot(*key)
             except NotFound:
-                problems.append(f"нет снимка версии {step.state_version} (эпоха {step.epoch})")
+                problems.append(f"нет снимка версии {step.state_version}" + (f" (эпоха {step.epoch})" if step.epoch > 1 else ""))
                 continue
             if canonical_json(snap.state) != canonical_json(step.state):
                 problems.append(f"снимок версии {step.state_version} (эпоха {step.epoch}) не совпадает "

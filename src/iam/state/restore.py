@@ -36,12 +36,16 @@ def mark_restored(store: Store, *, snapshot_id: str, reason: str, checked_on_cop
         raise ValueError("восстановление без причины не записывается")
     at = now or _now()
     snap = store.latest_snapshot()
-    from_epoch, version, state = (snap.epoch, snap.state_version, snap.state) if snap else (1, 0, empty_state())
     last = store.last_seq()
-    life = store.get_event(last).life_time_ms if last else 0
-    clock = store.clock()
-    if clock is not None:
-        life = max(life, clock[0])
+    if last == 0:
+        raise ValueError("в базе нет ни одного события: восстанавливать нечего")
+    life = store.get_event(last).life_time_ms
+    life = max(life, (store.clock() or (0,))[0])
+    baseline = None
+    if snap is None:   # переходов не было: исходная точка (эпоха 1, версия 0), чтобы линия снимков началась
+        baseline = Snapshot(1, 0, last, life, at, empty_state())
+        snap = baseline
+    from_epoch, version, state = snap.epoch, snap.state_version, snap.state
     to_epoch = from_epoch + 1
     operator_id = new_id("opr")
     lost_from = last + 1 if lost_seq_to is not None and lost_seq_to > last else None
@@ -62,6 +66,8 @@ def mark_restored(store: Store, *, snapshot_id: str, reason: str, checked_on_cop
         idempotency_key=f"rst:{snapshot_id}", payload=restored_payload,
         causes=(intervention.event_id,), **base)
     with store.transaction():
+        if baseline is not None:
+            store.put_snapshot(baseline)
         intervention, _ = store.append_event(intervention)
         restored, _ = store.append_event(restored)
         store.put_snapshot(Snapshot(to_epoch, version, restored.seq, life, at, state))

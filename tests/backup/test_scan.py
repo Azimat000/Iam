@@ -63,6 +63,10 @@ class PatternTest(unittest.TestCase):
         found = sc.find(TG)
         self.assertEqual([(f.start, f.end) for f in found], [(0, len(TG))])
 
+    def test_partially_overlapping_findings_extend_the_first(self):
+        sc = SecretScanner(["ABCDEFGHIJ", "FGHIJKLMNO"], use_env=False)
+        self.assertEqual([(f.start, f.end) for f in sc.find("..ABCDEFGHIJKLMNO..")], [(2, 17)])
+
     def test_mask_never_shows_the_secret(self):
         sc = SecretScanner(use_env=False)
         text = f"x {TG} y"
@@ -86,13 +90,9 @@ class EnvAndRedactTest(unittest.TestCase):
 
     def test_env_is_read_from_os_environ_by_default(self):
         import os
-        old = os.environ.get("IAM_TEST_SECRET_X")
-        os.environ["IAM_TEST_SECRET_X"] = "zz-secret-value-9"
-        try:
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"IAM_TEST_SECRET_X": "zz-secret-value-9"}):
             self.assertIn("zz-secret-value-9", env_secrets())
-        finally:
-            if old is None:
-                del os.environ["IAM_TEST_SECRET_X"]
 
     def test_redact_text_and_structures(self):
         sc = SecretScanner(["canary-ЗЕБРА-77"], use_env=False)
@@ -104,6 +104,7 @@ class EnvAndRedactTest(unittest.TestCase):
         self.assertEqual(out, {REDACTED: [f"x {REDACTED}", 5, None, {"k": REDACTED}], "n": 1})
         self.assertEqual(counts, {"known_secret": 2, "telegram_bot_token": 1})
         self.assertEqual(sc.redact_value("чисто"), "чисто")
+        self.assertEqual(sc.redact_value(["canary-ЗЕБРА-77"]), [REDACTED], "без счётчика тоже работает")
 
 
 class RepositoryIsCleanTest(unittest.TestCase):

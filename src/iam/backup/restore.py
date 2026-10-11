@@ -61,11 +61,12 @@ def restore_backup(backup_file: str | Path, target_dir: str | Path, *, reason: s
         raise BackupCorrupt(backup_file, rep.problems)
     info = load_info(backup_file)
     persona_id = info.manifest["persona_id"]
+    if info.manifest["last_seq"] == 0:
+        raise RestoreRefused("в копии нет ни одного события: восстанавливать нечего")
     target = target_dir / f"{persona_id}.db"
     if target.exists() or target.is_symlink():
-        raise RestoreRefused(f"{target} уже существует: восстановление не перезаписывает базы")
-    if live_db is not None and Path(live_db).resolve() == target.resolve():
-        raise RestoreRefused("восстановление поверх живой базы не выполняется: укажите другой каталог")
+        raise RestoreRefused(f"{target} уже существует (в том числе это может быть живая база): "
+                             f"восстановление не перезаписывает баз, укажите другой каталог")
     target_dir.mkdir(parents=True, exist_ok=True)
     (space or SpaceGuard(target_dir)).ensure(info.manifest["size_bytes"] * 2)
     draft = target_dir / f".{target.name}.restoring"

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sqlite3
 import sys
 import zipfile
 from pathlib import Path
@@ -41,7 +42,7 @@ def cmd_backup(args) -> int:
         controller = StateController(store, recover=False)
     except AlreadyLocked:
         _out("база занята работающим процессом: снимок сделан онлайн, запись о нём в журнал сделает он сам")
-    except StorageError as e:
+    except (StorageError, sqlite3.DatabaseError) as e:
         _err(f"не удалось открыть базу для записи в журнал ({e}); делаю только снимок")
     try:
         res = create_backup(db, directory, keep=args.keep, reason=args.reason or "", controller=controller)
@@ -152,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         _err(f"ОТКАЗ: {e}")
     except NotEnoughSpace as e:
         _err(f"ОТКАЗ: {e}")
-    except (BackupError, StorageError, FileExistsError, ValueError) as e:
+    except (BackupError, StorageError, sqlite3.DatabaseError, FileExistsError, ValueError) as e:
         _err(f"ОШИБКА: {e}")
     return 1
 

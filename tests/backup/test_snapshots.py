@@ -132,6 +132,26 @@ class SnapshotTest(BackupCase):
         self.assertEqual(sorted(p.name for p in self.backups.iterdir()), before)
         self.assertTrue(check_backup(good.info.path).ok)
 
+    def test_disk_full_during_copy_is_passed_through_and_cleaned(self):
+        self.persona()
+        good = create_backup(self.db, self.backups, now=self.tick())
+        before = sorted(p.name for p in self.backups.iterdir())
+        with mock.patch.object(snapshots, "ro_connect", side_effect=sqlite3.OperationalError("database or disk is full")):
+            with self.assertRaises(sqlite3.OperationalError):
+                create_backup(self.db, self.backups, now=self.tick())
+        self.assertEqual(sorted(p.name for p in self.backups.iterdir()), before)
+        self.assertTrue(check_backup(good.info.path).ok)
+
+    def test_failure_after_naming_removes_the_half_made_snapshot(self):
+        self.persona()
+        good = create_backup(self.db, self.backups, now=self.tick())
+        before = sorted(p.name for p in self.backups.iterdir())
+        with mock.patch.object(snapshots, "_write_json_atomic", side_effect=OSError("сбой записи манифеста")):
+            with self.assertRaises(OSError):
+                create_backup(self.db, self.backups, now=self.tick())
+        self.assertEqual(sorted(p.name for p in self.backups.iterdir()), before)
+        self.assertTrue(check_backup(good.info.path).ok)
+
     def test_no_space_means_no_snapshot_and_no_changes(self):
         self.persona()
         create_backup(self.db, self.backups, now=self.tick())
@@ -201,6 +221,46 @@ class VerifyDatabaseTest(BackupCase):
         rep = verify_database(self.db)
         self.assertFalse(rep.ok)
         self.assertTrue(any("не совпадает" in p for p in rep.problems), rep.problems)
+
+    def test_database_without_persona_is_reported(self):
+        self.persona()
+        copy = create_backup(self.db, self.backups, now=T0).info.path
+        con = sqlite3.connect(copy)
+        con.execute("DROP TRIGGER meta_fixed_delete")
+        con.execute("DELETE FROM meta WHERE key = 'persona_id'")
+        con.commit()
+        con.close()
+        self.assertIn("persona_id", " ".join(verify_database(copy).problems))
+
+    def test_integrity_check_findings_are_reported(self):
+        self.persona()
+        real = snapshots.ro_connect
+
+        class Fake:
+            def execute(self, sql):
+                return [("row 7 missing from index events_x",)]
+            def close(self):
+                pass
+        with mock.patch.object(snapshots, "ro_connect", return_value=Fake()):
+            rep = verify_database(self.db)
+        self.assertEqual(rep.problems, ["integrity_check: row 7 missing from index events_x"])
+        self.assertTrue(real and verify_database(self.db).ok)
+
+    def test_older_format_is_a_note_not_an_error(self):
+        self.persona()
+        copy = create_backup(self.db, self.backups, now=T0).info.path
+        con = sqlite3.connect(copy)
+        con.execute("DELETE FROM schema_version")
+        con.commit()
+        con.close()
+        rep = verify_database(copy)
+        self.assertEqual(rep.problems, [])
+        self.assertIn("старее", rep.notes[0])
+
+    def test_store_that_cannot_be_opened_is_reported(self):
+        self.persona()
+        with mock.patch.object(snapshots.Store, "open", side_effect=snapshots.StorageError("замок")):
+            self.assertIn("не открылась", " ".join(verify_database(self.db).problems))
 
     def test_newer_format_is_reported(self):
         self.persona()
