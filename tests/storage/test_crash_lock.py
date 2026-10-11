@@ -15,7 +15,8 @@ from iam.storage import AlreadyLocked, Store, WriterLock
 from .helpers import HERE, PID, TmpDirCase, child_env
 
 CHILD = HERE / "child.py"
-ITERATIONS = 60  # проверка требует ≥ 50
+MID_KILLS = 52     # проверка среза требует ≥ 50 убийств посреди транзакции
+RANDOM_KILLS = 20  # плюс убийства в случайный момент (в том числе во время фиксации)
 
 
 def spawn(*args):
@@ -23,11 +24,12 @@ def spawn(*args):
                             stderr=subprocess.PIPE, text=True, env=child_env())
 
 
-def wait_line(proc, expected: str):
+def wait_line(proc, expected: str) -> str:
     line = proc.stdout.readline().strip()
-    if line != expected:
+    if line.split(" ")[0] != expected:
         proc.kill()
         raise AssertionError(f"подпроцесс: ожидалось {expected!r}, получено {line!r}; {proc.stderr.read()}")
+    return line
 
 
 def kill9(proc):
@@ -55,17 +57,19 @@ class CrashTest(TmpDirCase):
     def test_kill9_mid_transaction_leaves_no_partial_writes(self):
         Store.create(self.db, PID).close()
         rnd = random.Random(20261011)
-        mid_kills = 0
+        plan = ["mid"] * MID_KILLS + ["random"] * RANDOM_KILLS
+        rnd.shuffle(plan)
+        mid_kills = dirty_wal = 0
         total = 0
-        for it in range(ITERATIONS):
-            if it % 2 == 0:
+        for mode in plan:
+            if mode == "mid":
                 # Ровно посреди транзакции: подпроцесс сообщает MID и ждёт.
                 proc = spawn("crash", self.db, rnd.randint(1, 3))
                 wait_line(proc, "STARTED")
-                wait_line(proc, "MID")
+                wal = int(wait_line(proc, "MID").split()[1])
                 mid_kills += 1
+                dirty_wal += wal > 0
             else:
-                # В случайный момент (в том числе во время фиксации).
                 proc = spawn("crash", self.db, 0)
                 wait_line(proc, "STARTED")
                 time.sleep(rnd.uniform(0.0, 0.05))
@@ -74,7 +78,8 @@ class CrashTest(TmpDirCase):
                 n = self.check_consistent(s)
             self.assertGreaterEqual(n, total, "зафиксированное не теряется")
             total = n
-        self.assertGreaterEqual(mid_kills, 25)
+        self.assertEqual(mid_kills, MID_KILLS)
+        self.assertEqual(dirty_wal, MID_KILLS, "в каждом случае MID незафиксированные страницы уже лежали в WAL")
         self.assertGreater(total, 0, "хотя бы часть переходов успела зафиксироваться")
 
     def test_exception_mid_transaction_rolls_back(self):
@@ -128,6 +133,16 @@ class LockTest(TmpDirCase):
         self.assertFalse(lock.held)
         lock.release()  # повторное освобождение — без ошибки
         self.assertEqual(lock.path.read_text(), "")
+
+    def test_symlink_to_same_base_shares_lock(self):
+        s = self.new_store()
+        link = self.tmp / "alias.db"
+        link.symlink_to(self.db)
+        with self.assertRaises(AlreadyLocked):
+            Store.open(link)
+        s.close()
+        with Store.open(link) as s2:
+            self.assertEqual(s2.persona_id, PID)
 
     def test_create_while_locked_is_refused(self):
         with WriterLock(self.db):

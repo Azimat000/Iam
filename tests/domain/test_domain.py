@@ -77,6 +77,9 @@ class CatalogTest(unittest.TestCase):
         self.assertTrue(k.key_re.match("ses:ses_ABCDEFGH:pause:2"))
         self.assertFalse(k.key_re.match("ses:ses_ABCDEFGH:resume:2"))
         self.assertFalse(k.key_re.match("ses::pause:2"))
+        out = CATALOG["message.out_requested"]
+        self.assertTrue(out.key_re.match("out:act_ABCDEFGH"))
+        self.assertFalse(out.key_re.match("out:act_ABCDEFGH:ok"), "ключ out_sent не выдаёт себя за out_requested")
 
     def test_check_event_kind(self):
         self.assertEqual(check_event_kind("input.arrived", False, "rx:tg:1"), [])

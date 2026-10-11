@@ -77,10 +77,11 @@ class EvaluateTest(Base):
         self.assertTrue(res["tools/c.py"].ok, "модуль без операторов считается покрытым")
 
     def test_unloaded_module_is_zero_and_pragma_forbidden(self):
-        (self.root / "src/a.py").write_text("x = 1  # " + covcheck.PRAGMA + "\n", encoding="utf-8")
         report = {"files": {"src/a.py": summary(1, 1), "src/crit/b.py": summary(1, 1)}}
-        res = {r.path: r for r in covcheck.evaluate(report, self.cfg, self.root)}
-        self.assertIn("запрещена", res["src/a.py"].problems[0])
+        for mark in (covcheck.PRAGMA, "PRAGMA: NO COVER", "pragma nocover", "Pragma:No Cover"):
+            (self.root / "src/a.py").write_text("x = 1  #" + mark + "\n", encoding="utf-8")
+            res = {r.path: r for r in covcheck.evaluate(report, self.cfg, self.root)}
+            self.assertIn("запрещена", res["src/a.py"].problems[0], mark)
         self.assertEqual(res["tools/c.py"].lines_pct, 0.0)
         self.assertIn("ни разу", res["tools/c.py"].problems[0])
 
@@ -92,6 +93,26 @@ class EvaluateTest(Base):
             path.write_text(json.dumps(report), encoding="utf-8")
             p = self.run_tool("--json", str(path))
             self.assertEqual(p.returncode, code, p.stdout + p.stderr)
+
+    def test_exclusion_settings_checked(self):
+        pp = self.root / "pyproject.toml"
+        self.assertEqual(covcheck.exclusion_problems(pp), [])
+        pp.write_text(PYPROJECT + '[tool.coverage.report]\nexclude_also = ["if __name__ == .__main__.:"]\n',
+                      encoding="utf-8")
+        self.assertEqual(covcheck.exclusion_problems(pp), [])
+        pp.write_text(PYPROJECT.replace('source = ["src", "tools"]', 'source = ["src", "tools"]\nomit = ["x"]')
+                      + '[tool.coverage.report]\nexclude_also = ["def skip"]\nexclude_lines = ["x"]\n',
+                      encoding="utf-8")
+        probs = covcheck.exclusion_problems(pp)
+        self.assertEqual(len(probs), 3, probs)
+        good = {"files": {f: summary(10, 10) for f in ("src/a.py", "src/crit/b.py", "tools/c.py")}}
+        (self.root / "r.json").write_text(json.dumps(good), encoding="utf-8")
+        p = self.run_tool("--json", str(self.root / "r.json"))
+        self.assertEqual(p.returncode, 1, "расширенное исключение валит проверку даже при 100 %")
+        self.assertIn("ОШИБКА настройки замера", p.stdout)
+
+    def test_real_project_settings_clean(self):
+        self.assertEqual(covcheck.exclusion_problems(REPO / "pyproject.toml"), [])
 
     def test_bad_config(self):
         (self.root / "pyproject.toml").write_text("[tool.iam]\n", encoding="utf-8")

@@ -2,7 +2,12 @@
 
   child.py hold <db>              — открыть личность для записи, напечатать READY и ждать (замок)
   child.py crash <db> <stop_tx>   — писать переходы бесконечно; в переходе №stop_tx остановиться
-                                    посреди транзакции, напечатать MID и ждать kill -9 (0 — не останавливаться)
+                                    посреди транзакции, напечатать «MID <размер WAL>» и ждать kill -9
+                                    (0 — не останавливаться)
+
+Кэш страниц урезан, данные крупные, а перед переходом-остановкой WAL обнуляется: незафиксированные
+страницы физически попадают в файл WAL до убийства, и тест проверяет именно восстановление после
+частично записанного журнала, а не только потерю памяти процесса.
 """
 import sys
 import time
@@ -14,10 +19,18 @@ from iam.domain import Event, MemoryRecord, Source, new_id  # noqa: E402
 from iam.storage import Snapshot, Store  # noqa: E402
 
 EVENTS_PER_TX = 6
+BULK = "данные " * 700  # ~9 КБ на событие: страницы не помещаются в урезанный кэш
 T0 = "2026-10-11T18:00:00Z"
 
 
+def wal_size(store: Store) -> int:
+    wal = Path(f"{store.path}-wal")
+    return wal.stat().st_size if wal.exists() else 0
+
+
 def transition(store: Store, stop_here: bool) -> None:
+    if stop_here:
+        store.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     with store.transaction():
         snap = store.latest_snapshot()
         version = (snap.state_version if snap else 0) + 1
@@ -25,12 +38,12 @@ def transition(store: Store, stop_here: bool) -> None:
         last = None
         for i in range(EVENTS_PER_TX):
             if stop_here and i == EVENTS_PER_TX // 2:
-                print("MID", flush=True)
+                print(f"MID {wal_size(store)}", flush=True)
                 time.sleep(60)
             last, _ = store.append_event(Event(
                 event_id=new_id("evt"), persona_id=store.persona_id, type="memory.recorded", occurred_at=T0,
                 life_time_ms=version, source=Source("core", "crash-test"), idempotency_key=f"mem:{trn}:{i}",
-                epoch=1, state_version=version, changes_state=True, payload={"transition_id": trn, "i": i}))
+                epoch=1, state_version=version, changes_state=True, payload={"transition_id": trn, "i": i, "bulk": BULK}))
         store.add_memory(MemoryRecord(
             memory_id="mem_" + trn[4:], persona_id=store.persona_id, layer="personal", kind="episodic",
             origin="observation", content={"text": f"переход {trn}"}, source=Source("core", "crash-test"),
@@ -46,6 +59,7 @@ def main(argv):
         time.sleep(60)
         return
     stop_tx = int(argv[2])
+    store.con.execute("PRAGMA cache_size = 2")
     print("STARTED", flush=True)
     n = 0
     while True:

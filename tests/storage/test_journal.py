@@ -2,6 +2,7 @@
 даже если писать «сырым» SQL в обход API хранилища."""
 import sqlite3
 import unittest
+from dataclasses import replace
 
 from iam.storage import Snapshot, connect
 
@@ -53,13 +54,29 @@ class AppendOnlyTest(TmpDirCase):
 
     def test_schema_changes_denied_on_core_connections(self):
         for sql in ("DROP TRIGGER events_no_update", "DROP TABLE events", "ALTER TABLE events ADD COLUMN x TEXT",
-                    "DROP INDEX events_type", "DROP VIEW archive", "PRAGMA writable_schema = ON"):
+                    "DROP INDEX events_type", "DROP VIEW archive", "PRAGMA writable_schema = ON",
+                    "PRAGMA Writable_Schema = ON", "PRAGMA main.WRITABLE_SCHEMA = 1", "PRAGMA ignore_check_constraints = 1",
+                    "PRAGMA foreign_keys = OFF", "PRAGMA journal_mode = DELETE", "PRAGMA synchronous = OFF",
+                    "PRAGMA trusted_schema = ON"):
             self.rejected(sql, exc=sqlite3.DatabaseError)
         self.assertEqual(self.con.execute("PRAGMA writable_schema").fetchone()[0], 0)
+        self.assertEqual(self.con.execute("PRAGMA foreign_keys").fetchone()[0], 1, "чтение PRAGMA разрешено")
+
+    def test_search_index_written_only_by_triggers(self):
+        r = mem("кошка на окне")
+        self.s.add_memory(r)
+        for sql in ("DELETE FROM memory_fts", "UPDATE memory_fts SET text = 'собака'",
+                    "INSERT INTO memory_fts (rowid, text) VALUES (99, 'подлог')",
+                    "INSERT INTO memory_fts (memory_fts) VALUES ('rebuild')"):
+            self.rejected(sql, exc=sqlite3.DatabaseError)
+        self.assertEqual(self.s.search_memory("кошка"), [r])
+        self.s.update_memory(replace(r, content={"text": "собака на окне"}))
+        self.assertEqual(self.s.search_memory("собака"), [replace(r, content={"text": "собака на окне"})])
 
     def test_snapshots_immutable(self):
         self.s.put_snapshot(Snapshot(1, 1, 2, 20, T0, {"a": 1}))
         self.rejected("UPDATE state_snapshots SET state = '{}'")
+        self.rejected("INSERT OR REPLACE INTO state_snapshots VALUES (1, 1, 1, 0, ?, '{}')", T0)
         self.rejected("DELETE FROM state_snapshots")
         self.rejected("INSERT OR REPLACE INTO state_snapshots VALUES (1, 1, 2, 20, ?, '{}')", T0)
 
@@ -91,6 +108,11 @@ class AppendOnlyTest(TmpDirCase):
         self.rejected("INSERT OR REPLACE INTO memory_records (memory_id, persona_id, layer, kind, origin, text,"
                       " version, record) VALUES (?, ?, 'personal', 'episodic', 'observation', 'x', 1, '{}')",
                       a.memory_id, PID)
+        arid = self.con.execute("SELECT rid FROM memory_records WHERE memory_id = ?", (a.memory_id,)).fetchone()[0]
+        self.rejected("INSERT OR REPLACE INTO memory_records (rid, memory_id, persona_id, layer, kind, origin, text,"
+                      " version, record) VALUES (?, 'mem_NEWNEWNEW', ?, 'personal', 'episodic', 'observation', 'x', 1,"
+                      " '{}')", arid, PID)
+        self.rejected("UPDATE memory_records SET rid = 999 WHERE memory_id = ?", p.memory_id)
         self.con.execute("UPDATE memory_records SET text = 'новое' WHERE memory_id = ?", (p.memory_id,))
         self.con.execute("DELETE FROM memory_records WHERE memory_id = ?", (p.memory_id,))
         self.assertEqual(self.con.execute("SELECT COUNT(*) FROM archive").fetchone()[0], 1)
@@ -100,6 +122,9 @@ class AppendOnlyTest(TmpDirCase):
         self.rejected("UPDATE meta SET value = 'experimental' WHERE key = 'store_kind'")
         self.rejected("DELETE FROM meta WHERE key = 'persona_id'")
         self.rejected("INSERT INTO meta VALUES ('persona_id', ?)", EXP)
+        self.rejected("INSERT OR REPLACE INTO meta VALUES ('persona_id', ?)", EXP)
+        self.rejected("INSERT OR REPLACE INTO meta VALUES ('store_kind', 'experimental')")
+        self.assertEqual(self.con.execute("SELECT value FROM meta WHERE key='persona_id'").fetchone()[0], PID)
         self.con.execute("UPDATE meta SET value = 'x' WHERE key = 'created_at'")
 
     def test_inbox_immutable(self):
@@ -107,6 +132,7 @@ class AppendOnlyTest(TmpDirCase):
         self.rejected("UPDATE inbox SET content = '{\"x\":1}'")
         self.rejected("DELETE FROM inbox")
         self.rejected("INSERT OR REPLACE INTO inbox VALUES ('inp_BBBBBBBB', 'tg', '1', 2, ?, 'u', '{}')", T0)
+        self.rejected("INSERT OR REPLACE INTO inbox VALUES ('inp_AAAAAAAA', 'tg', '2', 2, ?, 'u', '{}')", T0)
 
     def test_outbox_status_machine(self):
         ins = "INSERT INTO outbox (action_id, channel, recipient, content, status, requested_seq) VALUES (?, 'tg', 'u', '{}', ?, 1)"
@@ -125,8 +151,10 @@ class AppendOnlyTest(TmpDirCase):
         self.assertEqual(self.s.clock(), (20, T0))
         self.rejected("UPDATE clock SET life_time_ms = 5")
         self.rejected("DELETE FROM clock")
-        self.s.heartbeat(5, "2026-10-11T18:00:01Z")  # меньшее значение не откатывает часы
-        self.assertEqual(self.s.clock(), (20, "2026-10-11T18:00:01Z"))
+        self.s.heartbeat(5, "2026-10-11T18:00:01Z")  # меньшее значение часы не трогает вовсе
+        self.assertEqual(self.s.clock(), (20, T0))
+        self.rejected("INSERT OR REPLACE INTO clock VALUES (1, 0, 'x')")
+        self.rejected("INSERT INTO clock VALUES (1, 0, 'x') ON CONFLICT (id) DO UPDATE SET life_time_ms = 0")
         self.s.heartbeat(100, "2026-10-11T18:00:02Z")
         self.assertEqual(self.s.clock()[0], 100)
 

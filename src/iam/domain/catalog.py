@@ -18,7 +18,8 @@ class EventKind:
     @property
     def key_re(self) -> re.Pattern:
         parts = re.split(r"(<[^>]+>)", self.key_template)
-        rx = "".join(".+" if p.startswith("<") else re.escape(p) for p in parts)
+        # Значение подстановки не содержит «:», иначе ключ одного типа выдавал бы себя за ключ другого.
+        rx = "".join("[^:]+" if p.startswith("<") else re.escape(p) for p in parts)
         return re.compile("^" + rx + "$")
 
 

@@ -63,6 +63,20 @@ class OpenCreateTest(TmpDirCase):
         with Store.open(self.db) as s:
             self.assertEqual(s.persona_id, PID)
 
+    def test_create_is_atomic(self):
+        """Сбой посреди создания не оставляет полуготового файла; следующий create работает."""
+        from unittest import mock
+        with mock.patch("iam.storage.store.migrate", side_effect=RuntimeError("сбой")):
+            with self.assertRaises(RuntimeError):
+                Store.create(self.db, PID)
+        self.assertFalse(self.db.exists())
+        stale = self.tmp / ".p.db.creating"
+        self.assertTrue(stale.exists(), "остался только черновик под другим именем")
+        with Store.create(self.db, PID) as s:
+            self.assertEqual(s.persona_id, PID)
+        self.assertFalse(stale.exists(), "черновик убран")
+        self.assertEqual(sorted(p.name for p in self.tmp.iterdir() if p.name.startswith(".p.db")), [])
+
     def test_create_refuses_existing_file_and_bad_id(self):
         sqlite3.connect(self.db).execute("CREATE TABLE x (y)").connection.close()
         with self.assertRaises(StorageError):
@@ -112,11 +126,12 @@ class JournalTest(TmpDirCase):
         self.assertEqual({e.persona_id for e in self.s.events()}, {PID}, "в базе один persona_id")
 
     def test_state_versions_monotonic_in_one_sequence(self):
-        """R-024: одна последовательность состояний — версии снимков строго растут без пропусков."""
+        """R-024 (часть хранилища): снимки одной личности читаются одной линией по версиям.
+        Непрерывность версий (без пропусков) обеспечивает StateController (S05)."""
         for v in range(1, 6):
             e, _ = self.s.append_event(ev(v, type_="memory.recorded", version=v))
             self.s.put_snapshot(Snapshot(1, v, e.seq, e.life_time_ms, T0, {"v": v}))
-        rows = self.s.con.execute("SELECT state_version FROM state_snapshots ORDER BY rowid").fetchall()
+        rows = self.s.con.execute("SELECT state_version FROM state_snapshots ORDER BY epoch, state_version").fetchall()
         self.assertEqual([r[0] for r in rows], [1, 2, 3, 4, 5])
         self.assertEqual(self.s.latest_snapshot().state, {"v": 5})
         self.assertEqual(self.s.get_snapshot(1, 2).at_seq, 2)
@@ -180,13 +195,23 @@ class JournalTest(TmpDirCase):
                 self.s.append_event(ev(1))
             self.s.append_event(ev(2))
         self.assertEqual(self.s.last_seq(), 2)
+        with self.s.transaction():
+            try:
+                with self.s.transaction():
+                    self.s.append_event(ev(10))
+                    raise KeyError("перехвачено внешним блоком")
+            except KeyError:
+                pass
+            self.s.append_event(ev(11))
+        self.assertIsNone(self.s.find_event(key="rx:tg:10"), "вложенный блок откатился целиком")
+        self.assertEqual(self.s.get_event(3).idempotency_key, "rx:tg:11", "внешний — зафиксирован, seq без пропуска")
         with self.assertRaises(KeyError):
             with self.s.transaction():
                 self.s.append_event(ev(3))
                 with self.s.transaction():
                     self.s.append_event(ev(4))
                     raise KeyError("сбой во вложенном блоке")
-        self.assertEqual(self.s.last_seq(), 2, "откатилось всё, включая внешний блок")
+        self.assertEqual(self.s.last_seq(), 3, "откатилось всё, включая внешний блок")
         self.assertFalse(self.s.con.in_transaction)
 
     def test_db_transaction_helper(self):
@@ -194,6 +219,33 @@ class JournalTest(TmpDirCase):
         with transaction(c):
             self.assertTrue(c.in_transaction)
         self.assertFalse(c.in_transaction)
+
+    def test_commit_failure_rolls_back_and_frees_connection(self):
+        c = connect(self.tmp / "fk.db")
+        self.addCleanup(c.close)
+        c.execute("CREATE TABLE parent (id INTEGER PRIMARY KEY)")
+        c.execute("CREATE TABLE child (pid INTEGER REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED)")
+        with self.assertRaises(sqlite3.IntegrityError):  # отложенный внешний ключ проверяется при COMMIT
+            with transaction(c):
+                c.execute("INSERT INTO child VALUES (42)")
+        self.assertFalse(c.in_transaction, "соединение не осталось в транзакции")
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM child").fetchone()[0], 0)
+        with transaction(c):
+            c.execute("INSERT INTO parent VALUES (1)")
+        self.assertEqual(c.execute("SELECT COUNT(*) FROM parent").fetchone()[0], 1)
+
+    def test_already_rolled_back_transaction_keeps_original_error(self):
+        c = self.s.con
+        for nested in (False, True):
+            with self.assertRaises(ZeroDivisionError):
+                with transaction(c):
+                    if nested:
+                        with transaction(c):
+                            c.execute("ROLLBACK")  # как если бы SQLite откатил сам
+                            1 / 0
+                    c.execute("ROLLBACK")
+                    1 / 0
+            self.assertFalse(c.in_transaction)
 
 
 class MemoryTest(TmpDirCase):

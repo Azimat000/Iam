@@ -14,7 +14,8 @@ from .errors import AlreadyLocked
 
 class WriterLock:
     def __init__(self, db_path: str | os.PathLike):
-        self.path = Path(str(db_path) + ".lock")
+        # resolve(): та же база через символическую ссылку или другой относительный путь — тот же замок.
+        self.path = Path(str(Path(db_path).resolve()) + ".lock")
         self._fd: int | None = None
 
     @property

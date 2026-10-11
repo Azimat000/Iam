@@ -37,7 +37,8 @@ def _append_only(table: str, *, when: str = "") -> list[str]:
 
 def _no_replace(table: str, key_cond: str) -> str:
     """INSERT OR REPLACE удалил бы старую строку в обход триггеров DELETE — запрещаем любую вставку
-    поверх существующего ключа."""
+    поверх существующего ключа. Условие обязано перечислять ВСЕ уникальные ключи таблицы (включая rowid,
+    поэтому таблицы без нужды в rowid объявлены WITHOUT ROWID)."""
     return (f"CREATE TRIGGER {table}_no_replace BEFORE INSERT ON {table} "
             f"WHEN EXISTS (SELECT 1 FROM {table} WHERE {key_cond}) "
             f"BEGIN SELECT RAISE(ABORT, 'iam: {table}: запись с таким ключом уже есть'); END")
@@ -48,7 +49,8 @@ _NORM = "replace(replace(NEW.text, 'ё', 'е'), 'Ё', 'Е')"
 
 V1 = Migration(1, "начальная схема: журнал, снимки, память+FTS5, входящие/исходящие, часы", tuple([
     # Сведения о личности этого файла: один файл — одна личность (R-024).
-    "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT",
+    "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT, WITHOUT ROWID",
+    _no_replace("meta", "key = NEW.key"),
     "CREATE TRIGGER meta_fixed_update BEFORE UPDATE ON meta WHEN OLD.key IN ('persona_id', 'store_kind') "
     "BEGIN SELECT RAISE(ABORT, 'iam: persona_id и вид хранилища неизменяемы'); END",
     "CREATE TRIGGER meta_fixed_delete BEFORE DELETE ON meta WHEN OLD.key IN ('persona_id', 'store_kind') "
@@ -91,7 +93,7 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
         created_at TEXT NOT NULL,
         state TEXT NOT NULL,
         PRIMARY KEY (epoch, state_version)
-    ) STRICT""",
+    ) STRICT, WITHOUT ROWID""",
     *_append_only("state_snapshots"),
     _no_replace("state_snapshots", "epoch = NEW.epoch AND state_version = NEW.state_version"),
     # Одна последовательность состояний (R-024): эпоха не убывает и растёт только на 1 (восстановление
@@ -116,10 +118,11 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
     ) STRICT""",
     "CREATE INDEX memory_layer_kind ON memory_records(layer, kind)",
     *_append_only("memory_records", when="OLD.layer = 'archive'"),
-    _no_replace("memory_records", "memory_id = NEW.memory_id"),
+    _no_replace("memory_records", "memory_id = NEW.memory_id OR rid = NEW.rid"),
     "CREATE TRIGGER memory_fixed_fields BEFORE UPDATE ON memory_records "
     "WHEN NEW.layer IS NOT OLD.layer OR NEW.memory_id IS NOT OLD.memory_id OR NEW.persona_id IS NOT OLD.persona_id "
-    "BEGIN SELECT RAISE(ABORT, 'iam: слой, memory_id и persona_id записи памяти неизменяемы'); END",
+    "OR NEW.rid IS NOT OLD.rid "
+    "BEGIN SELECT RAISE(ABORT, 'iam: слой, memory_id, rid и persona_id записи памяти неизменяемы'); END",
     f"CREATE TRIGGER memory_one_persona BEFORE INSERT ON memory_records WHEN NEW.persona_id IS NOT {_PERSONA} "
     "BEGIN SELECT RAISE(ABORT, 'iam: запись памяти другой личности'); END",
     "CREATE TRIGGER memory_no_simulation BEFORE INSERT ON memory_records "
@@ -146,7 +149,7 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
         sender TEXT NOT NULL,
         content TEXT NOT NULL,
         UNIQUE (channel, external_id)
-    ) STRICT""",
+    ) STRICT, WITHOUT ROWID""",
     *_append_only("inbox"),
     _no_replace("inbox", "input_id = NEW.input_id OR (channel = NEW.channel AND external_id = NEW.external_id)"),
 
@@ -160,7 +163,7 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
         requested_seq INTEGER NOT NULL REFERENCES events(seq),
         result_seq INTEGER REFERENCES events(seq),
         external_id TEXT
-    ) STRICT""",
+    ) STRICT, WITHOUT ROWID""",
     "CREATE TRIGGER outbox_insert_requested BEFORE INSERT ON outbox WHEN NEW.status IS NOT 'requested' "
     "BEGIN SELECT RAISE(ABORT, 'iam: исходящее создаётся в статусе requested'); END",
     _no_replace("outbox", "action_id = NEW.action_id"),
@@ -178,7 +181,8 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
         id INTEGER PRIMARY KEY CHECK (id = 1),
         life_time_ms INTEGER NOT NULL CHECK (life_time_ms >= 0),
         updated_at TEXT NOT NULL
-    ) STRICT""",
+    ) STRICT, WITHOUT ROWID""",
+    _no_replace("clock", "id = NEW.id"),
     "CREATE TRIGGER clock_monotonic BEFORE UPDATE ON clock WHEN NEW.life_time_ms < OLD.life_time_ms "
     "BEGIN SELECT RAISE(ABORT, 'iam: время жизни не убывает'); END",
     "CREATE TRIGGER clock_no_delete BEFORE DELETE ON clock "
@@ -222,8 +226,7 @@ def migrate(con: sqlite3.Connection, *, target: int | None = None,
     if before is not None and have > 0:
         before(have, target)
     applied = []
-    con.guard.migrating = True
-    try:
+    with con.guard.unlocked():
         for m in pending:
             with transaction(con):
                 # Перечитываем версию внутри транзакции: параллельный мигратор не применит дважды.
@@ -235,6 +238,4 @@ def migrate(con: sqlite3.Connection, *, target: int | None = None,
                 con.execute("INSERT INTO schema_version (version, name, applied_at) VALUES (?, ?, ?)",
                             (m.version, m.name, dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")))
             applied.append(m.version)
-    finally:
-        con.guard.migrating = False
     return applied

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -119,12 +120,22 @@ class Store:
         try:
             if path.exists():
                 raise StorageError(f"{path} уже существует: одна личность — один файл")
-            con = db.connect(path)
+            # Черновик собирается под другим именем и появляется под настоящим одним атомарным шагом:
+            # авария посреди создания не оставляет «полуличности», которую нельзя ни открыть, ни создать.
+            draft = path.with_name(f".{path.name}.creating")
+            for leftover in (draft, Path(f"{draft}-wal"), Path(f"{draft}-shm")):
+                leftover.unlink(missing_ok=True)  # черновик прошлой неудачной попытки (замок у нас)
+            con = db.connect(draft)
             migrate(con)
             kind = "experimental" if is_experimental(persona_id) else "permanent"
             with db.transaction(con):
                 con.executemany("INSERT INTO meta (key, value) VALUES (?, ?)", [
                     ("persona_id", persona_id), ("store_kind", kind), ("created_at", created_at or _now_iso())])
+            con.close()  # последнее соединение переносит WAL в основной файл и удаляет его
+            con = None
+            os.link(draft, path)  # атомарно и никогда не перезаписывает существующий файл
+            draft.unlink()
+            con = db.connect(path)
             return cls(con, path, lock)
         except BaseException:
             _abandon(con, lock)
@@ -389,10 +400,12 @@ class Store:
     # --- часы ----------------------------------------------------------------------------------
 
     def _touch_clock(self, life_time_ms: int, at: str) -> None:
-        self.con.execute(
-            "INSERT INTO clock (id, life_time_ms, updated_at) VALUES (1, ?, ?) ON CONFLICT (id) DO UPDATE SET"
-            " life_time_ms = MAX(life_time_ms, excluded.life_time_ms), updated_at = excluded.updated_at",
-            (life_time_ms, at))
+        """Точка часов только растёт: меньшее значение (событие из паузы, старый heartbeat) её не трогает."""
+        cur = self.con.execute("SELECT life_time_ms FROM clock WHERE id = 1").fetchone()
+        if cur is None:
+            self.con.execute("INSERT INTO clock (id, life_time_ms, updated_at) VALUES (1, ?, ?)", (life_time_ms, at))
+        elif life_time_ms > cur[0]:
+            self.con.execute("UPDATE clock SET life_time_ms = ?, updated_at = ? WHERE id = 1", (life_time_ms, at))
 
     def heartbeat(self, life_time_ms: int, at: str) -> None:
         """Контрольная точка времени жизни (не событие журнала, docs/spec/time.md#life-clock)."""
@@ -417,7 +430,8 @@ class Store:
             probs.append(f"в журнале пропуски seq: событий {n}, последний seq {hi}")
         if not self.readonly:
             try:
-                self.con.execute("INSERT INTO memory_fts (memory_fts) VALUES ('integrity-check')")
+                with self.con.guard.unlocked():
+                    self.con.execute("INSERT INTO memory_fts (memory_fts) VALUES ('integrity-check')")
             except sqlite3.DatabaseError as e:
                 probs.append(f"FTS: {e}")
         return probs

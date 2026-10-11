@@ -20,6 +20,7 @@ import fnmatch
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -29,7 +30,11 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get("IAM_ROOT") or Path(__file__).resolve().parent.parent).resolve()
 MEASURED_DIRS = ("src", "tools")
-PRAGMA = "pragma: " + "no cover"  # собрано из частей, чтобы этот файл сам не попадал под запрет
+PRAGMA = "pragma: " + "no cover"  # образец метки; собран из частей, чтобы этот файл сам не попадал под запрет
+# Тот же шаблон, которым coverage.py находит метку по умолчанию (любой регистр, с двоеточием или без).
+PRAGMA_RE = re.compile(r"#\s*(pragma|PRAGMA)[:\s]?\s*(no|NO)\s*(cover|COVER)", re.IGNORECASE)
+# Единственное разрешённое исключение из замера (pyproject.toml, [tool.coverage.report] exclude_also).
+ALLOWED_EXCLUDES = ["if __name__ == .__main__.:"]
 INSTALL_HINT = "pip install 'coverage==7.10.6'  (или: pip install -e '.[dev]')"
 
 
@@ -53,6 +58,22 @@ class Result:
     @property
     def ok(self) -> bool:
         return not self.problems
+
+
+def exclusion_problems(pyproject: Path) -> list[str]:
+    """Настройки coverage не должны исключать из замера ничего, кроме разрешённого."""
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    cov = data.get("tool", {}).get("coverage", {})
+    probs = []
+    report = cov.get("report", {})
+    if report.get("exclude_also", ALLOWED_EXCLUDES) != ALLOWED_EXCLUDES:
+        probs.append(f"exclude_also расширен: {report['exclude_also']!r}; разрешено только {ALLOWED_EXCLUDES!r}")
+    for key in ("exclude_lines", "partial_branches", "partial_also", "omit"):
+        if key in report:
+            probs.append(f"[tool.coverage.report] {key} запрещён")
+    if "omit" in cov.get("run", {}):
+        probs.append("[tool.coverage.run] omit запрещён")
+    return probs
 
 
 def load_config(pyproject: Path) -> Config:
@@ -87,8 +108,8 @@ def evaluate(report: dict, cfg: Config, root: Path) -> list[Result]:
     for rel in measured_files(root):
         critical = any(fnmatch.fnmatch(rel, pat) for pat in cfg.critical)
         problems = []
-        if PRAGMA in (root / rel).read_text(encoding="utf-8"):
-            problems.append(f"метка «{PRAGMA}» запрещена")
+        if PRAGMA_RE.search((root / rel).read_text(encoding="utf-8")):
+            problems.append("метка исключения из замера запрещена")
         info = files.get(rel)
         if info is None:
             results.append(Result(rel, 0.0, 0.0, critical, tuple(problems + ["тесты ни разу не загрузили модуль"])))
@@ -149,10 +170,13 @@ def main(argv: list[str] | None = None) -> int:
             report = json.loads(out.read_text(encoding="utf-8"))
     results = evaluate(report, cfg, ROOT)
     print(render(results))
+    excl = exclusion_problems(ROOT / "pyproject.toml")
+    for prob in excl:
+        print(f"ОШИБКА настройки замера: {prob}")
     if tests_rc != 0:
         print("Тесты упали — замер недействителен.")
         return 1
-    return 0 if all(r.ok for r in results) else 1
+    return 0 if all(r.ok for r in results) and not excl else 1
 
 
 if __name__ == "__main__":
