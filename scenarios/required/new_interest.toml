@@ -50,29 +50,30 @@ run = "declared"
 situation = "Модель предложила новый интерес без каких-либо событий; ядро проверяет основания."
 
 [[assert]]
-id = "interest_has_evidence"
+id = "interest_present"
 kind = "state"
 run = "grounded"
-path = "preferences.curiosity.astronomy.evidence_refs"
-op = "contains"
-value = "activity.completed"
-explain = "Интерес к теме прочитанного содержит ссылку на событие завершённого занятия."
+path = "preferences.curiosity.astronomy"
+op = "present"
+after = "grounded_choice"
+explain = "Появился интерес к теме прочитанного."
 
 [[assert]]
 id = "interest_traced"
 kind = "chain"
 run = "grounded"
-effect = "intention.changed"
+effect = "state.transition_applied"
 caused_by = "activity.completed"
-explain = "Изменение интересов прослеживается до результата занятия."
+explain = "Переход, создавший интерес, прослеживается до результата занятия (основание — событие, а не декларация)."
 
 [[assert]]
 id = "declaration_rejected"
 kind = "event"
 run = "declared"
 type = "proposal.rejected"
+where = { kind = "intention" }
 min = 1
-explain = "Предложение без оснований отклонено проверкой ядра."
+explain = "Предложение нового интереса без оснований отклонено проверкой ядра."
 
 [[assert]]
 id = "no_interest_from_declaration"

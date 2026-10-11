@@ -346,6 +346,52 @@ class ScenarioErrorsTest(unittest.TestCase):
             with self.subTest(needle):
                 self.assertHas(self.mutate(fn), needle)
 
+    def test_references_must_match_run(self):
+        d = exp_scenario()
+        d["step"].append({"id": "only_one", "kind": "wait", "life_ms": 5, "run": "one"})
+        d["assert"].append({"id": "x_any", "kind": "absent", "type": "system.error", "after": "only_one", "explain": "e"})
+        d["assert"][-1]["class"] = "technical"
+        self.assertHas(errors(d, group="experiments"), "а утверждение относится к всем прогонам")
+        d["assert"][-1]["run"] = "two"
+        self.assertHas(errors(d, group="experiments"), "прогона «one», а утверждение относится к прогону «two»")
+        d["assert"][-1]["run"] = "one"
+        self.assertEqual(errors(d, group="experiments"), [])
+
+    def test_window_allowed_on_every_kind(self):
+        d = good()
+        for a in d["assert"]:
+            a["after"] = "start"
+            a["before"] = "choose"
+        self.assertEqual(errors(d), [])
+
+    def test_input_deliveries_model_purpose_per(self):
+        d = good()
+        d["step"][1]["deliveries"] = 2
+        d["step"].append({"id": "mr", "kind": "model", "proposal": "state_change", "delivery": "once", "purpose": "reflect"})
+        d["assert"][0]["per"] = "cycle"
+        self.assertEqual(errors(d), [])
+        d["step"][1]["deliveries"] = 0
+        d["step"][-1]["purpose"] = "daydream"
+        d["assert"][0]["per"] = "day"
+        errs = errors(d)
+        self.assertHas(errs, "deliveries должно быть")
+        self.assertHas(errs, "purpose должно быть")
+        self.assertHas(errs, "per может быть только")
+
+    def test_state_present_and_capabilities_group(self):
+        d = good()
+        d["assert"].append({"id": "p", "kind": "state", "path": "capabilities.shell.status", "op": "present", "explain": "e"})
+        self.assertEqual(errors(d), [])
+        d["assert"][-1]["value"] = 1
+        self.assertHas(errors(d), "op=present поле value не используется")
+
+    def test_proposal_kinds_follow_envelopes(self):
+        text = (REPO / "docs" / "spec" / "envelopes.md").read_text(encoding="utf-8")
+        for kind in sc.PROPOSAL_KINDS:
+            self.assertIn(f"| `{kind}` |", text, kind)
+        for purpose in sc.PURPOSES:
+            self.assertIn(f"`{purpose}`", text, purpose)
+
     def test_state_absent_ok_and_since_checked(self):
         d = good()
         d["assert"].append({"id": "gone", "kind": "state", "path": "beliefs.x", "op": "absent", "explain": "нет"})
@@ -664,12 +710,29 @@ class RealCatalogTest(unittest.TestCase):
             if r["kind"] == "functional":
                 self.assertTrue(r["id"] in listed or sc.TEST_MARK.search(r["check"]), r["id"])
 
-    def test_assertions_are_observable_only(self):
-        """Утверждения — из закрытого списка видов; про «мысли модели» в них нет ничего."""
+    def test_absence_assertions_are_not_vacuous(self):
+        """Утверждение «строки нет» осмысленно, только если строка действительно подаётся на вход
+        (в шаге, ответе модели или предыстории): иначе оно истинно при любой системе."""
+        for rel, d in self.catalog.items():
+            fed = " ".join([s.get("text", "") + " " + s.get("content", "") for s in d.get("step", [])]
+                           + [b.get("text", "") for b in d.get("background", [])])
+            for a in d["assert"]:
+                if a["kind"] == "text" and a["presence"] == "absent":
+                    self.assertIn(a["marker"], fed, f"{rel}: {a['id']}: маркер нигде не подаётся на вход")
+
+    def test_every_assertion_explained_and_closed_vocabulary(self):
         for rel, d in self.catalog.items():
             for a in d["assert"]:
                 self.assertIn(a["kind"], sc.ASSERT_KINDS, rel)
                 self.assertTrue(a["explain"].strip(), rel)
+                self.assertGreaterEqual(len(a["explain"]), 15, f"{rel}: {a['id']}: слишком короткий explain")
+
+    def test_comparison_scenarios_have_two_runs_each(self):
+        for rel, d in self.catalog.items():
+            runs = d.get("run", [])
+            self.assertNotEqual(len(runs), 1, rel)
+            if len(runs) > 1:
+                self.assertTrue(any(a["kind"] == "compare" for a in d["assert"]), rel)
 
     def test_motivation_covers_six_phenomena_with_metrics(self):
         mot = {r: d for r, d in self.catalog.items() if d["group"] == "motivation"}

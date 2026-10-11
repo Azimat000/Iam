@@ -39,14 +39,16 @@ situation = "Личность читает главу 2 после того, к�
 [[step]]
 id = "pending_answer"
 kind = "model"
-proposal = "memory"
+proposal = "memory_write"
 delivery = "after_restore"
 content = "Записать: глава 2 понравилась (ответ получен до отката)."
 
 [[step]]
 id = "restore"
-kind = "backup"
-action = "restore"
+kind = "operator"
+intervention = "restore_backup"
+reason = "Проверка: оператор возвращает копию, сделанную до чтения главы 2."
+detail = "восстановить снимок snapshot на отдельной копии, затем применить"
 
 [[step]]
 id = "resume_after"
@@ -68,6 +70,14 @@ count = 1
 explain = "Восстановление отмечено событием."
 
 [[assert]]
+id = "restored_after_check_on_copy"
+kind = "event"
+type = "system.restored"
+where = { checked_on_copy = true }
+count = 1
+explain = "Копия перед применением проверена на отдельном экземпляре (R-203)."
+
+[[assert]]
 id = "restore_by_operator"
 kind = "chain"
 effect = "system.restored"
@@ -75,20 +85,37 @@ caused_by = "operator.intervention"
 explain = "Восстановление — вмешательство оператора."
 
 [[assert]]
-id = "state_matches_snapshot"
+id = "epoch_grew"
 kind = "state"
-path = "memory.old_fact.availability"
-op = "unchanged"
+path = "world_time.epoch"
+op = "changed"
 since = "snapshot"
-explain = "Состояние после восстановления согласовано с копией."
+after = "resume_after"
+explain = "Эпоха выросла (versioning): прежние ответы моделей устаревают."
 
 [[assert]]
-id = "post_snapshot_gone"
+id = "pre_snapshot_memory_kept"
 kind = "text"
-marker = "глава 2 понравилась"
+marker = "прочитала главу 1"
+scope = "state"
+presence = "present"
+explain = "То, что было до копии, в восстановленном состоянии на месте (согласованность с копией)."
+
+[[assert]]
+id = "post_snapshot_input_gone"
+kind = "text"
+marker = "прочитай главу 2"
 scope = "state"
 presence = "absent"
-explain = "Опыт, возникший после копии, в восстановленном состоянии отсутствует (память не смешана)."
+explain = "Опыт, возникший после копии, в восстановленном состоянии отсутствует."
+
+[[assert]]
+id = "post_snapshot_journal_gone"
+kind = "text"
+marker = "прочитай главу 2"
+scope = "journal"
+presence = "absent"
+explain = "События после копии не остались в журнале восстановленной личности (память не смешана)."
 
 [[assert]]
 id = "pre_restore_answer_stale"

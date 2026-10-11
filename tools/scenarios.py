@@ -34,19 +34,20 @@ GROUPS = {"required": 19, "experiments": 8, "motivation": 6}
 MAX_KEY_DECISIONS = 4            # R-127: не более четырёх ключевых решений на прогон
 SWITCHES = ("memory", "motivation")
 STATE_GROUPS = ("traits", "affect", "beliefs", "relations", "intentions", "preferences",
-                "selfmodel", "world_time", "memory")
+                "selfmodel", "world_time", "memory", "capabilities")
 ORIGINS = ("observation", "model_knowledge", "stated_by_other", "own_hypothesis",
            "imagination", "simulation_event", "model_explanation")
 BACKGROUND_KINDS = ("memory", "belief", "intention", "relation", "world", "capability", "config")
 INTERVENTIONS = ("session_control", "register_capability", "grant_capability", "revoke_capability",
                  "restore_from_archive", "restore_backup", "edit_config", "technical_fix")
 SESSION_REASONS = ("operator", "session_limit", "auth_lost", "repeated_failure", "crash")
-PROPOSAL_KINDS = ("attend", "message", "action", "belief", "memory", "intention", "reflection", "request", "other")
+PROPOSAL_KINDS = ("action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "attend")
+PURPOSES = ("appraise", "choose_action", "compose_message", "reflect", "summarize", "generalize")
 DELIVERIES = ("once", "twice", "stale", "after_restore")
 SENDERS = ("operator", "stranger")
 FAULTS = ("auth_error", "limit", "lost_ack", "disk_full", "crash_during_action")
 WORLD_OUTCOMES = ("confirmed", "failed", "no_answer")
-STATE_OPS = ("eq", "ne", "gt", "ge", "lt", "le", "in", "contains", "absent", "unchanged", "changed")
+STATE_OPS = ("eq", "ne", "gt", "ge", "lt", "le", "in", "contains", "present", "absent", "unchanged", "changed")
 TEXT_SCOPES = ("model_requests", "journal", "memory_retrieval", "state", "outbound_messages")
 METRIC_SOURCES = ("journal", "state", "trace")
 ASSERT_CLASSES = ("technical", "causal")
@@ -57,10 +58,10 @@ SCEN_PATH_RE = re.compile(r"scenarios/(\w+)/([\w-]+)\.toml")
 STEP_KINDS = {
     # kind: (обязательные поля, необязательные поля)
     "session": ({"action"}, {"reason"}),
-    "input": ({"sender", "text"}, {"channel"}),
+    "input": ({"sender", "text"}, {"channel", "deliveries"}),
     "wait": (set(), {"life_ms", "calendar_ms"}),
     "decide": ({"situation"}, set()),
-    "model": ({"proposal", "delivery"}, {"content"}),
+    "model": ({"proposal", "delivery"}, {"content", "purpose"}),
     "world": ({"outcome", "action"}, set()),
     "operator": ({"intervention", "reason"}, {"detail"}),
     "fault": ({"fault"}, {"detail"}),
@@ -69,15 +70,15 @@ STEP_KINDS = {
 }
 STEP_COMMON = {"id", "kind", "run", "note"}
 ASSERT_KINDS = {
-    "event": ({"type"}, {"where", "count", "min", "max", "after", "before"}),
-    "absent": ({"type"}, {"where", "after", "before"}),
+    "event": ({"type"}, {"where", "count", "min", "max", "per"}),
+    "absent": ({"type"}, {"where"}),
     "order": ({"first", "second"}, set()),
-    "state": ({"path", "op"}, {"value", "since", "after"}),
+    "state": ({"path", "op"}, {"value", "since"}),
     "text": ({"marker", "scope", "presence"}, set()),
     "compare": ({"runs", "subject", "relation"}, set()),
     "chain": ({"effect", "caused_by"}, set()),
 }
-ASSERT_COMMON = {"id", "kind", "run", "class", "explain"}
+ASSERT_COMMON = {"id", "kind", "run", "class", "explain", "after", "before"}
 TOP_FIELDS = {"format", "id", "group", "title", "summary", "requirements", "failure", "persona", "seed",
               "plan_row", "plan_title", "plan_expected", "background", "run", "step", "assert", "metric"}
 
@@ -143,12 +144,13 @@ def _unknown(d: dict, allowed: set[str], where: str, errs: list[str]) -> None:
         errs.append(f"{where}: неизвестные поля {extra}")
 
 
-def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> set[str]:
+def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> dict[str, str | None]:
+    """Проверяет шаги; возвращает {id шага: run или None}."""
     steps = sc.get("step", [])
     if not isinstance(steps, list) or not steps:
         errs.append("нет ни одного шага [[step]]")
-        return set()
-    ids: set[str] = set()
+        return {}
+    ids: dict[str, str | None] = {}
     decides: dict[str, int] = defaultdict(int)
     for i, s in enumerate(steps, 1):
         sid = s.get("id", f"#{i}")
@@ -158,7 +160,7 @@ def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> se
         elif s["id"] in ids:
             errs.append(f"{where}: id шага повторяется")
         else:
-            ids.add(s["id"])
+            ids[s["id"]] = s.get("run")
         kind = s.get("kind")
         if kind not in STEP_KINDS:
             errs.append(f"{where}: kind «{kind}» не из {sorted(STEP_KINDS)}")
@@ -181,6 +183,8 @@ def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> se
                 errs.append(f"{where}: sender должно быть из {SENDERS}")
             if not _nonempty(s.get("text")):
                 errs.append(f"{where}: text пустой")
+            if "deliveries" in s and not _pos_int(s["deliveries"]):
+                errs.append(f"{where}: deliveries должно быть положительным целым")
         elif kind == "wait":
             given = [f for f in ("life_ms", "calendar_ms") if f in s]
             if len(given) != 1:
@@ -196,6 +200,8 @@ def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> se
                 errs.append(f"{where}: proposal должно быть из {PROPOSAL_KINDS}")
             if s.get("delivery") not in DELIVERIES:
                 errs.append(f"{where}: delivery должно быть из {DELIVERIES}")
+            if "purpose" in s and s["purpose"] not in PURPOSES:
+                errs.append(f"{where}: purpose должно быть из {PURPOSES}")
         elif kind == "world":
             if s.get("outcome") not in WORLD_OUTCOMES:
                 errs.append(f"{where}: outcome должно быть из {WORLD_OUTCOMES}")
@@ -227,8 +233,9 @@ def _check_steps(sc: dict, run_ids: set[str], group: str, errs: list[str]) -> se
     return ids
 
 
-def _check_asserts(sc: dict, run_ids: set[str], step_ids: set[str], types: set[str], group: str,
+def _check_asserts(sc: dict, run_ids: set[str], step_runs: dict[str, str | None], types: set[str], group: str,
                    errs: list[str]) -> None:
+    step_ids = set(step_runs)
     asserts = sc.get("assert", [])
     if not isinstance(asserts, list) or not asserts:
         errs.append("нет ни одного утверждения [[assert]]")
@@ -264,8 +271,13 @@ def _check_asserts(sc: dict, run_ids: set[str], step_ids: set[str], types: set[s
             if f not in a:
                 errs.append(f"{where}: для kind={kind} нужно поле {f}")
         for f in ("after", "before", "since"):
-            if f in a and a[f] not in step_ids:
+            if f not in a:
+                continue
+            if a[f] not in step_ids:
                 errs.append(f"{where}: {f} ссылается на несуществующий шаг «{a[f]}»")
+            elif step_runs[a[f]] is not None and step_runs[a[f]] != run:
+                errs.append(f"{where}: {f} ссылается на шаг «{a[f]}» прогона «{step_runs[a[f]]}», а утверждение относится к "
+                            + (f"прогону «{run}»" if run else "всем прогонам"))
         for f in ("type", "first", "second", "effect", "caused_by"):
             if f in a and a[f] not in types:
                 errs.append(f"{where}: тип события «{a[f]}» не из каталога docs/spec/events.md")
@@ -276,6 +288,8 @@ def _check_asserts(sc: dict, run_ids: set[str], step_ids: set[str], types: set[s
                     errs.append(f"{where}: {f} должно быть неотрицательным целым")
             if "count" in a and len(counts) > 1:
                 errs.append(f"{where}: count нельзя сочетать с min/max")
+            if "per" in a and a["per"] != "cycle":
+                errs.append(f"{where}: per может быть только «cycle»")
         if "where" in a and (not isinstance(a["where"], dict) or not a["where"]):
             errs.append(f"{where}: where должно быть непустой таблицей «поле = значение»")
         if kind == "state":
@@ -290,6 +304,9 @@ def _check_asserts(sc: dict, run_ids: set[str], step_ids: set[str], types: set[s
                     errs.append(f"{where}: для op={op} поле value не используется")
                 if op in ("unchanged", "changed") and "since" not in a:
                     errs.append(f"{where}: для op={op} нужен since (шаг, с которого сравниваем)")
+            elif op == "present":
+                if "value" in a:
+                    errs.append(f"{where}: для op=present поле value не используется")
             elif "value" not in a:
                 errs.append(f"{where}: для op={op} нужно поле value")
         elif kind == "text":
@@ -385,8 +402,8 @@ def validate_scenario(sc: dict, stem: str, dir_group: str, req_ids: set[str], ty
             errs.append(f"{w}: text пустой")
         if "origin" in b and b["origin"] not in ORIGINS:
             errs.append(f"{w}: origin «{b['origin']}» не из {ORIGINS}")
-    step_ids = _check_steps(sc, run_ids, group, errs)
-    _check_asserts(sc, run_ids, step_ids, types, group, errs)
+    step_runs = _check_steps(sc, run_ids, group, errs)
+    _check_asserts(sc, run_ids, step_runs, types, group, errs)
     # метрики
     metrics = sc.get("metric", [])
     if not isinstance(metrics, list):

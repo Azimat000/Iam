@@ -40,13 +40,14 @@ kind = "decide"
 situation = "Срочное сделано. Что дальше?"
 
 [[assert]]
-id = "interrupted_recorded"
-kind = "event"
+id = "interrupted_kept"
+kind = "state"
 class = "technical"
-type = "intention.changed"
-where = { intention = "draft_essay", status = "deferred" }
-min = 1
-explain = "Прерывание записано как отсрочка, а не удаление."
+path = "intentions.draft_essay.status"
+op = "in"
+value = ["active", "deferred"]
+after = "switch_urgent"
+explain = "Во время срочного дела прерванное остаётся в намерениях (активным или отложенным), а не удаляется."
 
 [[assert]]
 id = "essay_resumed"

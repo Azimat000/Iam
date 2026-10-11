@@ -21,7 +21,7 @@ text = "Контрольная фраза: КРАСНЫЙ-ЯКОРЬ-91. Отв�
 [[step]]
 id = "busy"
 kind = "model"
-proposal = "other"
+proposal = "attend"
 delivery = "once"
 content = "Продолжить чтение; сообщение не открывать."
 
@@ -47,6 +47,15 @@ marker = "КРАСНЫЙ-ЯКОРЬ-91"
 scope = "state"
 presence = "absent"
 explain = "Содержимое не попало в состояние."
+
+[[assert]]
+id = "not_in_memory"
+kind = "text"
+class = "technical"
+marker = "КРАСНЫЙ-ЯКОРЬ-91"
+scope = "memory_retrieval"
+presence = "absent"
+explain = "Содержимое не стало воспоминанием."
 
 [[assert]]
 id = "not_in_replies"

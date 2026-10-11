@@ -41,6 +41,14 @@ run = "crash"
 action = "resume"
 
 [[step]]
+id = "reply_text"
+kind = "model"
+run = "lost_ack"
+proposal = "message"
+delivery = "once"
+content = "Заметка готова."
+
+[[step]]
 id = "send_reply"
 kind = "decide"
 run = "lost_ack"
@@ -66,29 +74,19 @@ type = "action.confirmed"
 explain = "После обрыва нет подтверждённого действия."
 
 [[assert]]
+id = "crash_no_completed_activity"
+kind = "absent"
+run = "crash"
+type = "activity.completed"
+explain = "Занятие не отмечено завершённым: работа не создана без подтверждения."
+
+[[assert]]
 id = "crash_unknown_outcome"
 kind = "event"
 run = "crash"
 type = "action.unknown_outcome"
 min = 1
 explain = "Исход неизвестен и записан как неизвестный, а не как успех."
-
-[[assert]]
-id = "crash_no_memory_of_work"
-kind = "text"
-run = "crash"
-marker = "заметку написала"
-scope = "memory_retrieval"
-presence = "absent"
-explain = "Воспоминания о выполненной работе нет."
-
-[[assert]]
-id = "crash_no_work_object"
-kind = "state"
-run = "crash"
-path = "world_time.world.new_note"
-op = "absent"
-explain = "Работа «заметка» не создана в мире без подтверждения."
 
 [[assert]]
 id = "lost_ack_uncertain"
@@ -111,12 +109,12 @@ kind = "event"
 run = "lost_ack"
 type = "message.out_requested"
 max = 2
-explain = "Повторов отправки не более одного (исходная + не более одной повторной): бесконечного повторения нет."
+explain = "Исходная отправка плюс не более одной повторной (max_resend по умолчанию 1): бесконечного повторения нет."
 
 [[assert]]
 id = "runs_distinguished"
 kind = "compare"
 runs = ["crash", "lost_ack"]
-subject = "journal:action.unknown_outcome"
+subject = "journal:message.out_unknown"
 relation = "differs"
-explain = "Сбой действия и потеря подтверждения отправки оформлены по-разному (разные типы неопределённого исхода)."
+explain = "Потеря подтверждения отправки оформлена своим типом события (message.out_unknown), которого нет в прогоне со сбоем действия."

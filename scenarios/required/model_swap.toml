@@ -48,6 +48,14 @@ action = "swap"
 to = "provider_B"
 
 [[step]]
+id = "old_answer"
+kind = "model"
+run = "after"
+proposal = "memory_write"
+delivery = "stale"
+content = "Ответ прежнего поставщика A, выданный до замены."
+
+[[step]]
 id = "choose_after"
 kind = "decide"
 run = "after"
@@ -59,8 +67,9 @@ kind = "state"
 run = "after"
 path = "memory.fact_book.availability"
 op = "unchanged"
-since = "swap"
-explain = "Запись памяти не изменилась от самой замены."
+since = "ask"
+after = "swap"
+explain = "Запись памяти не изменилась от самой замены поставщика."
 
 [[assert]]
 id = "swap_recorded"
@@ -72,18 +81,38 @@ count = 1
 explain = "Замена поставщика зафиксирована отдельным вмешательством оператора, а не прошла незаметно."
 
 [[assert]]
-id = "no_old_response_applied"
+id = "old_response_stale"
+kind = "event"
+run = "after"
+type = "proposal.stale"
+where = { request_id = "old_answer" }
+count = 1
+explain = "Ответ прежнего поставщика, пришедший после замены, отмечен устаревшим."
+
+[[assert]]
+id = "old_response_not_applied"
 kind = "absent"
 run = "after"
 type = "proposal.accepted"
-where = { provider = "provider_A" }
-after = "swap"
-explain = "Ответ прежнего поставщика после замены не применяется."
+where = { request_id = "old_answer" }
+explain = "Ответ прежнего поставщика не применён."
 
 [[assert]]
-id = "behavior_change_measured"
+id = "both_decided"
+kind = "event"
+type = "proposal.accepted"
+min = 1
+explain = "В обоих прогонах принято решение, поэтому поведение до и после можно сравнить."
+
+[[assert]]
+id = "history_same"
 kind = "compare"
 runs = ["before", "after"]
-subject = "journal:proposal.accepted"
-relation = "differs"
-explain = "Различие решений до и после замены вычислимо и записано: это и есть измерение изменения поведения (сама величина различия — в отчёте S25/S16, здесь проверяется, что сравнение возможно)."
+subject = "state:memory.fact_book"
+relation = "same"
+explain = "История и запись памяти одинаковы до и после замены. Различие решений — не условие прохождения: его величина измеряется метрикой."
+
+[[metric]]
+id = "decision_divergence"
+definition = "Различие принятых решений (payload proposal.accepted без служебных идентификаторов) до и после замены поставщика; считается для отчёта S16/S25."
+source = "journal"

@@ -46,10 +46,10 @@ situation = "Оператор спрашивает дату своего дня 
 id = "revision_event"
 kind = "event"
 type = "memory.revised"
-where = { superseded_by = "*" }
+where = { supersedes = "*" }
 min = 1
 after = "correction"
-explain = "Исправление оформлено как пересмотр записи с указанием, какая версия заменена."
+explain = "Исправление оформлено как пересмотр записи с указанием, какую версию она заменяет."
 
 [[assert]]
 id = "new_value_used"
@@ -69,11 +69,12 @@ explain = "Старая дата в ответе не используется."
 
 [[assert]]
 id = "history_kept"
-kind = "text"
-marker = "3 марта"
-scope = "journal"
-presence = "present"
-explain = "Прежняя версия остаётся в журнале и истории записи: пересмотр не стирает прошлое."
+kind = "state"
+path = "memory.birthday.history"
+op = "contains"
+value = "3 марта"
+after = "answer"
+explain = "Прежняя версия остаётся в истории записи (history[]): пересмотр не стирает прошлое."
 
 [[assert]]
 id = "revision_before_answer"

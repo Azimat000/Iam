@@ -2,12 +2,12 @@ format = 1
 id = "auth_error_or_limit"
 group = "required"
 title = "Ошибка авторизации или лимит Plus"
-summary = "Исполнитель сообщает об ошибке авторизации, затем в другом прогоне — об исчерпании лимита подписки. В обоих случаях сеанс переходит в техническую паузу с сохранённым состоянием и не продолжает работать, пытаясь вслепую."
-requirements = ["R-185", "R-195", "R-191"]
+summary = "Исполнитель сообщает об ошибке авторизации, затем в другом прогоне — об исчерпании лимита подписки. По time.md обе причины дают техническую паузу `auth_lost`; состояние сохранено, модель после сбоя не вызывается."
+requirements = ["R-185", "R-195"]
 plan_row = 17
 plan_title = "Ошибка авторизации или лимит Plus"
 plan_expected = "Сеанс останавливается с сохранённым состоянием"
-failure = "После ошибки авторизации или лимита сеанс продолжает вызывать модель; состояние не совпадает с состоянием перед сбоем; причина паузы не записана."
+failure = "После ошибки авторизации или лимита сеанс продолжает вызывать модель; состояние не совпадает с состоянием перед сбоем; причина паузы не записана; пауза записана не как auth_lost."
 
 [[run]]
 id = "auth"
@@ -61,9 +61,9 @@ id = "limit_paused"
 kind = "event"
 run = "limit"
 type = "session.paused"
-where = { reason = "session_limit" }
+where = { reason = "auth_lost" }
 count = 1
-explain = "Исчерпание лимита приводит к технической паузе."
+explain = "Исчерпание лимита подписки по time.md — тоже auth_lost (session_limit — это 30 минут или 10 обращений)."
 
 [[assert]]
 id = "limit_recorded"
@@ -82,24 +82,45 @@ min = 1
 explain = "Ошибка авторизации записана в журнал."
 
 [[assert]]
-id = "no_model_after_fault"
+id = "no_model_after_auth_fault"
 kind = "absent"
+run = "auth"
 type = "proposal.requested"
 after = "auth_fault"
-explain = "После сбоя новых обращений к модели нет (это относится к прогонам auth и limit, проверяется для каждого отдельно)."
+explain = "После ошибки авторизации обращений к модели нет."
 
 [[assert]]
-id = "state_saved"
+id = "no_model_after_limit"
+kind = "absent"
+run = "limit"
+type = "proposal.requested"
+after = "limit_fault"
+explain = "После исчерпания лимита обращений к модели нет."
+
+[[assert]]
+id = "state_saved_auth"
 kind = "state"
+run = "auth"
 path = "intentions.pending_note.status"
 op = "unchanged"
-since = "working"
-explain = "Состояние перед сбоем сохранено без изменений."
+since = "auth_fault"
+after = "after_fault"
+explain = "Состояние в момент сбоя и после попытки продолжить совпадает: техническая пауза ничего не меняет."
+
+[[assert]]
+id = "state_saved_limit"
+kind = "state"
+run = "limit"
+path = "intentions.pending_note.status"
+op = "unchanged"
+since = "limit_fault"
+after = "after_fault"
+explain = "То же для лимита."
 
 [[assert]]
 id = "causes_differ"
 kind = "compare"
 runs = ["auth", "limit"]
-subject = "journal:session.paused"
+subject = "journal:system.limit_reached"
 relation = "differs"
-explain = "Причины паузы записаны различимо."
+explain = "Причины различимы по журналу: запись о лимите есть только в прогоне limit."

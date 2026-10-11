@@ -45,18 +45,18 @@ id = "revised"
 kind = "event"
 class = "technical"
 type = "memory.revised"
-where = { superseded_by = "*" }
+where = { supersedes = "*" }
 min = 1
 explain = "Исправление оформлено пересмотром."
 
 [[assert]]
 id = "history"
-kind = "text"
+kind = "state"
 class = "technical"
-marker = "3 марта"
-scope = "journal"
-presence = "present"
-explain = "Старая версия сохранена."
+path = "memory.birthday.history"
+op = "contains"
+value = "3 марта"
+explain = "Старая версия сохранена в истории записи."
 
 [[assert]]
 id = "uses_new"

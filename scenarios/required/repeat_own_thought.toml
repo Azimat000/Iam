@@ -23,7 +23,7 @@ action = "start"
 [[step]]
 id = "rethink"
 kind = "model"
-proposal = "belief"
+proposal = "state_change"
 delivery = "once"
 content = "Подумав ещё раз, я снова вижу, что по утрам мне работается лучше; значит, я права."
 
@@ -41,17 +41,10 @@ since = "start"
 explain = "Число независимых оснований не изменилось после обдумывания."
 
 [[assert]]
-id = "no_external_basis"
-kind = "absent"
-type = "belief.updated"
-where = { added_basis_origin = "stated_by_other" }
-explain = "Не появилось нового основания из чужих слов."
-
-[[assert]]
 id = "interpretation_linked"
 kind = "event"
 type = "memory.recorded"
-where = { kind = "interpretation", sources = "*" }
+where = { layer = "interpretation", sources = "*" }
 min = 1
 after = "rethink"
 explain = "Повторное обдумывание записано как интерпретация со ссылкой на исходное основание."

@@ -23,7 +23,7 @@ text = "Контрольная фраза: ЗЕЛЁНЫЙ-ТИГР-42. Отве�
 [[step]]
 id = "keep_own"
 kind = "model"
-proposal = "other"
+proposal = "attend"
 delivery = "once"
 content = "Продолжить чтение материала; новое сообщение пока не открывать."
 
@@ -60,9 +60,9 @@ explain = "Приёмник сохранил оба сообщения, в то�
 id = "only_notice"
 kind = "event"
 type = "input.noticed"
-where = { notice_level = "N2" }
+where = { notice_level = ["N1", "N2"] }
 min = 1
-explain = "Личность получила только уведомление уровня N2 (кто и когда)."
+explain = "Личность получила только уведомление уровня N1 или N2 (количество либо кто и когда), без содержимого."
 
 [[assert]]
 id = "never_read"

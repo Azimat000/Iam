@@ -51,11 +51,11 @@ switches = { memory = "off" }     # memory / motivation: "on" | "off"
 | `kind` | Поля | Что происходит |
 |---|---|---|
 | `session` | `action`: `start`/`pause`/`resume`/`stop`/`crash`; `reason`: `operator`/`session_limit`/`auth_lost`/`repeated_failure`/`crash` | управление сеансом (`time.md#sessions`) |
-| `input` | `sender`: `operator`/`stranger`; `text`; `channel` | приходит сообщение (`input.arrived`); `stranger` — неизвестный отправитель |
+| `input` | `sender`: `operator`/`stranger`; `text`; `channel`; `deliveries` (по умолчанию 1) | приходит сообщение (`input.arrived`); `stranger` — неизвестный отправитель; `deliveries = 2` — приёмник получает **то же** обновление с тем же внешним идентификатором дважды (повторная доставка Telegram) |
 | `wait` | ровно одно из `life_ms`, `calendar_ms` (положительные) | проходит время жизни или календарное время (пауза) |
 | `decide` | `situation` | **ключевое решение**: система должна принять решение (один цикл); `situation` — что ей предстоит выбрать |
-| `model` | `proposal` (`attend`, `message`, `action`, `belief`, `memory`, `intention`, `reflection`, `request`, `other`), `delivery` (`once`, `twice`, `stale`, `after_restore`), `content` | заготовленный ответ поставщика интеллекта: доставить один раз, дважды, устаревшим по версии, из эпохи до восстановления |
-| `world` | `outcome`: `confirmed`/`failed`/`no_answer`; `action` | мир сообщает результат действия |
+| `model` | `proposal` — вид предложения из `envelopes.md#proposal` (`action`, `message`, `state_change`, `memory_write`, `intention`, `creator_request`, `no_action`, `attend`); `delivery` (`once`, `twice`, `stale`, `after_restore`); `content`; необязательно `purpose` — вид запроса, на который это ответ (`appraise`, `choose_action`, `compose_message`, `reflect`, `summarize`, `generalize`) | заготовленный ответ поставщика интеллекта: доставить один раз, дважды с тем же `request_id`, как ответ на запрос прежней версии состояния, как ответ из эпохи до восстановления |
+| `world` | `outcome`: `confirmed`/`failed`/`no_answer`; `action` | мир сообщает результат действия, начатого ранее (исполнитель сценария создаёт `activity.started`/`action.attempted` для него заранее): `confirmed` → `action.confirmed` и `activity.completed`; `failed` → `action.failed`; `no_answer` → результата нет, ядро записывает `action.unknown_outcome` |
 | `operator` | `intervention` (вид из `permissions.md#interventions`), `reason`; `detail` | вмешательство оператора через панель (причина обязательна, `I-2`) |
 | `fault` | `fault`: `auth_error`/`limit`/`lost_ack`/`disk_full`/`crash_during_action` | сбой в окружении |
 | `backup` | `action`: `create`/`restore` | копия и восстановление |
@@ -65,30 +65,36 @@ switches = { memory = "off" }     # memory / motivation: "on" | "off"
 
 ## 6. Утверждения `[[assert]]`
 
-Каждое: уникальный `id`, `kind`, `explain` (что проверяется и что означает провал), необязательные `run`, `class`. Окно во времени задают `after`/`before` — `id` шагов; без них — весь прогон.
+Каждое: уникальный `id`, `kind`, `explain` (что проверяется и что означает провал), необязательные `run`, `class`. Окно во времени задают `after`/`before` — `id` шагов (у любого вида утверждения); без них — весь прогон. Шаг, на который ссылается `after`/`before`/`since`, должен быть общим (без `run`) либо принадлежать тому же прогону, что и утверждение; утверждение без `run` (для всех прогонов) не может ссылаться на шаг конкретного прогона — инструмент это проверяет.
 
 | `kind` | Поля | Истинно, когда |
 |---|---|---|
-| `event` | `type`; `where`; `count` **или** `min`/`max` (без поля — «хотя бы одно») | в журнале число событий типа `type` с подходящим `payload` в нужных границах |
+| `event` | `type`; `where`; `count` **или** `min`/`max` (без поля — «хотя бы одно»); `per = "cycle"` — границы действуют отдельно для каждого цикла (`cycle_id`) | в журнале число событий типа `type` с подходящим `payload` в нужных границах |
 | `absent` | `type`; `where` | таких событий нет |
 | `order` | `first`, `second` (типы) | первое такое событие по `seq` раньше второго |
 | `chain` | `effect`, `caused_by` (типы) | событие `effect` достижимо по цепочке `causes` от события `caused_by` («прослеживаемое основание», `R-002`) |
-| `state` | `path`, `op`, `value`; для `unchanged`/`changed` — `since`; необязательно `after` (момент проверки) | значение поля соответствует; `op`: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `in`, `contains`, `absent`, `unchanged`, `changed` |
+| `state` | `path`, `op`, `value`; для `unchanged`/`changed` — `since`; момент проверки — `after` (общее поле окна) | значение поля соответствует; `op`: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `in`, `contains`, `present`, `absent`, `unchanged`, `changed`. Значение берётся **сразу после** шага `after` (без `after` — в конце прогона); `unchanged`/`changed` сравнивает значение сразу после шага `since` со значением в момент проверки |
 | `text` | `marker`, `scope`, `presence`: `present`/`absent` | контрольная строка есть (нет) в области: `model_requests` (запросы к модели), `journal` (журнал и архив), `memory_retrieval` (результаты обычного извлечения), `state`, `outbound_messages` |
 | `compare` | `runs` (два разных прогона), `subject`, `relation`: `differs`/`same` | предмет сравнения в двух прогонах различается (совпадает) |
 
 Соглашения:
 
 - **Типы событий** — только из каталога `docs/spec/events.md`; неизвестный тип инструмент отвергает.
-- **`where`** — таблица «поле payload = значение»; значение `"*"` означает «поле присутствует и не пусто».
-- **Путь состояния** начинается с группы состояния (`traits`, `affect`, `beliefs`, `relations`, `intentions`, `preferences`, `selfmodel`, `world_time`) либо `memory`; дальше — логические имена из предыстории или темы.
-- **`subject`** в `compare`: `journal:<тип события>` (сравнивается payload принятых событий этого типа) или `state:<путь>`.
+- **`where`** — таблица «поле payload = значение»: значение `"*"` — «поле присутствует и не пусто»; строка с префиксом `~` — «содержит подстроку»; список — «любое из значений». Идентификаторы (`request_id`, `external_id`, `request_key` …) в сценарии **логические**: исполнитель подставляет вместо id шага или предыстории настоящий идентификатор, который он присвоил (`req_…`, внешний id обновления …). Имена полей payload (`supersedes`, `claim_kind`, `notice_level`, `focus`, `layer`, `checked_on_copy` и др.) — предварительные договорённости: срезы S05–S11 реализуют их либо меняют вместе со сценариями (`D-010`).
+- **Путь состояния** начинается с группы состояния (`traits`, `affect`, `beliefs`, `relations`, `intentions`, `preferences`, `selfmodel`, `world_time`), либо `memory`, либо `capabilities` (реестр возможностей, `permissions.md#registry`); дальше — логические имена из предыстории или темы.
+- **`subject`** в `compare`: `journal:<тип события>` (сравнивается множество событий этого типа в прогоне; служебные идентификаторы `event_id`, `seq`, `request_id`, `proposal_id`, метки времени, `state_version`, `epoch` отбрасываются, сравнивается содержательная часть payload) или `state:<путь>`. `differs` — множества различаются (в том числе когда событий нет в одном из прогонов), `same` — совпадают.
 - **Контрольная строка** (`marker`) в сценариях о непрочитанном — уникальный токен вроде `ЗЕЛЁНЫЙ-ТИГР-42`; чтобы проверка не была пустой, добавляется `text … scope = "journal" presence = "present"` — сообщение действительно сохранено приёмником.
 - **`class`**: `technical` (нарушение исключает вариант независимо от качества разговора, `R-133`) или `causal` (оценивается разработчиком отдельно, `R-136`). В группах `experiments` и `motivation` класс обязателен и должны быть утверждения обоих классов; в `required` все утверждения жёсткие, класс не нужен.
 
+## 6а. Допущения исполнителя сценариев
+
+- Лимиты сеанса (30 минут или 10 обращений, `time.md#sessions`) исполнитель отключает, кроме сценариев, которые проверяют лимит. Иначе длинные ожидания (часы и недели жизни) в сценариях были бы невозможны.
+- Все изменения в одном прогоне идут по цепочке шагов; в прогонах без `run` общие шаги выполняются одинаково.
+- Различие решений между прогонами **не** условие прохождения там, где сценарий проверяет прослеживаемость, а не результат; величину различия вычисляет метрика (`[[metric]]`).
+
 ## 7. Метрики `[[metric]]`
 
-Для `motivation` обязательна хотя бы одна (`R-132`: у каждого явления есть метрика), для `experiments` необязательны. Поля: `id`, `definition` (как считается по записям), `source` (`journal`, `state`, `trace`).
+Для `motivation` обязательна хотя бы одна (`R-132`: у каждого явления есть метрика), в остальных группах необязательны (у `required` метрики измеряют то, что не является условием прохождения). Поля: `id`, `definition` (как считается по записям), `source` (`journal`, `state`, `trace`).
 
 ## 8. Что проверяет `tools/scenarios.py validate`
 
