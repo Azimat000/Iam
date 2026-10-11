@@ -145,3 +145,22 @@
 - У каждого поля, изменённого переходом, в журнале есть пара (до, после), `reason` и причинная цепочка `caused_by` — на этом строится требование «каждое изменение имеет прослеживаемую причину».
 - Перед применением ядро проверяет инварианты группы (диапазоны, допустимые переходы статусов, правила происхождения) — нарушение отклоняет переход целиком.
 - Версия формата (`schema_version`) — отдельная от `state_version` и меняется только миграциями (срез S04).
+
+## 11. Исход действий и просьб (`world_time.world`) {#actions}
+
+Требования: R-184, R-199, R-222
+
+Пока модуль мира (S22) не определил содержимое `world`, S07 закрепляет в нём два раздела — следы того, что принято, начато и чем закончилось:
+
+- `world.actions.<action_id>` — запись `{status, kind (action|message), capability_id, params, proposal_id, cycle_id, [to, text], [attempted_event], [outcome]}`. Статус — конечный автомат (`iam.state.rules.ACTION_MACHINE`):
+
+```
+ accepted ──► attempted ──► confirmed         (подтвердил мир / канал)
+                      ├───► failed            (неудачу подтвердил мир / канал)
+                      └───► unknown_outcome   (подтверждения нет: обрыв, потерянный ответ)
+```
+
+  `accepted` создаёт принятое предложение `action`/`message` (разборщик вида, не модель напрямую); `attempted` — событие `action.attempted` / `message.out_requested` с основанием «принятое предложение»; исход — только с основанием «попытка». Исход «подтверждено» вправе записать только `world` (`action.confirmed`, `message.out_sent`); «неизвестно» — ядро (`action.unknown_outcome`, `message.out_unknown`). Статус нельзя обойти записью поля напрямую, пропустить попытку или записать два исхода.
+- `world.creator_requests.<request_key>` — `{status (accepted → open), text, proposal_id, crq_id}`. Одинаковая нерешённая просьба (тот же `request_key`) повторно не принимается (`permissions.md#registry`, C-5).
+
+Воспоминание о действии (`memory.recorded`, слой `personal`, происхождение `observation`) создаётся **отдельным** переходом и **только после** `action.confirmed` / `message.out_sent`; `sources` записи — это событие-подтверждение. Для `failed` и `unknown_outcome` воспоминания «я сделала» нет (E-8, R-199).

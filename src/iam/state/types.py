@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from iam.domain import Event, Transition
+from iam.domain import Event, Op, Transition
 
 from .rules import ACTORS
 
@@ -94,3 +94,23 @@ class RecordResult:
     event: Event | None = None
     reason: str | None = None
     violations: tuple[Violation, ...] = ()
+
+
+@dataclass(frozen=True)
+class KindContext:
+    """Что видит разборщик вида предложения (`StateController.register_kind`): запрос, на который пришёл ответ,
+    рабочее состояние (только чтение), виды уже принятых в этом ответе предложений и время жизни."""
+
+    request: dict
+    state: dict
+    accepted_kinds: tuple[str, ...]
+    life_time_ms: int
+
+
+@dataclass(frozen=True)
+class KindDecision:
+    """Решение разборщика: либо нарушение (предложение отклоняется), либо операции состояния, в которые
+    превращается принятое предложение (дальше их проверяет сам привратник, как любые операции модели)."""
+
+    ops: tuple[Op, ...] = ()
+    violation: Violation | None = None
