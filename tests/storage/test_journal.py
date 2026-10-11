@@ -63,6 +63,22 @@ class AppendOnlyTest(TmpDirCase):
         self.rejected("DELETE FROM state_snapshots")
         self.rejected("INSERT OR REPLACE INTO state_snapshots VALUES (1, 1, 2, 20, ?, '{}')", T0)
 
+    def test_snapshots_form_one_line(self):
+        """R-024: версии внутри эпохи только растут; эпоха растёт на 1 (восстановление копии), не назад."""
+        put = lambda e, v: self.s.put_snapshot(Snapshot(e, v, 1, 0, T0, {}))  # noqa: E731
+        with self.assertRaises(sqlite3.IntegrityError):
+            put(2, 1)  # первая эпоха — 1
+        put(1, 0)
+        put(1, 3)  # пропуски версий хранилище допускает (непрерывность — S05)
+        for e, v in ((1, 3), (1, 2), (3, 9), (0, 10)):
+            with self.assertRaises(sqlite3.IntegrityError, msg=(e, v)):
+                put(e, v)
+        put(2, 2)  # после восстановления нумерация продолжается от копии, в новой эпохе
+        with self.assertRaises(sqlite3.IntegrityError):
+            put(1, 4)  # в прошлую эпоху писать нельзя
+        put(2, 3)
+        self.assertEqual((self.s.latest_snapshot().epoch, self.s.latest_snapshot().state_version), (2, 3))
+
     def test_archive_layer_immutable_personal_mutable(self):
         a = mem("архивное", layer="archive")
         p = mem("личное")

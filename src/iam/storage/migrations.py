@@ -24,18 +24,15 @@ class Migration:
     statements: tuple[str, ...]
 
 
-def _append_only(table: str, *, deny_delete: bool = True, when: str = "") -> list[str]:
-    """Триггеры «только дописывать»: UPDATE (и DELETE) отклоняются самой базой."""
+def _append_only(table: str, *, when: str = "") -> list[str]:
+    """Триггеры «только дописывать»: UPDATE и DELETE отклоняются самой базой."""
     cond = f" WHEN {when}" if when else ""
-    out = [
+    return [
         f"CREATE TRIGGER {table}_no_update BEFORE UPDATE ON {table}{cond} "
         f"BEGIN SELECT RAISE(ABORT, 'iam: {table} только дописывается (UPDATE запрещён)'); END",
+        f"CREATE TRIGGER {table}_no_delete BEFORE DELETE ON {table}{cond} "
+        f"BEGIN SELECT RAISE(ABORT, 'iam: {table} только дописывается (DELETE запрещён)'); END",
     ]
-    if deny_delete:
-        out.append(
-            f"CREATE TRIGGER {table}_no_delete BEFORE DELETE ON {table}{cond} "
-            f"BEGIN SELECT RAISE(ABORT, 'iam: {table} только дописывается (DELETE запрещён)'); END")
-    return out
 
 
 def _no_replace(table: str, key_cond: str) -> str:
@@ -97,6 +94,13 @@ V1 = Migration(1, "начальная схема: журнал, снимки, п
     ) STRICT""",
     *_append_only("state_snapshots"),
     _no_replace("state_snapshots", "epoch = NEW.epoch AND state_version = NEW.state_version"),
+    # Одна последовательность состояний (R-024): эпоха не убывает и растёт только на 1 (восстановление
+    # копии), внутри эпохи версия строго растёт. Непрерывность версий проверяет StateController (S05).
+    "CREATE TRIGGER state_snapshots_one_line BEFORE INSERT ON state_snapshots "
+    "WHEN NEW.epoch < (SELECT MAX(epoch) FROM state_snapshots) "
+    "OR NEW.epoch > (SELECT COALESCE(MAX(epoch), 0) + 1 FROM state_snapshots) "
+    "OR NEW.state_version <= (SELECT MAX(state_version) FROM state_snapshots WHERE epoch = NEW.epoch) "
+    "BEGIN SELECT RAISE(ABORT, 'iam: снимок вне единой последовательности состояний'); END",
 
     # Записи памяти: одна модель для всех слоёв и видов. Слой archive неизменяем (L-1).
     """CREATE TABLE memory_records (

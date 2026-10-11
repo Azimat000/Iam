@@ -51,6 +51,14 @@ def _body_hash(event: Event) -> str:
     return hashlib.sha256(canonical_json({"type": event.type, "payload": event.payload}).encode()).hexdigest()
 
 
+def _abandon(con: db.Connection | None, lock: WriterLock | None) -> None:
+    """Неудачное открытие: закрыть соединение и отпустить замок, ничего не оставляя висеть."""
+    if con is not None:
+        con.close()
+    if lock is not None:
+        lock.release()
+
+
 @dataclass(frozen=True)
 class Snapshot:
     epoch: int
@@ -107,6 +115,7 @@ class Store:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         lock = WriterLock(path).acquire()
+        con = None
         try:
             if path.exists():
                 raise StorageError(f"{path} уже существует: одна личность — один файл")
@@ -118,7 +127,7 @@ class Store:
                     ("persona_id", persona_id), ("store_kind", kind), ("created_at", created_at or _now_iso())])
             return cls(con, path, lock)
         except BaseException:
-            lock.release()
+            _abandon(con, lock)
             raise
 
     @classmethod
@@ -130,6 +139,7 @@ class Store:
         if not path.exists():
             raise NotFound(f"{path}: файла личности нет")
         lock = None if readonly else WriterLock(path).acquire()
+        con = None
         try:
             con = db.connect(path, readonly=readonly)
             if readonly:
@@ -145,8 +155,7 @@ class Store:
                 raise PersonaMismatch(f"{path} принадлежит {store.persona_id}, а ожидалась {expect_persona}")
             return store
         except BaseException:
-            if lock is not None:
-                lock.release()
+            _abandon(con, lock)
             raise
 
     @property

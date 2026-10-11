@@ -212,5 +212,50 @@ class ConstantsTest(unittest.TestCase):
         self.assertEqual(canonical_json({"б": 1, "а": [1, 2]}), '{"а":[1,2],"б":1}')
 
 
+class ValidatorKeywordsTest(unittest.TestCase):
+    """Каждое поддержанное ключевое слово действительно проверяет (а не пропускает молча)."""
+
+    def chk(self, schema, value):
+        return jsonschema.check(schema, value, SPEC / "schemas")
+
+    def test_keywords(self):
+        cases = [
+            ({"const": 1}, 1, 2),
+            ({"type": "string", "maxLength": 2}, "аб", "абв"),
+            ({"type": "integer", "minimum": 0, "maximum": 3}, 3, 4),
+            ({"type": "integer", "minimum": 0}, 0, -1),
+            ({"type": "number"}, 1.5, True),
+            ({"type": "array", "uniqueItems": True}, [1, 2], [1, 1]),
+            ({"type": "array", "minItems": 1, "items": {"type": "integer"}}, [1], ["x"]),
+            ({"type": "object", "properties": {"a": {"type": "null"}}}, {"a": None}, {"a": 1}),
+            ({"allOf": [{"type": "integer"}, {"minimum": 5}]}, 5, 4),
+            ({"not": {"const": "x"}}, "y", "x"),
+            ({"if": {"const": 1}, "then": {"type": "boolean"}}, 2, 1),
+        ]
+        for schema, good, bad in cases:
+            self.assertEqual(self.chk(schema, good), [], (schema, good))
+            self.assertNotEqual(self.chk(schema, bad), [], (schema, bad))
+        self.assertEqual(self.chk({"if": {"const": 1}}, 1), [], "if без then ничего не требует")
+
+    def test_ref_to_sibling_file(self):
+        good = sample("response.ok.valid.json")
+        self.assertEqual(self.chk({"$ref": "response.schema.json"}, good), [])
+        self.assertNotEqual(self.chk({"$ref": "proposal.schema.json"}, {}), [])
+
+    def test_validate_methods_raise(self):
+        bad_ev = Event(event_id="bad", persona_id="per_ABCDEFGH", type="input.arrived", occurred_at=T0,
+                       life_time_ms=0, source=Source("receiver", "tg"), idempotency_key="rx:tg:1", epoch=1,
+                       state_version=0, changes_state=False)
+        with self.assertRaises(ValidationError):
+            bad_ev.validate()
+        self.assertTrue(bad_ev.errors())
+        tr = Transition("trn_ABCDEFGH", "per_ABCDEFGH", 1, 0, (), "причина", ("evt_ABCDEFGH",))
+        with self.assertRaises(ValidationError):
+            tr.validate()
+
+
+T0 = "2026-10-11T18:00:00Z"
+
+
 if __name__ == "__main__":
     unittest.main()
