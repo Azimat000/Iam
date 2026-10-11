@@ -1,6 +1,6 @@
 # Свидетельство S06: копии, восстановление, экспорт, место
 
-Снято в сессии S06 (2026-10-11T21:12Z). Python 3.13.16, SQLite 3.45.1, coverage.py 7.10.6.
+Снято в сессии S06 (2026-10-11T21:21Z), после правок по независимой проверке. Python 3.13.16, SQLite 3.45.1, coverage.py 7.10.6.
 
 ## `python3 -m unittest discover -s tests/backup -t tests -v`
 test_backup_of_missing_database_fails_cleanly ... ok
@@ -11,8 +11,9 @@ test_backup_with_unopenable_database_still_reports_error ... ok
 test_default_backup_dir_is_used ... ok
 test_export_and_secret_env ... ok
 test_export_reports_redactions ... ok
+test_os_errors_are_reported_not_traced ... ok
 test_refusals_have_their_own_messages ... ok
-test_restore_then_verify_everything ... /home/user/Iam/src/iam/storage/db.py:35: ResourceWarning: unclosed database in <iam.storage.db.Connection object at 0x7ff647bce550>
+test_restore_then_verify_everything ... ok
 test_restore_without_live_db_prints_no_gap ... ok
 test_runs_as_module_and_console_entry ... ok
 test_verify_failures_and_usage_errors ... ok
@@ -64,6 +65,7 @@ test_ordinary_text_is_not_flagged ... ok
 test_overlapping_findings_merge ... ok
 test_partially_overlapping_findings_extend_the_first ... ok
 test_short_canary_is_refused ... ok
+test_telegram_token_inside_a_bot_api_url_and_russian_words ... ok
 R-219: сканер проходит по файлам репозитория (шаблоны высокой точности) — секретов нет. ... ok
 test_copy_failure_of_any_kind_rejects_migration ... ok
 test_copy_is_made_before_migration_and_describes_it ... ok
@@ -76,9 +78,11 @@ test_default_backup_dir ... ok
 test_disk_full_during_copy_is_passed_through_and_cleaned ... ok
 test_failed_snapshot_leaves_directory_untouched ... ok
 test_failure_after_naming_removes_the_half_made_snapshot ... ok
+test_fresh_snapshot_survives_rotation_even_if_the_clock_went_back ... ok
 test_keep_parameter_and_bad_arguments ... ok
 test_no_space_means_no_snapshot_and_no_changes ... ok
 test_other_damages_are_detected ... ok
+test_paths_with_uri_special_characters ... ok
 R-201: после четвёртого снимка остаются три последних. ... ok
 Писатель держит замок и продолжает жить; копия — отдельный самодостаточный файл. ... ok
 test_snapshot_is_verified_and_described_by_manifest ... ok
@@ -104,12 +108,12 @@ test_default_reserve_and_validation ... ok
 test_ensure_requires_reserve_plus_need ... ok
 test_is_disk_full ... ok
 test_nonexistent_path_checks_nearest_existing_parent ... ok
-Ran 101 tests in 4.238s
+Ran 105 tests in 4.695s
 OK
 
 ## `python3 tools/covcheck.py` (фрагмент: модули среза)
 ```
-Ran 508 tests in 66.727s
+Ran 512 tests in 65.404s
 OK
 src/iam/backup/__init__.py                     100.0%   100.0%  ok [критичный]
 src/iam/backup/errors.py                       100.0%   100.0%  ok [критичный]
@@ -119,6 +123,8 @@ src/iam/backup/scan.py                         100.0%   100.0%  ok [критич
 src/iam/backup/snapshots.py                    100.0%   100.0%  ok [критичный]
 src/iam/backup/space.py                        100.0%   100.0%  ok [критичный]
 src/iam/cli.py                                 100.0%   100.0%  ok
+src/iam/state/replay.py                        100.0%   100.0%  ok [критичный]
 src/iam/state/restore.py                       100.0%   100.0%  ok [критичный]
+src/iam/storage/db.py                          100.0%   100.0%  ok [критичный]
 Модулей: 36, ниже порога: 0.
 ```

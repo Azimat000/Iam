@@ -145,6 +145,10 @@ class CliTest(BackupCase):
         self.assertEqual(code, 0, out)
         self.assertIn("примечание", out)
 
+    def test_os_errors_are_reported_not_traced(self):
+        code, _, err = run("export", "--db", str(self.tmp / "нет.db"), "--out", str(self.tmp / "q.zip"))
+        self.assertEqual((code, err.startswith("ОШИБКА")), (1, True))
+
     def test_restore_without_live_db_prints_no_gap(self):
         run("backup", "--db", str(self.db), "--backup-dir", self.bdir)
         bk = list_backups(self.backups)[0][0].path

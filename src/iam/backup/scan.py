@@ -21,7 +21,7 @@ REDACTED = "[СЕКРЕТ УДАЛЁН]"
 
 # Шаблоны высокой точности: формат секрета узнаваем сам по себе.
 STRICT_PATTERNS: dict[str, re.Pattern] = {
-    "telegram_bot_token": re.compile(r"\b\d{8,10}:[A-Za-z0-9_-]{35}\b"),
+    "telegram_bot_token": re.compile(r"(?<!\d)\d{8,10}:[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])"),
     "provider_api_key": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}"),
     "github_token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})"),
     "aws_access_key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
@@ -32,7 +32,8 @@ STRICT_PATTERNS: dict[str, re.Pattern] = {
 }
 # Присваивание «слово-секрет = значение»: шире, поэтому только для данных личности (в репозитории есть примеры в документах).
 ASSIGNMENT = re.compile(
-    r"(?i)\b(?:api[_-]?key|secret|token|passw(?:or)?d|passwd|auth(?:orization)?)[\w-]*\s*[:=]\s*[\"']?"
+    r"(?i)\b(?:api[_-]?key|secret|token|passw(?:or)?d|passwd|auth(?:orization)?|парол\w*|токен\w*|секрет\w*|ключ\w*)"
+    r"[\w-]*\s*[:=]\s*[\"']?"
     r"(?P<value>(?=[^\s\"']*\d)(?=[^\s\"']*[A-Za-z])[^\s\"',;]{12,})")
 ENV_SECRET_NAME = re.compile(r"(?i)(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|AUTH)")
 MIN_ENV_SECRET = 8
@@ -45,8 +46,7 @@ class Finding:
     end: int
 
     def mask(self, text: str) -> str:
-        raw = text[self.start:self.end]
-        return f"{raw[:2]}…({len(raw)} зн.)" if len(raw) > 6 else "…"
+        return f"…({self.end - self.start} зн.)"   # значение не показываем вовсе
 
 
 def _canary_forms(secret: str) -> set[str]:

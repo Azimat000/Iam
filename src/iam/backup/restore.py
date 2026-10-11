@@ -18,7 +18,7 @@ from iam.state import mark_restored, verify
 from iam.storage import Store
 
 from .errors import BackupCorrupt, RestoreRefused
-from .snapshots import _cleanup, _copy_database, _fsync_dir, _fsync_file, _iso, check_backup, load_info, ro_connect
+from .snapshots import _cleanup, dir_lock, _copy_database, _fsync_dir, _fsync_file, _iso, check_backup, load_info, ro_connect
 from .space import SpaceGuard
 
 _BACKUP_FIELDS = ("snapshot_id", "kind", "created_at", "sha256", "last_seq", "epoch", "state_version",
@@ -52,8 +52,13 @@ def _live_last_seq(live_db: Path) -> int | None:
 
 def restore_backup(backup_file: str | Path, target_dir: str | Path, *, reason: str, live_db: str | Path | None = None,
                    space: SpaceGuard | None = None, now: dt.datetime | None = None) -> RestoreResult:
-    """Восстановить копию в `target_dir/<личность>.db`. Отказ до записи, если база по этому пути уже есть."""
-    backup_file, target_dir = Path(backup_file), Path(target_dir)
+    """Восстановить копию в `target_dir/<личность>.db`. Отказ до записи, если база по этому пути уже есть.
+    Каталог копий на время восстановления заблокирован: параллельная ротация не удалит копию из-под рук."""
+    with dir_lock(Path(backup_file).resolve().parent):
+        return _restore(Path(backup_file), Path(target_dir), reason, live_db, space, now)
+
+
+def _restore(backup_file: Path, target_dir: Path, reason, live_db, space, now) -> RestoreResult:
     if not reason or not reason.strip():
         raise RestoreRefused("восстановление без причины не выполняется (это вмешательство оператора)")
     rep = check_backup(backup_file)

@@ -36,6 +36,13 @@ class PatternTest(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertIn(kind, self.kinds(text))
 
+    def test_telegram_token_inside_a_bot_api_url_and_russian_words(self):
+        self.assertEqual(self.kinds(f"https://api.telegram.org/bot{TG}/getMe"), ["telegram_bot_token"])
+        self.assertEqual(self.kinds(f"бот_{TG}."), ["telegram_bot_token"])
+        self.assertEqual(self.kinds("пароль: Hunter2Hunter2xx"), ["secret_assignment"])
+        self.assertEqual(self.kinds("токен = abc123def456ghi"), ["secret_assignment"])
+        self.assertEqual(self.kinds("12" + TG), [], "длиннее числа идентификатора — не токен")
+
     def test_ordinary_text_is_not_flagged(self):
         for text in ["Она прочитала главу 1 и вспомнила чай с мятой.", "2026-10-11T20:53:00.123Z", "evt_AbCdEfGhIj12",
                      "rx:tg:123456789:1", "token: короткий", "пароль обсуждали вчера", "password: hunter"]:
@@ -72,9 +79,9 @@ class PatternTest(unittest.TestCase):
         text = f"x {TG} y"
         (f,) = sc.find(text)
         self.assertNotIn(TG, f.mask(text))
-        self.assertEqual(f.mask(text), "12…(" + str(len(TG)) + " зн.)")
+        self.assertEqual(f.mask(text), "…(" + str(len(TG)) + " зн.)")
         (short,) = SecretScanner(["abcd"], use_env=False).find("abcd")
-        self.assertEqual(short.mask("abcd"), "…")
+        self.assertEqual(short.mask("abcd"), "…(4 зн.)")
         for line in sc.describe(text, "файл"):
             self.assertNotIn(TG, line)
 

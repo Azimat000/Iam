@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 import sqlite3
+from urllib.parse import quote
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -80,7 +81,7 @@ def _iso(now: dt.datetime) -> str:
 
 def ro_connect(path: str | Path) -> sqlite3.Connection:
     """Обычное соединение «только чтение» (без сторожа ядра: копии и проверки не пишут в базу)."""
-    con = sqlite3.connect(f"file:{Path(path)}?mode=ro", uri=True)
+    con = sqlite3.connect(f"file:{quote(str(Path(path).resolve()))}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     return con
 
@@ -256,8 +257,11 @@ def list_backups(backup_dir: str | Path) -> tuple[list[BackupInfo], list[Path]]:
     return infos, broken
 
 
-def _rotate(directory: Path, keep: int) -> tuple[list[Path], list[Path]]:
+def _rotate(directory: Path, keep: int, newest: Path | None = None) -> tuple[list[Path], list[Path]]:
+    """`newest` — только что сделанный снимок: он считается самым свежим независимо от записанного времени
+    (часы могли уйти назад) и никогда не удаляется ротацией."""
     infos, broken = list_backups(directory)
+    infos.sort(key=lambda i: i.path == newest)   # устойчивая сортировка: «новейший» в конец
     healthy, corrupt = [], list(broken)
     for info in infos:
         if check_backup(info.path, deep=False).ok:
@@ -346,7 +350,7 @@ def create_backup(db_path: str | Path, backup_dir: str | Path, *, kind: str = "r
                 final.unlink(missing_ok=True)
                 manifest_path(final).unlink(missing_ok=True)
             raise
-        rotated, corrupt = _rotate(directory, keep)
+        rotated, corrupt = _rotate(directory, keep, final)
     result = BackupResult(BackupInfo(final, manifest), rotated, corrupt)
     if controller is not None:
         res = controller.record_event(EventSpec("system.backup_created", f"bak:{snapshot_id}", {

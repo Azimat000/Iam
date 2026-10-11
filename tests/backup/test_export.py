@@ -184,6 +184,8 @@ class VerifyExportTest(BackupCase):
         self.assertTrue(any("events.jsonl: не совпадает" in p for p in probs), probs)
         probs = verify_export(self.rewrite(out, **{"inbox.jsonl": None}))
         self.assertTrue(any("нет файла inbox.jsonl" in p for p in probs), probs)
+        for bad in (b"{not json", b'{"kind":"iam-export","format":1}', b"[]"):
+            self.assertEqual(verify_export(self.rewrite(out, **{"manifest.json": bad}))[0].split(" ")[0] in ("manifest.json", "это"), True)
         probs = verify_export(self.rewrite(out, **{"events.jsonl": None}))
         self.assertTrue(any("нет файла events.jsonl" in p for p in probs), probs)
 

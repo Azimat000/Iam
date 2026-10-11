@@ -154,9 +154,13 @@ def verify_export(path: str | Path, *, scanner: SecretScanner | None = None) -> 
         names = set(z.namelist())
         if "manifest.json" not in names:
             return ["нет manifest.json"]
-        manifest = json.loads(z.read("manifest.json"))
-        if manifest.get("kind") != KIND or manifest.get("format") != FORMAT:
-            return [f"это не пакет экспорта формата {FORMAT}"]
+        try:
+            manifest = json.loads(z.read("manifest.json"))
+            if manifest.get("kind") != KIND or manifest.get("format") != FORMAT:
+                return [f"это не пакет экспорта формата {FORMAT}"]
+            manifest["files"].items(), manifest["counts"].items()
+        except (ValueError, AttributeError, KeyError):
+            return ["manifest.json не разбирается или неполон"]
         files = {n: z.read(n) for n in names}
     for name, info in manifest["files"].items():
         raw = files.get(name)

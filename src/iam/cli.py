@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         _err(f"ОТКАЗ: {e}")
     except NotEnoughSpace as e:
         _err(f"ОТКАЗ: {e}")
-    except (BackupError, StorageError, sqlite3.DatabaseError, FileExistsError, ValueError) as e:
+    except (BackupError, StorageError, sqlite3.DatabaseError, OSError, ValueError) as e:
         _err(f"ОШИБКА: {e}")
     return 1
 

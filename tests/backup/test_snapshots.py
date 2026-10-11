@@ -1,6 +1,7 @@
 """Снимки: онлайн-копия, проверка, ротация до трёх, повреждённая копия, копия перед миграцией (R-200, R-201)."""
 import datetime as dt
 import json
+import shutil
 import sqlite3
 import unittest
 from pathlib import Path
@@ -66,6 +67,26 @@ class SnapshotTest(BackupCase):
         for _ in range(3):
             create_backup(self.db, self.backups, now=self.tick())
         self.assertEqual(len(list(self.backups.glob("*.db"))), 3)
+
+    def test_fresh_snapshot_survives_rotation_even_if_the_clock_went_back(self):
+        self.persona()
+        for _ in range(3):
+            create_backup(self.db, self.backups, now=self.tick())
+        back = create_backup(self.db, self.backups, now=T0 - dt.timedelta(days=3))
+        self.assertTrue(back.info.path.exists() and check_backup(back.info.path).ok)
+        self.assertNotIn(back.info.path, back.rotated)
+        self.assertEqual(len(list_backups(self.backups)[0]), 3)
+
+    def test_paths_with_uri_special_characters(self):
+        self.persona().store.close()
+        for name in ("a#b", "a?b", "a%20b", "a b"):
+            with self.subTest(name=name):
+                d = self.tmp / name
+                d.mkdir()
+                shutil.copy(self.db, d / self.db.name)
+                res = create_backup(d / self.db.name, d / "b", now=self.tick())
+                self.assertTrue(check_backup(res.info.path).ok)
+                self.assertTrue(verify_database(res.info.path).ok)
 
     def test_keep_parameter_and_bad_arguments(self):
         self.persona()
