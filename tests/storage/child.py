@@ -1,0 +1,57 @@
+"""Подпроцесс для тестов аварии и замка (не тест; запускается тестами).
+
+  child.py hold <db>              — открыть личность для записи, напечатать READY и ждать (замок)
+  child.py crash <db> <stop_tx>   — писать переходы бесконечно; в переходе №stop_tx остановиться
+                                    посреди транзакции, напечатать MID и ждать kill -9 (0 — не останавливаться)
+"""
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+
+from iam.domain import Event, MemoryRecord, Source, new_id  # noqa: E402
+from iam.storage import Snapshot, Store  # noqa: E402
+
+EVENTS_PER_TX = 6
+T0 = "2026-10-11T18:00:00Z"
+
+
+def transition(store: Store, stop_here: bool) -> None:
+    with store.transaction():
+        snap = store.latest_snapshot()
+        version = (snap.state_version if snap else 0) + 1
+        trn = new_id("trn")
+        last = None
+        for i in range(EVENTS_PER_TX):
+            if stop_here and i == EVENTS_PER_TX // 2:
+                print("MID", flush=True)
+                time.sleep(60)
+            last, _ = store.append_event(Event(
+                event_id=new_id("evt"), persona_id=store.persona_id, type="memory.recorded", occurred_at=T0,
+                life_time_ms=version, source=Source("core", "crash-test"), idempotency_key=f"mem:{trn}:{i}",
+                epoch=1, state_version=version, changes_state=True, payload={"transition_id": trn, "i": i}))
+        store.add_memory(MemoryRecord(
+            memory_id="mem_" + trn[4:], persona_id=store.persona_id, layer="personal", kind="episodic",
+            origin="observation", content={"text": f"переход {trn}"}, source=Source("core", "crash-test"),
+            created_at=T0, created_life_ms=version, sources=(last.event_id,)))
+        store.put_snapshot(Snapshot(1, version, last.seq, version, T0, {"transition_id": trn}))
+
+
+def main(argv):
+    mode, db = argv[0], argv[1]
+    store = Store.open(db)
+    if mode == "hold":
+        print("READY", flush=True)
+        time.sleep(60)
+        return
+    stop_tx = int(argv[2])
+    print("STARTED", flush=True)
+    n = 0
+    while True:
+        n += 1
+        transition(store, n == stop_tx)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
