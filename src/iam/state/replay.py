@@ -3,7 +3,9 @@
 Журнал событий — источник истины: каждое событие-носитель перехода (`payload.transition`) хранит операции
 и пары (до, после). Воспроизведение применяет эти операции с нуля теми же функциями, что и контроллер, и
 сверяет результат с записанными изменениями и со снимком каждой версии. Расхождение — повреждение или
-обход контроллера. Воспроизведение через смену эпохи (восстановление копии) выполняет срез S06.
+обход контроллера. Эпоха меняется только восстановлением копии (D-013): вмешательство оператора
+`restore_backup` открывает новую эпоху (+1) на той же версии состояния, `system.restored` закрепляет её, и в
+этой точке есть свой снимок `(новая эпоха, та же версия)`. Любая другая смена эпохи — `ReplayError`.
 """
 from __future__ import annotations
 
@@ -26,7 +28,7 @@ class ReplayResult:
     state: dict
     memory: dict[str, dict]            # memory_id → запись после всех переходов (только записанные переходами)
     last_seq: int
-    snapshots_at: dict[int, int] = field(default_factory=dict)   # версия → seq последнего события перехода
+    snapshots_at: dict[tuple[int, int], int] = field(default_factory=dict)   # (эпоха, версия) → seq последнего события
     problems: list[str] = field(default_factory=list)
 
 
@@ -47,15 +49,18 @@ def replay(store: Store) -> Iterator[ReplayResult]:
     на этой версии). Несовпадения записываются в `problems`; пустой список — журнал согласован."""
     state, memory, version, last_life = empty_state(), {}, 0, 0
     res = ReplayResult(1, 0, state, memory, 0)
-    marks: dict[int, int] = {}
+    marks: dict[tuple[int, int], int] = {}
+    res.snapshots_at = marks
     for ev in store.events():
         if ev.epoch != res.epoch:
-            raise ReplayError(f"seq={ev.seq}: смена эпохи {res.epoch} → {ev.epoch}; воспроизведение через откат — S06")
+            if not _opens_restored_epoch(ev, res.epoch, version):
+                raise ReplayError(f"seq={ev.seq}: смена эпохи {res.epoch} → {ev.epoch} не восстановлением копии")
+            res.epoch = ev.epoch
         if ev.life_time_ms < last_life:
             res.problems.append(f"seq={ev.seq}: время жизни убывает ({ev.life_time_ms} < {last_life})")
         last_life = max(last_life, ev.life_time_ms)
         if ev.changes_state:
-            marks[ev.state_version] = ev.seq
+            marks[(ev.epoch, ev.state_version)] = ev.seq
         if "transition" in ev.payload and ev.changes_state:
             version += 1
             res.last_seq = ev.seq
@@ -71,6 +76,19 @@ def replay(store: Store) -> Iterator[ReplayResult]:
                                res.problems)
         elif ev.changes_state and ev.state_version != version:
             res.problems.append(f"seq={ev.seq}: событие перехода с версией {ev.state_version}, а переход — {version}")
+        elif ev.type == "system.restored":
+            res.last_seq = ev.seq
+            if (ev.payload.get("from_epoch"), ev.payload.get("to_epoch")) != (ev.epoch - 1, ev.epoch):
+                res.problems.append(f"seq={ev.seq}: system.restored с эпохами {ev.payload.get('from_epoch')} → "
+                                    f"{ev.payload.get('to_epoch')}, а событие в эпохе {ev.epoch}")
+            yield ReplayResult(res.epoch, version, copy.deepcopy(state), copy.deepcopy(memory), ev.seq, marks,
+                               res.problems)
+
+
+def _opens_restored_epoch(ev: Event, epoch: int, version: int) -> bool:
+    """Эпоху открывает только вмешательство оператора «restore_backup» на той же версии состояния."""
+    return (ev.epoch == epoch + 1 and ev.type == "operator.intervention" and ev.state_version == version
+            and ev.payload.get("kind") == "restore_backup")
 
 
 def verify(store: Store) -> list[str]:
@@ -81,25 +99,27 @@ def verify(store: Store) -> list[str]:
     try:
         for step in replay(store):
             final = step
+            key = (step.epoch, step.state_version)
             try:
-                snaps[step.state_version] = snap = store.get_snapshot(step.epoch, step.state_version)
+                snaps[key] = snap = store.get_snapshot(*key)
             except NotFound:
-                problems.append(f"нет снимка версии {step.state_version}")
+                problems.append(f"нет снимка версии {step.state_version} (эпоха {step.epoch})")
                 continue
             if canonical_json(snap.state) != canonical_json(step.state):
-                problems.append(f"снимок версии {step.state_version} не совпадает с воспроизведённым состоянием")
+                problems.append(f"снимок версии {step.state_version} (эпоха {step.epoch}) не совпадает "
+                                f"с воспроизведённым состоянием")
     except ReplayError as e:
         problems.append(str(e))
     if final is None:
         latest = store.latest_snapshot()
         return problems + ([f"снимок есть, а переходов в журнале нет: версия {latest.state_version}"] if latest else [])
     problems += final.problems
-    for version, snap in snaps.items():   # последнее событие каждой версии известно только после полного прохода
-        if snap.at_seq != final.snapshots_at[version]:
-            problems.append(f"снимок версии {version}: at_seq={snap.at_seq}, последнее событие перехода "
-                            f"seq={final.snapshots_at[version]}")
+    for (epoch, version), snap in snaps.items():   # последнее событие каждой версии известно после полного прохода
+        if snap.at_seq != final.snapshots_at[(epoch, version)]:
+            problems.append(f"снимок версии {version} (эпоха {epoch}): at_seq={snap.at_seq}, последнее событие "
+                            f"seq={final.snapshots_at[(epoch, version)]}")
     latest = store.latest_snapshot()
-    if latest is None or latest.state_version != final.state_version:
+    if latest is None or (latest.epoch, latest.state_version) != (final.epoch, final.state_version):
         problems.append("последний снимок не соответствует последнему переходу")
     for mid, rec in final.memory.items():
         try:
