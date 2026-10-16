@@ -1,6 +1,6 @@
 {
   "project": "Iam — ядро цифровой личности",
-  "current_slice": "S08",
+  "current_slice": "S09",
   "slices": {
     "S00": {
       "title": "Основа проекта и память между сессиями",
@@ -94,7 +94,10 @@
       "depends": [
         "S07"
       ],
-      "status": "todo"
+      "status": "done",
+      "started": "2026-10-16T19:44Z",
+      "finished": "2026-10-16T20:34Z",
+      "summary": "Изолированный исполнитель Claude Code (подписка): провайдер, классификатор, сборщик docker run, бюджет и пауза, скрипты проверки на Mac; живая проверка — G11"
     },
     "S09": {
       "title": "Каркас: Telegram-приёмник и отправка",
@@ -271,12 +274,14 @@
     {
       "id": "G01",
       "slice": "S08",
-      "status": "open",
+      "status": "resolved",
       "text": "Проверить на Mac пользователя: Docker arm64, авторизацию Codex, формат ответа, изоляцию (скрипты подготовит S08).",
       "blocks_start": [
         "S26",
         "S27"
-      ]
+      ],
+      "answer": "Заменён барьером G10: вместо Codex используется Claude Code (решение пользователя 2026-10-16, D-015).",
+      "resolved": "2026-10-16T19:43Z"
     },
     {
       "id": "G02",
@@ -357,13 +362,23 @@
       "text": "Непрерывность памяти: сделайте ветку claude/trusting-feynman-q25phh основной (main) в GitHub или разрешите мне создавать PR и сливать после каждого среза. Иначе новая сессия может стартовать без этой памяти (подробности в CLAUDE.md, `memory.py sync`).",
       "answer": "Пользователь разрешил PR и слияние после каждого среза; основная ветка = claude/trusting-feynman-q25phh (D-006).",
       "resolved": "2026-10-11T18:37Z"
+    },
+    {
+      "id": "G11",
+      "slice": "S08",
+      "status": "open",
+      "text": "Проверить на Mac пользователя: Docker arm64, авторизацию Claude Code (подписка), формат ответа, изоляцию (скрипты подготовит S08).",
+      "blocks_start": [
+        "S26",
+        "S27"
+      ]
     }
   ],
   "assumptions": [
     {
       "id": "A1",
-      "status": "pending-confirm",
-      "text": "«Вместо Codex делаем в Claude Code» = РАЗРАБОТКУ ведёт Claude Code. Рабочий интеллект личности остаётся за интерфейсом CognitiveProvider (заменяемый); окончательный провайдер решается в S08/S17."
+      "status": "confirmed",
+      "text": "Подтверждено пользователем (2026-10-16): рабочий интеллект личности — модели подписки Claude Code (claude CLI), не Codex. Интерфейс CognitiveProvider остаётся заменяемым; итоговый выбор архитектуры — S17."
     },
     {
       "id": "A2",
@@ -376,5 +391,5 @@
       "text": "Один срез = одна сессия. Память между сессиями — файлы в репозитории (CLAUDE.md, docs/state.json, docs/JOURNAL.md, docs/DECISIONS.md, requirements.toml)."
     }
   ],
-  "revision": 18
+  "revision": 23
 }

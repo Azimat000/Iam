@@ -1,0 +1,24 @@
+# Сеть и посредник для исполнителя (S08). Запуск: docker compose -f docker/compose.yaml up -d
+# iam-sandbox — внутренняя сеть (internal: true): из неё нет маршрута наружу, кроме как через iam-proxy.
+# iam-egress — обычная сеть только для посредника.
+name: iam
+services:
+  iam-proxy:
+    image: ubuntu/squid:6.6-24.04_edge    # закрепите дайджест при первом запуске на Mac
+    platform: linux/arm64
+    container_name: iam-proxy
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]   # минимум, который нужен squid при старте
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/var/spool/squid:rw,size=32m", "/var/log/squid:rw,size=16m", "/run:rw,size=8m"]
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+    networks: [iam-sandbox, iam-egress]
+networks:
+  iam-sandbox:
+    name: iam-sandbox
+    internal: true
+  iam-egress:
+    name: iam-egress
