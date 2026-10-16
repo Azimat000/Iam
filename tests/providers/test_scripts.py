@@ -36,7 +36,7 @@ class StaticTest(unittest.TestCase):
     def test_script_has_the_safety_checks_it_promises(self):
         text = SCRIPT.read_text(encoding="utf-8")
         for needle in ("права файла токена должны быть 600", "не должен лежать в репозитории", "CANARY", "--noproxy",
-                       "render_report.py", "set -u"):
+                       "render_report.py", "set -u", "network inspect"):
             self.assertIn(needle, text)
         self.assertTrue(os.access(SCRIPT, os.R_OK))
 
@@ -116,6 +116,9 @@ class ReportTest(unittest.TestCase):
             p.write_text('{"status": "PASS"}\n', encoding="utf-8")
             with self.assertRaises(ValueError):
                 render_report.read_results(p)
+            p.write_text('{"id": "arch", "status": "FAIL"}\n{"id": "arch", "status": "PASS"}\n', encoding="utf-8")
+            with self.assertRaises(ValueError):          # повторная запись проверки не должна «перекрасить» провал
+                render_report.read_results(p)
 
     def test_main_writes_the_report_and_returns_the_verdict(self):
         import io
@@ -177,9 +180,38 @@ class ScriptFlowTest(unittest.TestCase):
                 results = self.results()
                 self.assertEqual(results[check]["status"], "FAIL", check)
                 others = [i for i, r in results.items() if r["status"] == "FAIL" and i != check]
-                # без входа второй живой запрос тоже не удаётся — это следствие, а не отдельная дыра
+                # без входа запрос со списком инструментов тоже не удаётся — это следствие, а не отдельная дыра
                 self.assertEqual(others, ["no_tools"] if check == "auth" else [], f"{check}: лишние провалы {others}")
                 self.assertIn("НЕ ПРОЙДЕНА", (self.tmp / "report.md").read_text(encoding="utf-8"))
+
+    def test_dead_docker_gives_no_false_pass(self):
+        """Контейнер не запускается вовсе: ни одна проверка устройства не должна показать PASS (ложное «секретов нет»)."""
+        done = self.run_script(SHIM_DEAD="1")
+        self.assertEqual(done.returncode, 1)
+        results = self.results()
+        passed = [i for i, r in results.items() if r["status"] == "PASS"]
+        self.assertEqual(passed, [])
+        for check in ("arch", "non_root", "no_mounts", "canary_file", "canary_env", "no_docker_socket", "read_only_root",
+                      "no_capabilities", "limits", "net_allowed", "net_denied", "net_direct_denied", "sandbox_internal"):
+            self.assertEqual(results[check]["status"], "FAIL", check)
+
+    def test_missing_init_event_is_a_failure_not_a_pass(self):
+        done = self.run_script(bad="no_init")
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.results()["no_tools"]["status"], "FAIL")
+        self.assertIn("init", self.results()["no_tools"]["detail"])
+
+    def test_token_file_must_hold_exactly_the_token_line(self):
+        extra = self.tmp / "extra.env"
+        extra.write_text("CLAUDE_CODE_OAUTH_TOKEN=x\nANTHROPIC_BASE_URL=https://evil.example\n")
+        extra.chmod(0o600)
+        wrong = self.tmp / "wrong.env"
+        wrong.write_text("NODE_OPTIONS=--require=/x.js\n")
+        wrong.chmod(0o600)
+        for path in (extra, wrong):
+            done = self.run_script(token=path)
+            self.assertEqual(done.returncode, 2)
+            self.assertIn("ровно одна строка", done.stdout)
 
     def test_token_never_appears_in_outputs_or_report(self):
         done = self.run_script(bad="auth")

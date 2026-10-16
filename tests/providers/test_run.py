@@ -40,6 +40,32 @@ class SubprocessRunnerTest(unittest.TestCase):
             plain = subprocess_runner([sys.executable, str(CLI), "hang"], "", 0.5)
             self.assertTrue(plain.timed_out)
 
+    def test_undecodable_output_does_not_crash_the_runner(self):
+        res = subprocess_runner([sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'\\xff\\xfe ok')"], "", 20.0)
+        self.assertEqual(res.returncode, 0)
+        self.assertIn("ok", res.stdout)
+
+    def test_failing_cleanup_still_reports_the_timeout(self):
+        res = subprocess_runner([sys.executable, str(CLI), "hang"], "", 0.5, ["нет-такой-программы-iam"])
+        self.assertTrue(res.timed_out)
+        slow = [sys.executable, "-c", "import time; time.sleep(60)"]
+        import iam.providers.run as run_module
+        original = run_module.subprocess.run
+        calls = []
+
+        def fake_run(argv, **kw):
+            calls.append(argv)
+            if len(calls) == 2:
+                raise run_module.subprocess.TimeoutExpired(argv, 30)
+            return original(argv, **kw)
+        run_module.subprocess.run = fake_run
+        try:
+            res = subprocess_runner(slow, "", 0.3, ["docker", "kill", "x"])
+        finally:
+            run_module.subprocess.run = original
+        self.assertTrue(res.timed_out)
+        self.assertEqual(len(calls), 2)
+
     def test_missing_program_is_code_127_not_an_exception(self):
         res = subprocess_runner(["нет-такой-программы-iam"], "", 5.0)
         self.assertEqual(res.returncode, 127)

@@ -16,17 +16,27 @@ def say(text=""):
 
 if args[:1] == ["info"]:
     sys.exit(0)
+if args[:2] == ["network", "inspect"]:
+    if os.environ.get("SHIM_DEAD"):
+        sys.exit(1)
+    say("false" if "sandbox_internal" in bad else "true")
+if os.environ.get("SHIM_DEAD"):
+    print("docker: Cannot connect to the Docker daemon", file=sys.stderr)
+    sys.exit(125)
 if args[:1] != ["run"] or "iam-claude:1" not in args:
     sys.exit(125)
 cmd = args[args.index("iam-claude:1") + 1:]
 stdin = sys.stdin.read()
 if cmd[:1] == ["claude"]:
+    if "stream-json" in cmd:
+        if "auth" in bad:
+            say(json.dumps({"type": "result", "is_error": True, "api_error_status": 401, "result": "Failed to authenticate"}))
+        if "no_init" in bad:
+            say(json.dumps({"type": "result", "is_error": False, "result": "ok"}))
+        say(json.dumps({"type": "system", "subtype": "init", "tools": ["Bash", "Read"] if "no_tools" in bad else []}) + "\n"
+            + json.dumps({"type": "result", "is_error": False, "result": "ok"}))
     if "auth" in bad:
         say(json.dumps({"is_error": True, "api_error_status": 401, "result": "Failed to authenticate", "terminal_reason": "api_error"}))
-    if "no_tools" in bad and "List the names" in stdin:
-        say(json.dumps({"is_error": False, "result": "", "structured_output": {"proposals": [], "explanation": "Bash, Read, Edit"}}))
-    if "List the names" in stdin:
-        say(json.dumps({"is_error": False, "result": "", "structured_output": {"proposals": [], "explanation": "none"}, "permission_denials": []}))
     if "format" in bad:
         say(json.dumps({"is_error": False, "result": "Конечно! Вот мои мысли."}))
     say(json.dumps({"is_error": False, "result": "", "structured_output": {"proposals": []}, "num_turns": 1}))
@@ -43,11 +53,14 @@ if "control.txt" in payload:
 if payload == "env":
     say("PATH=/usr/bin\nHOME=/home/claude" + ("\nTELEGRAM_BOT_TOKEN=123" if "canary_env" in bad else ""))
 if "docker.sock" in payload:
-    say("/var/run/docker.sock" if "no_docker_socket" in bad else "")
+    say("started\n/var/run/docker.sock" if "no_docker_socket" in bad else "started")
 if "rootfs-test" in payload:
-    say("rc=0\ntmp_rc=0\nexec_rc=0" if "read_only_root" in bad else "touch: Read-only file system\nrc=1\ntmp_rc=0\nexec_rc=126")
+    # дыра — реалистичная: корень записываемый, но /tmp без исполнения (exec=126)
+    say("ro=0\ntmp=0\nexec=126" if "read_only_root" in bad else "ro=1\ntmp=0\nexec=126")
 if "CapEff" in payload:
-    say("CapEff:\t00000000a80425fb\nNoNewPrivs:\t0" if "no_capabilities" in bad else "CapEff:\t0000000000000000\nNoNewPrivs:\t1")
+    # дыра — реалистичная: у не-root CapEff=0, но ограничивающий набор не сброшен (--cap-drop ALL не применён)
+    say("CapEff:\t0000000000000000\nCapBnd:\t00000000a80425fb\nNoNewPrivs:\t1" if "no_capabilities" in bad
+        else "CapEff:\t0000000000000000\nCapBnd:\t0000000000000000\nNoNewPrivs:\t1")
 if "pids.max" in payload:
     say("max\nmax" if "limits" in bad else "128\n1073741824")
 if "--noproxy" in payload:

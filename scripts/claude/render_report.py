@@ -34,12 +34,13 @@ REQUIRED = {
     "read_only_root": "корневая файловая система только для чтения (R-114)",
     "no_capabilities": "все capabilities сняты, no-new-privileges (R-114)",
     "limits": "лимиты процессов и памяти применены (R-114)",
+    "sandbox_internal": "сеть iam-sandbox внутренняя: маршрута наружу, кроме посредника, нет (R-115)",
     "net_allowed": "разрешённый адрес через посредника доступен (R-115)",
     "net_denied": "запрещённый адрес через посредника недоступен (R-115)",
     "net_direct_denied": "прямой выход в сеть в обход посредника невозможен (R-115)",
     "auth": "вход по подписке работает внутри контейнера (R-113, R-119)",
     "format": "ответ в нужном структурированном формате (R-119)",
-    "no_tools": "модель не получила инструментов: нет разрешений/попыток (R-117, R-118)",
+    "no_tools": "по событию init самого claude у модели нет инструментов (R-117, R-118)",
 }
 
 
@@ -50,6 +51,8 @@ def read_results(path: Path) -> dict[str, dict]:
             row = json.loads(line)
             if row.get("status") not in ("PASS", "FAIL", "SKIP") or "id" not in row:
                 raise ValueError(f"{path}:{n}: нужна строка вида {{id, status: PASS|FAIL|SKIP, detail}}")
+            if row["id"] in found:
+                raise ValueError(f"{path}:{n}: проверка {row['id']} записана дважды")
             found[row["id"]] = row
     return found
 

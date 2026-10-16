@@ -65,6 +65,28 @@ class ValidAnswerTest(unittest.TestCase):
         resp = provider(sneaky)[0].propose(request())
         self.assertEqual((resp["request_id"], resp["state_version"], resp["provider"]["name"]), ("req_Provider0001", 17, "claude-code"))
 
+    def test_missing_cites_default_to_an_empty_list(self):
+        no_cites = {"kind": "no_action", "rationale": "r", "body": {"reason": "x"}}
+        resp = provider(fake.reply([no_cites]))[0].propose(request())
+        self.assertEqual(resp["proposals"][0]["cites"], [])
+
+    def test_wait_is_limited_by_the_request_deadline(self):
+        p, fk = provider(fake.reply([NOTE]), timeout_s=180.0)
+        p.propose(request())                                                    # deadline_ms = 60000
+        p2, fk2 = provider(fake.reply([NOTE]), timeout_s=30.0)
+        p2.propose(request())
+        self.assertEqual((fk.calls[0]["timeout_s"], fk2.calls[0]["timeout_s"]), (60.0, 30.0))
+        p3, fk3 = provider(fake.reply([NOTE]))
+        p3.propose(request(limits={"max_output_tokens": 5, "deadline_ms": 2000, "attempt": 0}))
+        self.assertEqual(fk3.calls[0]["timeout_s"], 2.0)
+
+    def test_secrets_in_executor_messages_do_not_reach_the_exception(self):
+        token = "sk" + "-ant-oat01-" + "A1b2C3d4E5f6G7h8I9j0K1l2"
+        p, _ = provider(fake.error(401, f"bad token {token}"))
+        with self.assertRaises(ProviderAuthError) as ctx:
+            p.propose(request())
+        self.assertNotIn(token, str(ctx.exception))
+
     def test_missing_explanation_is_empty_text(self):
         p, _ = provider(fake.reply_text(json.dumps({"proposals": []})))
         self.assertEqual(p.propose(request())["explanation"], "")

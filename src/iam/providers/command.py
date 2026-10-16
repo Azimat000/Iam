@@ -11,7 +11,7 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Sequence
 
 # Переменные, которые вообще разрешено передавать контейнеру (имя → допустимый вид значения).
@@ -22,12 +22,16 @@ FIXED_ENV = {
     "DISABLE_ERROR_REPORTING": "1",
 }
 PROXY_ENV = ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy")
-FORBIDDEN_NETWORKS = ("host", "bridge", "none", "default")
-_MEM = re.compile(r"^[1-9]\d*[mg]$")
-_CPUS = re.compile(r"^\d+(\.\d+)?$")
-_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$")
-_USER = re.compile(r"^[1-9]\d{3,}:[1-9]\d{3,}$")     # только не-root, числовые uid:gid
-_URL = re.compile(r"^http://[A-Za-z0-9.-]+:\d{2,5}$")
+SANDBOX_NETWORK = re.compile(r"iam-sandbox[A-Za-z0-9_.-]*")   # только выделенные внутренние сети (compose.yaml)
+REQUIRED_PLATFORM = "linux/arm64"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+# fullmatch: `$` в конце шаблона пропускал бы хвостовой перевод строки
+_MEM = re.compile(r"[1-9]\d*[mg]")
+_CPUS = re.compile(r"\d+(\.\d+)?")
+_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
+_CONTAINER = re.compile(r"iam-claude-[A-Za-z0-9]{1,32}")
+_USER = re.compile(r"[1-9]\d{3,}:[1-9]\d{3,}")     # только не-root, числовые uid:gid
+_URL = re.compile(r"http://[A-Za-z0-9.-]+:\d{2,5}")
 
 SYSTEM_PROMPT = (
     "You are the proposal engine of a digital persona core. You have no tools and you cannot act in the world. "
@@ -69,22 +73,25 @@ class SandboxConfig:
     platform: str = "linux/arm64"
 
     def __post_init__(self):
-        if not _NAME.match(self.image):
+        if not _NAME.fullmatch(self.image):
             raise ValueError(f"image {self.image!r}: недопустимое имя")
-        if not _NAME.match(self.network) or self.network.lower().split(":")[0] in FORBIDDEN_NETWORKS or self.network.startswith("container"):
-            raise ValueError(f"network {self.network!r}: нужна выделенная внутренняя сеть, не host/bridge/none")
-        if not _URL.match(self.proxy_url):
+        if not SANDBOX_NETWORK.fullmatch(self.network):
+            raise ValueError(f"network {self.network!r}: нужна выделенная внутренняя сеть iam-sandbox*, не host/bridge и не сеть посредника")
+        if not _URL.fullmatch(self.proxy_url):
             raise ValueError(f"proxy_url {self.proxy_url!r}: нужен http://имя:порт посредника")
-        if not _USER.match(self.user):
+        if not _USER.fullmatch(self.user):
             raise ValueError(f"user {self.user!r}: контейнер не должен работать от root (нужны числовые uid:gid ≥ 1000)")
-        if not _MEM.match(self.memory) or not _CPUS.match(self.cpus) or self.pids < 1 or self.pids > 4096:
-            raise ValueError("лимиты памяти/процессоров/процессов заданы неверно")
+        if not _MEM.fullmatch(self.memory) or not _CPUS.fullmatch(self.cpus) or float(self.cpus) <= 0 \
+                or not 1 <= self.pids <= 4096:
+            raise ValueError("лимиты памяти/процессоров/процессов заданы неверно (ноль — это «без лимита»)")
         for size in (self.tmp_size, self.home_size):
-            if not _MEM.match(size):
+            if not _MEM.fullmatch(size):
                 raise ValueError(f"размер {size!r}: нужен вид 64m")
+        if self.platform != REQUIRED_PLATFORM:
+            raise ValueError(f"platform {self.platform!r}: исполнитель запускается только как {REQUIRED_PLATFORM} (R-110)")
         if self.token_file is not None:
             p = PurePosixPath(self.token_file)
-            if not p.is_absolute() or ".." in p.parts:
+            if not p.is_absolute() or ".." in p.parts or Path(self.token_file).is_relative_to(REPO_ROOT):
                 raise ValueError("token_file: нужен абсолютный путь вне репозитория")
 
 
@@ -99,14 +106,17 @@ class SandboxCommand:
 
 
 def docker_run(cfg: SandboxConfig, *, model: str = "sonnet", json_schema: dict | None = RESPONSE_JSON_SCHEMA,
-               name: str | None = None, command: Sequence[str] | None = None) -> SandboxCommand:
+               name: str | None = None, command: Sequence[str] | None = None,
+               stream: bool = False) -> SandboxCommand:
     """Команда: контекст — в stdin, ответ — из stdout; монтирований нет, rootfs только для чтения.
     `command` заменяет `claude …` внутри тех же флагов изоляции — так `verify_isolation.sh` проверяет именно
     ту оболочку, в которой работает личность (для проверки изоляции, не для работы)."""
-    if not _NAME.match(model):
+    if not _NAME.fullmatch(model):
         raise ValueError(f"model {model!r}: недопустимое имя модели")
     name = name or f"iam-claude-{uuid.uuid4().hex[:12]}"
-    argv = ["docker", "run", "--rm", "-i", "--name", name, "--platform", cfg.platform,
+    if not _CONTAINER.fullmatch(name):
+        raise ValueError(f"name {name!r}: имя контейнера должно быть вида iam-claude-<буквы и цифры>")
+    argv = ["docker", "run", "--rm", "-i", "--pull", "never", "--name", name, "--platform", cfg.platform,
             "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--user", cfg.user, "--pids-limit", str(cfg.pids), "--memory", cfg.memory, "--memory-swap", cfg.memory,
             "--cpus", cfg.cpus, "--network", cfg.network,
@@ -122,7 +132,9 @@ def docker_run(cfg: SandboxConfig, *, model: str = "sonnet", json_schema: dict |
     argv += [cfg.image]
     if command is not None:
         return SandboxCommand(tuple(argv + list(command)), name)
-    argv += ["claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
+    # stream-json нужен только скрипту проверки (событие init со списком инструментов); он требует --verbose
+    fmt = ["--output-format", "stream-json", "--verbose"] if stream else ["--output-format", "json"]
+    argv += ["claude", "-p", *fmt, "--tools", "", "--no-session-persistence",
              "--permission-mode", "dontAsk", "--permission-prompts", "none", "--disable-slash-commands",
              "--strict-mcp-config", "--model", model, "--system-prompt", SYSTEM_PROMPT]
     if json_schema is not None:

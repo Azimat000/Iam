@@ -23,10 +23,14 @@ def subprocess_runner(argv: Sequence[str], stdin: str, timeout_s: float, cleanup
     «не запустился» и «ответил ошибкой»). По таймауту процесс убивается, затем выполняется `cleanup`
     (например, `docker kill <имя>`: убийство клиента docker контейнер не останавливает)."""
     try:
-        done = subprocess.run(list(argv), input=stdin, capture_output=True, text=True, timeout=timeout_s, check=False)
+        done = subprocess.run(list(argv), input=stdin, capture_output=True, text=True, errors="replace",
+                              timeout=timeout_s, check=False)
     except subprocess.TimeoutExpired:
         if cleanup:
-            subprocess.run(list(cleanup), capture_output=True, text=True, timeout=30, check=False)
+            try:
+                subprocess.run(list(cleanup), capture_output=True, text=True, errors="replace", timeout=30, check=False)
+            except (subprocess.TimeoutExpired, OSError):
+                pass   # очистка не удалась: исход всё равно «таймаут», контейнер уйдёт по --rm
         return RunResult(None, "", "", True)
     except FileNotFoundError as e:
         return RunResult(127, "", f"не найдена программа: {e.filename}")

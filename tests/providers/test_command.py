@@ -2,6 +2,7 @@
 import shutil
 import subprocess
 import unittest
+from pathlib import Path
 
 from iam.providers import FIXED_ENV, SandboxConfig, docker_run
 
@@ -94,10 +95,35 @@ class ConfigGuardTest(unittest.TestCase):
                dict(user="0:0"), dict(user="root"), dict(user="1000:0"), dict(memory="0g"), dict(memory="lots"),
                dict(cpus="all"), dict(pids=0), dict(pids=100000), dict(proxy_url="https://x:1"), dict(proxy_url="socks5://x:1"),
                dict(token_file="relative/token.env"), dict(token_file="/a/../etc/passwd"), dict(image="bad image"),
-               dict(tmp_size="big"), dict(home_size="1"), dict(network="bad net")]
+               dict(tmp_size="big"), dict(home_size="1"), dict(network="bad net"),
+               # дыры, найденные независимой проверкой
+               dict(network="iam-egress"), dict(network="docker_gwbridge"), dict(network="ingress"),
+               dict(cpus="0"), dict(cpus="0.0"), dict(user="10001:10001\n"), dict(memory="1g\n"), dict(pids=0),
+               dict(platform="linux/amd64"), dict(platform="linux/arm64\n"),
+               dict(token_file=str(Path(__file__).resolve().parents[2] / "secrets.env"))]
         for kw in bad:
             with self.subTest(kw=kw), self.assertRaises(ValueError):
                 SandboxConfig(**kw)
+
+    def test_container_name_cannot_smuggle_flags(self):
+        for bad in ("--privileged", "iam-claude-x --privileged", "other-name", "iam-claude-", "iam-claude-a b"):
+            with self.subTest(bad), self.assertRaises(ValueError):
+                docker_run(SandboxConfig(), name=bad)
+
+    def test_the_image_is_never_pulled_implicitly(self):
+        argv = list(docker_run(SandboxConfig(), model="sonnet").argv)
+        self.assertEqual(argv[argv.index("--pull") + 1], "never")
+
+    def test_home_tmpfs_belongs_to_the_unprivileged_user(self):
+        argv = list(docker_run(SandboxConfig(), model="sonnet").argv)
+        home = next(a for a in argv if a.startswith("/home/claude:"))
+        self.assertIn("uid=10001,gid=10001", home)
+
+    def test_stream_mode_is_for_the_check_script_only(self):
+        tail = list(docker_run(SandboxConfig(), stream=True).argv)
+        self.assertIn("stream-json", tail)
+        self.assertIn("--verbose", tail)
+        self.assertNotIn("stream-json", list(docker_run(SandboxConfig()).argv))
 
     def test_model_name_is_checked(self):
         with self.assertRaises(ValueError):

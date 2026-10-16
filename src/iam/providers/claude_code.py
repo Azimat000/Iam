@@ -12,6 +12,7 @@ import json
 import time
 from dataclasses import dataclass, field
 
+from iam.backup.scan import SecretScanner
 from iam.domain import jsonschema, new_id
 
 from .classify import Classified, Kind, classify
@@ -88,9 +89,11 @@ class ClaudeCodeProvider:
         model = self.routing.model_for(request["purpose"])
         prompt = build_prompt(request)
         started, self.last_calls, problem = time.monotonic(), 0, ""
+        # дольше срока запроса ждать бессмысленно: поздний ответ привратник всё равно отбросит как устаревший
+        timeout = min(self.timeout_s, request["limits"]["deadline_ms"] / 1000)
         for attempt in range(self.max_format_retries + 1):
             cmd = docker_run(self.sandbox, model=model, json_schema=RESPONSE_JSON_SCHEMA if self.use_json_schema else None)
-            run = self._run(cmd.argv, prompt if attempt == 0 else _repair_prompt(prompt, problem), self.timeout_s,
+            run = self._run(cmd.argv, prompt if attempt == 0 else _repair_prompt(prompt, problem), timeout,
                             cmd.kill_argv())
             self.last_calls += 1
             result = classify(run)
@@ -104,7 +107,8 @@ class ClaudeCodeProvider:
             elif result.kind is Kind.FORMAT:
                 problem = result.message
             else:
-                raise _ERRORS.get(result.kind, ProviderUnavailable)(f"{result.kind}: {result.message}")
+                text, _ = _SCANNER.redact(f"{result.kind}: {result.message}")   # в ошибку и журнал секреты не попадают
+                raise _ERRORS.get(result.kind, ProviderUnavailable)(text)
         raise ProviderFormatError(f"неверный формат после {self.max_format_retries + 1} попыток: {problem}")
 
     def _response(self, request: dict, model: str, proposals: list[dict], result: Classified, started: float,
@@ -117,5 +121,6 @@ class ClaudeCodeProvider:
                 "tool_use_detected": tool_use}
 
 
+_SCANNER = SecretScanner()
 _ERRORS = {Kind.AUTH: ProviderAuthError, Kind.LIMIT: ProviderLimitError, Kind.UNAVAILABLE: ProviderUnavailable,
            Kind.TIMEOUT: ProviderTimeout, Kind.EXEC: ProviderUnavailable, Kind.UNKNOWN: ProviderUnavailable}

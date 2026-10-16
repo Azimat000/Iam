@@ -42,6 +42,24 @@ class ClassifierTable(unittest.TestCase):
             with self.subTest(title):
                 self.assertEqual(classify(result).kind, expected)
 
+    def test_unsuccessful_run_is_never_taken_for_an_answer(self):
+        """Ход оборван (`error_max_turns`) или конверт чужого вида: даже со структурированным выводом это не ответ."""
+        partial = {"proposals": []}
+        for env in ({"subtype": "error_max_turns", "is_error": False, "structured_output": partial},
+                    {"subtype": "error_during_execution", "is_error": False, "result": '{"proposals": []}'},
+                    {"type": "system", "is_error": False, "structured_output": partial}):
+            with self.subTest(env):
+                self.assertEqual(classify(run(**env)).kind, Kind.UNKNOWN)
+        self.assertEqual(classify(run(type="result", subtype="success", is_error=False, structured_output=partial)).kind, Kind.OK)
+
+    def test_api_error_without_is_error_is_still_an_error(self):
+        """Текст ошибки не должен сойти за ответ модели, даже если флаг is_error не выставлен."""
+        for env, kind in ((dict(is_error=False, api_error_status=429, result="Claude AI usage limit reached|1760000000"), Kind.LIMIT),
+                          (dict(is_error=False, terminal_reason="api_error", result="Please run /login"), Kind.AUTH),
+                          (dict(api_error_status=401, result='{"proposals": []}'), Kind.AUTH)):
+            with self.subTest(env):
+                self.assertEqual(classify(run(**env)).kind, kind)
+
     def test_exit_code_is_not_trusted(self):
         """Реальная ошибка входа вышла с кодом 0, а упавший процесс с мусором — с кодом ≠ 0: смотрим на содержимое."""
         auth = fake.auth_error()

@@ -36,6 +36,10 @@ class SessionControl(Protocol):
 
     def apply(self, proposal: Proposal) -> ApplyResult: ...
 
+    def find_event(self, *, event_id: str | None = None, key: str | None = None): ...
+
+    def events_after(self, seq: int) -> list: ...
+
     def record_event(self, spec, *, actor: str = "core", actor_ref: str = "state_controller") -> RecordResult: ...
 
     def pause_session(self, reason: str = "operator", *, last_alive_at: str | None = None) -> ApplyResult: ...
@@ -55,9 +59,28 @@ class SessionBudget:
     calls: int = 0
     started_ms: int = 0
 
+    @classmethod
+    def from_journal(cls, controller: "SessionControl", *, max_calls: int = DEFAULT_MAX_CALLS,
+                     max_minutes: int = DEFAULT_MAX_MINUTES) -> "SessionBudget":
+        """Восстановить счётчики текущего сеанса из журнала (после перезапуска процесса бюджет не обнуляется):
+        обращения — сумма `usage.calls` принятых ответов этого сеанса, начало — время жизни первого запроса сеанса."""
+        sid = controller.session_id
+        budget = cls(max_calls=max_calls, max_ms=max_minutes * 60_000, session_id=sid)
+        mine: set[str] = set()
+        for ev in controller.events_after(0):
+            if ev.type == "proposal.requested" and ev.payload["request"]["session_id"] == sid:
+                if not mine:
+                    budget.started_ms = ev.life_time_ms
+                mine.add(ev.payload["request"]["request_id"])
+            elif ev.type == "proposal.received" and ev.payload["response"]["request_id"] in mine:
+                budget.calls += ev.payload["response"]["usage"]["calls"]
+        return budget
+
     def charge(self, session_id: str | None, now_ms: int) -> str | None:
         """Списать одно обращение. Вернуть `None`, если можно, иначе `calls` или `time` (что наступило первым:
-        время проверяется раньше счётчика, чтобы по истечении 30 минут отказ называл именно время)."""
+        время проверяется раньше счётчика, чтобы по истечении 30 минут отказ называл именно время).
+        Время — жизни личности (`clock.now_ms()`): в паузе оно стоит, и пауза бюджет не съедает. Исчерпанный бюджет
+        возобновлением не восстанавливается — нужен новый сеанс (stop + start)."""
         if session_id != self.session_id:
             self.session_id, self.calls, self.started_ms = session_id, 0, now_ms
         if now_ms - self.started_ms >= self.max_ms:
@@ -75,7 +98,7 @@ class BudgetedRunner:
         self._runner, self.budget, self._ctl = runner, budget, controller
 
     def __call__(self, argv, stdin, timeout_s, cleanup=None) -> RunResult:
-        over = self.budget.charge(self._ctl.session_id, self._ctl.clock.monotonic_ms())
+        over = self.budget.charge(self._ctl.session_id, self._ctl.clock.now_ms())
         if over:
             raise SessionLimitReached(over, f"бюджет сеанса исчерпан ({'время' if over == 'time' else 'обращения'})")
         return self._runner(argv, stdin, timeout_s, cleanup)
@@ -116,17 +139,23 @@ class PausingProvider:
         return response
 
     def _stop(self, reason: str, kind: str, message: str, *, limit: bool) -> None:
-        """Записать причину и поставить сеанс на паузу. Порядок: запись о лимите/ошибке → `session.paused`."""
+        """Записать причину и поставить сеанс на паузу. Порядок: запись о лимите/ошибке → `session.paused`.
+        Пауза ставится при любом исходе записи (не удалась запись — это само пишется ошибкой, но сеанс всё равно встаёт)."""
         sid = self._ctl.session_id
-        if limit:
-            event_id = new_id("evt")
-            t = Transition(new_id("trn"), self._ctl.persona_id, self._ctl.epoch, self._ctl.state_version,
-                           (Op("world_time", f"world.limits.{kind}", "set", {"reason": reason, "detail": message[:200]}, True),),
-                           f"достигнут предел: {kind}", (event_id,))
-            spec = EventSpec("system.limit_reached", f"lim:{sid}:{kind}", {"kind": kind, "reason": reason}, event_id=event_id)
-            self._ctl.apply(Proposal(t, "core", "provider_guard", spec))
-        else:
-            self._ctl.record_event(EventSpec("system.error", f"err:{kind}:{sid}", {"fault": kind, "reason": reason,
-                                                                                    "detail": message[:200]}))
-        self.failures = 0
-        self._ctl.pause_session(reason)
+        try:
+            if limit:
+                event_id = new_id("evt")
+                t = Transition(new_id("trn"), self._ctl.persona_id, self._ctl.epoch, self._ctl.state_version,
+                               (Op("world_time", f"world.limits.{kind}", "set", {"reason": reason, "detail": message[:200]}, True),),
+                               f"достигнут предел: {kind}", (event_id,))
+                spec = EventSpec("system.limit_reached", f"lim:{sid}:{kind}", {"kind": kind, "reason": reason}, event_id=event_id)
+                res = self._ctl.apply(Proposal(t, "core", "provider_guard", spec))
+                if res.status not in ("applied", "duplicate"):   # duplicate: запись о том же пределе в этом сеансе уже есть
+                    self._ctl.record_event(EventSpec("system.error", f"err:limit_not_recorded:{sid}", {
+                        "fault": "limit_not_recorded", "kind": kind, "status": res.status, "reason": res.reason}))
+            else:
+                self._ctl.record_event(EventSpec("system.error", f"err:{kind}:{sid}", {"fault": kind, "reason": reason,
+                                                                                        "detail": message[:200]}))
+        finally:
+            self.failures = 0
+            self._ctl.pause_session(reason)

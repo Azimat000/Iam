@@ -48,6 +48,57 @@ class BudgetCounters(unittest.TestCase):
         self.assertIsNone(b.charge("ses_B", 2))
 
 
+class BudgetRecoveryTest(CycleCase):
+    """Бюджет не обнуляется перезапуском процесса и не съедается паузой."""
+
+    def wire(self, *results, budget=None):
+        self.build()
+        self.fk = FakeClaude(results)
+        self.budget = budget or SessionBudget()
+        inner = ClaudeCodeProvider(BudgetedRunner(self.fk, self.budget, self.c), SandboxConfig())
+        self.provider = PausingProvider(inner, self.c)
+        self.cycle = Cycle(self.c, self.provider, StubMemory(), StubWorld(), StubCapabilities(), StubCreatorBridge())
+
+    def test_counters_are_restored_from_the_journal_after_restart(self):
+        self.wire(fake.garbage(), fake.reply([NOTE]), *[fake.reply([NOTE]) for _ in range(9)])
+        self.cycle.run(self.due())                       # 2 обращения (повтор по формату)
+        [self.cycle.run(self.due()) for _ in range(3)]    # ещё 3
+        before = (self.budget.calls, self.budget.started_ms)
+        restored = SessionBudget.from_journal(self.c)
+        self.assertEqual((restored.calls, restored.started_ms, restored.session_id), (*before, self.c.session_id))
+        self.assertEqual(restored.calls, 5)
+        # «перезапуск»: новый бюджет из журнала допускает ещё ровно 5 обращений
+        fk = FakeClaude([fake.reply([NOTE]) for _ in range(6)])
+        inner = ClaudeCodeProvider(BudgetedRunner(fk, restored, self.c), SandboxConfig())
+        cycle = Cycle(self.c, PausingProvider(inner, self.c), StubMemory(), StubWorld(), StubCapabilities(), StubCreatorBridge())
+        outcomes = [cycle.run(self.due()).outcome for _ in range(6)]
+        self.assertEqual(outcomes, ["done"] * 5 + ["no_decision"])
+        self.assertEqual(len(fk.calls), 5)
+
+    def test_restoring_ignores_other_sessions_and_empty_history(self):
+        self.build()
+        empty = SessionBudget.from_journal(self.c)
+        self.assertEqual((empty.calls, empty.started_ms), (0, 0))
+        self.fk = FakeClaude([fake.reply([NOTE])])
+        inner = ClaudeCodeProvider(BudgetedRunner(self.fk, SessionBudget(), self.c), SandboxConfig())
+        Cycle(self.c, PausingProvider(inner, self.c), StubMemory(), StubWorld(), StubCapabilities(), StubCreatorBridge()).run(self.due())
+        self.c.stop_session()
+        self.c.start_session()
+        self.assertEqual(SessionBudget.from_journal(self.c).calls, 0)    # новый сеанс — чистый бюджет
+
+    def test_pause_does_not_eat_the_thirty_minutes(self):
+        self.wire(*[fake.reply([NOTE]) for _ in range(3)])
+        self.assertEqual(self.cycle.run(self.due()).outcome, "done")
+        self.c.pause_session()
+        self.time.advance(45 * 60_000)                   # сорок пять минут паузы: время жизни стоит
+        self.c.resume_session()
+        self.assertEqual(self.cycle.run(self.due()).outcome, "done")
+        self.assertEqual(self.c.session_state, "running")
+        self.time.advance(30 * 60_000)                   # а вот работа дольше тридцати минут — предел
+        self.assertEqual(self.cycle.run(self.due()).outcome, "no_decision")
+        self.assertEqual(self.c.session_state, "paused")
+
+
 class PauseCase(CycleCase):
     """Личность с желанием в состоянии; провайдер — ClaudeCodeProvider на FakeClaude под бюджетом и паузой."""
 
@@ -176,6 +227,31 @@ class RepeatedFailureTest(PauseCase):
             self.cycle.run(self.due())
         self.assertEqual(self.c.session_state, "running")
         self.assertEqual(self.pauses(), [])
+
+    def test_failure_count_starts_over_after_a_pause(self):
+        self.wire(fake.overloaded(), fake.overloaded(), fake.overloaded(), fake.reply([NOTE]))
+        self.cycle.run(self.due())
+        self.cycle.run(self.due())
+        self.assertEqual(self.c.session_state, "paused")
+        self.c.resume_session()
+        self.cycle.run(self.due())                       # первый сбой после паузы — ещё не повод
+        self.assertEqual(self.c.session_state, "running")
+        self.assertEqual(self.provider.failures, 1)
+
+    def test_pause_happens_even_if_the_limit_record_is_refused(self):
+        self.wire(fake.rate_limited())
+        self.c.add_validator("no-limit-record", lambda check: ["запрещено тестом"] if check.carrier_type == "system.limit_reached" else [])
+        self.cycle.run(self.due())
+        self.assertEqual(self.c.session_state, "paused")
+        errors = [e for e in self.events("system.error") if e.payload.get("fault") == "limit_not_recorded"]
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(self.events("system.limit_reached"), [])
+
+    def test_long_messages_are_truncated_in_the_journal(self):
+        self.wire(fake.error(401, "x" * 500))
+        self.cycle.run(self.due())
+        (err,) = [e for e in self.events("system.error") if e.payload.get("fault") == "auth"]
+        self.assertLessEqual(len(err.payload["detail"]), 200)
 
     def test_threshold_is_configurable(self):
         self.wire(fake.overloaded(), threshold=1)

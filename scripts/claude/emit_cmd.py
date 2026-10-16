@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--image", default="iam-claude:1")
     ap.add_argument("--network", default="iam-sandbox")
     ap.add_argument("--claude", action="store_true", help="не подменять команду: печатать рабочий запуск claude -p")
+    ap.add_argument("--stream", action="store_true", help="формат stream-json (для чтения события init с списком инструментов)")
     ap.add_argument("--model", default="sonnet")
     ap.add_argument("command", nargs=argparse.REMAINDER)
     args = ap.parse_args(argv)
@@ -30,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     if not command and not args.claude:
         ap.error("нужна команда после -- (или флаг --claude)")
     cfg = SandboxConfig(image=args.image, network=args.network, token_file=args.token_file)
-    cmd = docker_run(cfg, model=args.model) if args.claude else docker_run(cfg, command=command)
+    cmd = docker_run(cfg, model=args.model, stream=args.stream) if args.claude else docker_run(cfg, command=command)
     print(shlex.join(cmd.argv))
     return 0
 

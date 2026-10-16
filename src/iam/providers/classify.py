@@ -95,8 +95,13 @@ def classify(run) -> Classified:
             return Classified(Kind.EXEC, f"исполнитель не запустился или упал (код {run.returncode}): {run.stderr.strip()[:300]}")
         return Classified(Kind.FORMAT, "вывод исполнителя не JSON-объект")
     meta = _meta(env)
-    if env.get("is_error"):
+    # ошибкой считаем и конверт с кодом ошибки API без is_error: текст такой ошибки не должен сойти за ответ модели
+    if env.get("is_error") or env.get("api_error_status") or env.get("terminal_reason") == "api_error":
         return Classified(_error_kind(env), str(env.get("result", ""))[:300], envelope=meta)
+    subtype = env.get("subtype")
+    if (subtype not in (None, "success")) or env.get("type") not in (None, "result"):
+        # например `error_max_turns`: ход оборван, структурированный вывод (если есть) недостоверен
+        return Classified(Kind.UNKNOWN, f"запуск завершён не успешно: type={env.get('type')!r} subtype={subtype!r}", None, meta)
     data = _model_payload(env)
     if env.get("permission_denials"):   # модель пыталась пользоваться инструментом: результат непригоден (R-117)
         return Classified(Kind.TOOL_USE, "модель пыталась использовать инструмент", data, meta)
