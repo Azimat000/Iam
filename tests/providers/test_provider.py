@@ -72,6 +72,15 @@ class ValidAnswerTest(unittest.TestCase):
         self.assertEqual(p.propose(request())["explanation"], "")
 
 
+class FakeClaudeTest(unittest.TestCase):
+    def test_queue_and_exhaustion(self):
+        fk = FakeClaude().queue(fake.hang())
+        self.assertTrue(fk(["x"], "", 1.0).timed_out)
+        with self.assertRaises(AssertionError):
+            fk(["x"], "", 1.0)
+        self.assertEqual(len(fk.calls), 2)
+
+
 class FormatRetryTest(unittest.TestCase):
     """R-194: не более одной повторной попытки исправить неверный формат."""
 
