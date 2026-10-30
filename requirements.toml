@@ -466,8 +466,8 @@ kind = "constraint"
 mechanism = "iam.perception + построитель контекста (S12) [spec: docs/spec/envelopes.md#request] [spec: docs/spec/events.md#perception-stages]"
 check = "Сценарий «Непрочитанное сообщение»: контрольная фраза из непрочитанного сообщения отсутствует в запросе к модели (построитель контекста варианта A, S12) и в решении (S20); повторить на ядре в S25. Сценарии каталога: scenarios/experiments/exp_unread.toml, scenarios/required/unread_message.toml."
 slice = ["S12", "S20"]
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/experiments/variant-a.md (контекст A проверен на заглушке, полноценное восприятие и смысловая приёмка остаются S20/S25); tests/experiments/test_model_led.py::test_unread_never_reaches_request_or_outbound_prompt"
 
 [[req]]
 id = "R-040"
@@ -1450,8 +1450,9 @@ kind = "functional"
 mechanism = "iam.experiments.variants.model_led"
 check = "Прогон 8 сценариев на заглушке: трассы сохранены; слабые места записаны."
 slice = "S12"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/experiments/variant-a.md (проверено на заглушке, живые прогоны S16); docs/evidence/S12-model-led-runs.csv; tests/experiments/test_model_led.py"
+stub_only = true
 
 [[req]]
 id = "R-122"
@@ -2482,8 +2483,9 @@ kind = "constraint"
 mechanism = "Построитель контекста (минимум данных наружу) [spec: docs/spec/envelopes.md#request]"
 check = "Тест: в запросе нет данных, не нужных для задачи (контрольные поля отсутствуют)."
 slice = "S12"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/experiments/variant-a.md (проверено на заглушке и поддельном процессе Claude); tests/experiments/test_model_led.py::test_only_selected_state_fields_and_no_technical_envelope_in_outbound_prompt"
+stub_only = true
 
 [[req]]
 id = "R-208"
