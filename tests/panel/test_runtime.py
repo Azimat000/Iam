@@ -55,6 +55,27 @@ class RuntimeTest(unittest.TestCase):
         rt.close()
         with Store.open(self.db) as s: self.assertEqual(verify(s),[])
 
+    def test_missing_database_rejects_waiting_commands_and_preserves_cancellation(self):
+        rt=Runtime(self.db,token_file="/tmp/iam-test-token.env")
+        pending=rt.submit("view")
+        cancelled=rt.submit("view");cancelled.cancel()
+        with self.assertRaises(Exception):rt.start()
+        rt.close()
+        self.assertFalse(rt.thread.is_alive())
+        with self.assertRaisesRegex(RuntimeError,"Сервер остановлен"):
+            pending.result(1)
+        self.assertTrue(cancelled.cancelled())
+        self.assertFalse(self.db.exists())
+
+    def test_queue_failure_after_start_closes_the_writer(self):
+        rt=Runtime(self.db,demo=True)
+        rt.jobs.get=mock.Mock(side_effect=OSError("очередь недоступна"))
+        rt.start()
+        rt.thread.join(5)
+        self.assertTrue(rt.closed)
+        self.assertEqual(rt.fatal,"OSError")
+        with Store.open(self.db) as s:self.assertEqual(verify(s),[])
+
     def test_fatal_step_drains_pending_jobs_and_closes_database(self):
         rt=self.runtime(demo=True)
         failed=threading.Event()
@@ -146,3 +167,44 @@ class RuntimeTest(unittest.TestCase):
             self.assertIsNotNone(view["last_poll"])
             self.assertFalse(view["poll_stale"])
             original_call.assert_called()
+
+    def test_confirmed_telegram_send_is_settled_before_commands_limits_and_shutdown(self):
+        self.seed()
+        started,release=threading.Event(),threading.Event()
+        client=mock.Mock(bot_id=123,timeout=0)
+        def call(method,params):
+            if method=="getUpdates":return []
+            started.set()
+            if not release.wait(5):raise TimeoutError("test release")
+            return {"message_id":1,"chat":{"id":123,"type":"private"}}
+        client.call.side_effect=call
+        raw={"kind":"message","rationale":"проверка отправки","body":{
+            "capability_id":"cap_Telegram01","to":"123","text":"тест"}}
+        with mock.patch("iam.panel.runtime.Client",return_value=client), mock.patch(
+            "iam.panel.runtime.subprocess_runner",FakeClaude([reply([raw])])):
+            rt=self.runtime(token_file="/tmp/iam-test-token.env",telegram_user=123)
+            try:
+                rt.submit("command","start","отправка",max_calls=1).result(5)
+                rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"test"}))
+                rt.submit("inject").result(5)
+                self.assertTrue(started.wait(5))
+                view=rt.submit("view").result(2)
+                self.assertTrue(view["sending"])
+                self.assertEqual(view["session_state"],"running")
+                from iam.panel.views import render
+                text=render("",view,"token")
+                self.assertIn("Telegram завершает отправку",text)
+                self.assertNotIn('<form ',text)
+                for name,args in (("command",("pause","пауза")),("backup",("копия",)),
+                                  ("restore",("fake","копия")),("mutate",("stop",{}))):
+                    with self.assertRaises(SessionConflict):rt.submit(name,*args).result(2)
+                rt.submit("shutdown").result(2)
+                self.assertTrue(rt.stop_requested)
+            finally:release.set()
+            rt.thread.join(5)
+            self.assertFalse(rt.thread.is_alive())
+            with Store.open(self.db) as store:
+                self.assertEqual(verify(store),[])
+                actions=store.latest_snapshot().state["world_time"]["world"]["actions"]
+                self.assertEqual(next(iter(actions.values()))["status"],"confirmed")
+                self.assertEqual(store.con.execute("SELECT status FROM outbox").fetchone()[0],"sent")

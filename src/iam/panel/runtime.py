@@ -16,6 +16,7 @@ from iam.interfaces import Capability
 from iam.providers import ClaudeCodeProvider, SandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
 from iam.state import EventSpec, StateController
+from iam.state.session import panel_records
 from iam.state.telegram import TelegramMailbox
 from iam.storage import Store
 from iam.stubs import Reply, ScriptedProvider, StoreMemory, StubCapabilities, StubCreatorBridge, StubWorld, rest
@@ -30,6 +31,8 @@ class Runtime:
         self.ready = Future()
         self.closed = False
         self.fatal = None
+        self.sending = False
+        self.stop_requested = False
         self.thread = threading.Thread(target=self._serve, name="iam-state", daemon=True)
 
     def start(self):
@@ -47,7 +50,7 @@ class Runtime:
     def close(self):
         if not self.closed and not self.fatal:
             self.submit("shutdown").result(timeout=15)
-        self.thread.join(timeout=15)
+        self.thread.join(timeout=120)
 
     def _pump(self, timeout):
         try:
@@ -64,8 +67,16 @@ class Runtime:
         work = self.pool.submit(fn, *args, **kwargs)
         while not work.done():
             self._pump(0.02)
-            self.session.check_limits()
+            if not self.sending:
+                self.session.check_limits()
         return work.result()
+
+    def _telegram_call(self, call, method, params):
+        self.sending = method == "sendMessage"
+        try:
+            return self._io(call, method, params)
+        finally:
+            self.sending = False
 
     def _model_run(self, argv, stdin, timeout, cleanup=None):
         self.session.charge()
@@ -93,7 +104,7 @@ class Runtime:
         if self.telegram_user is not None:
             client = Client(timeout=0)
             call = client.call
-            client.call = lambda *a, **kw: self._io(call, *a, **kw)
+            client.call = lambda method, params: self._telegram_call(call, method, params)
             self.receiver = Receiver(self.ctl, client, [self.telegram_user])
             world = Sender(self.ctl, client, [self.telegram_user])
             creator = CreatorBridge(self.receiver, world, self.telegram_user)
@@ -118,6 +129,8 @@ class Runtime:
                     if not self.closed:
                         try:
                             self.session.step(self.runner)
+                            if self.stop_requested:
+                                self.shutdown()
                         except Exception as exc:
                             # Нет места: step уже пытался остановить сеанс; не продолжаем цикл вслепую.
                             self.fatal = type(exc).__name__
@@ -131,17 +144,28 @@ class Runtime:
                 self.store.close()
             self.closed = True
             while not self.jobs.empty():
-                self._pump(0)
+                future, _, _, _ = self.jobs.get_nowait()
+                if not future.done():
+                    future.set_exception(RuntimeError("Сервер остановлен. Перезапустите панель."))
 
     def shutdown(self):
+        if self.sending:
+            self.stop_requested = True
+            return
         if self.ctl.session_state == "running":
             self.ctl.pause_session("operator")
         self.closed = True
 
     def command(self, action, reason, **kwargs):
+        self._writable_now()
         self.session.command(action, reason, **kwargs)
 
+    def _writable_now(self):
+        if self.sending:
+            raise SessionConflict("Telegram завершает отправку. Повторите команду после записи её исхода.")
+
     def mutate(self, action, fields):
+        self._writable_now()
         if (int(fields.get("epoch", 0)), int(fields.get("version", 0))) != (self.ctl.epoch, self.ctl.state_version):
             raise SessionConflict("Состояние изменилось. Обновите страницу и повторите действие.")
         reason = fields.get("reason", "").strip()
@@ -162,36 +186,33 @@ class Runtime:
         ctl = self.ctl
         events = ctl.events_after(0)
         selected = [e for e in events if before is None or e.seq < before][-50:]
-        history = [dict(r) for r in self.store.con.execute(
-            "SELECT epoch, state_version, life_time_ms, created_at FROM state_snapshots ORDER BY epoch DESC, state_version DESC LIMIT 50")]
+        records = panel_records(ctl)
         state = self.store.get_snapshot(ctl.epoch, version).state if version else ctl.state
-        memories = [json.loads(r[0]) for r in self.store.con.execute(
-            "SELECT record FROM memory_records WHERE layer IN ('personal','interpretation') ORDER BY rid DESC LIMIT 50")]
         infos, broken = list_backups(default_backup_dir(self.db))
         box = TelegramMailbox(ctl)
         last_poll = box.get("last_poll_at")
         age = ((dt.datetime.now(dt.UTC) - dt.datetime.fromisoformat(last_poll)).total_seconds() if last_poll else None)
         requests = [e.to_dict() for e in events if e.type == "creator.request"][-50:]
-        outbox = [dict(r) for r in self.store.con.execute(
-            "SELECT action_id, status, external_id FROM outbox ORDER BY requested_seq DESC LIMIT 50")]
         return {"persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
                 "session_id": ctl.session_id, "pause_reason": ctl.state["world_time"].get("pause_reason"),
                 "epoch": ctl.epoch, "version": ctl.state_version, "view_version": version,
-                "life_ms": ctl.life_time_ms, "usage": self.session.usage(), "state": state,
-                "events": [e.to_dict() for e in reversed(selected)], "history": history,
-                "memories": memories, "requests": requests, "capabilities": [c.__dict__ for c in self.caps.list()],
+                "life_ms": ctl.life_time_ms, "usage": self.session.usage(), "sending": self.sending, "state": state,
+                "events": [e.to_dict() for e in reversed(selected)], "history": records["history"],
+                "memories": records["memories"], "requests": requests, "capabilities": [c.__dict__ for c in self.caps.list()],
                 "errors": [e.to_dict() for e in events if e.type in ("system.error", "system.limit_reached")][-50:],
                 "backups": [{"id": i.manifest["snapshot_id"], "created_at": i.manifest["created_at"],
                              "version": i.manifest["state_version"]} for i in infos],
                 "broken_backups": len(broken), "last_poll": last_poll, "poll_stale": age is None or age > 60,
-                "outbox": outbox}
+                "outbox": records["outbox"]}
 
     def backup(self, reason):
+        self._writable_now()
         self.session.audit("backup", reason)
         result = create_backup(self.db, default_backup_dir(self.db), reason=reason, controller=self.ctl)
         return result.info.manifest["snapshot_id"]
 
     def restore(self, backup_id, reason):
+        self._writable_now()
         if self.ctl.session_state == "running" or self.session.in_flight:
             raise SessionConflict("Перед восстановлением поставьте сеанс на паузу и дождитесь ответа модели.")
         infos, _ = list_backups(default_backup_dir(self.db))

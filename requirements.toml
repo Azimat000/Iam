@@ -1714,8 +1714,8 @@ kind = "quality"
 mechanism = "Транзакции (S04), копии (S06), хаос-набор (S10)"
 check = "Хаос-набор: многократный kill -9, нехватка места, сбой провайдера; состояние согласовано после каждого."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-144"
@@ -1774,8 +1774,8 @@ kind = "constraint"
 mechanism = "iam.panel (привязка к 127.0.0.1)"
 check = "Тест: сервер не слушает внешние адреса; запрос с чужим Host отклонён; зависимость FastAPI зафиксирована точной версией в файле зависимостей."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-149"
@@ -1810,8 +1810,8 @@ kind = "functional"
 mechanism = "iam.panel (управление сеансом)"
 check = "Тест панели: запуск, пауза, состояние."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-152"
@@ -1882,8 +1882,8 @@ kind = "functional"
 mechanism = "iam.panel (расход, ошибки, копии)"
 check = "Тест панели: расход, ошибки, список копий, восстановление."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-158"
@@ -2278,8 +2278,8 @@ kind = "constraint"
 mechanism = "iam.session.SessionRunner (эксклюзивная блокировка) [spec: docs/spec/time.md#sessions]"
 check = "Тест: второй сеанс не стартует."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-191"
@@ -2291,7 +2291,7 @@ mechanism = "Бюджет сеанса (S08), применение в SessionRun
 check = "Тест: по умолчанию лимит 30 минут и 10 обращений; остановка по первому из них (отдельно проверяется каждый порог и порядок наступления)"
 slice = "S08"
 status = "verified"
-evidence = "docs/evidence/S08-claude-executor.md; tests/providers/test_budget.py"
+evidence = "docs/evidence/S08-claude-executor.md; tests/providers/test_budget.py; docs/evidence/S10-panel-session.md; tests/panel/test_session.py"
 
 [[req]]
 id = "R-192"
@@ -2338,8 +2338,8 @@ kind = "constraint"
 mechanism = "iam.session.SessionRunner [spec: docs/spec/time.md#sessions]"
 check = "Сценарий «Ошибка авторизации или лимит Plus». Сценарии каталога: scenarios/required/auth_error_or_limit.toml."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-196"
@@ -2350,8 +2350,8 @@ kind = "constraint"
 mechanism = "Конфигурация лимитов; формулировки документации"
 check = "Тест: значения читаются из конфигурации; ревью формулировок."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-197"
@@ -2362,8 +2362,8 @@ kind = "functional"
 mechanism = "iam.panel (расход: обращения, время, ошибки)"
 check = "Тест: показатель расхода строится из записанных обращений, времени и ошибок; в коде нет тарифных расчётов API (поиск по «price/tariff/$»)."
 slice = "S10"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/panel/test_session.py; tests/panel/test_runtime.py; tests/chaos/test_session_crashes.py"
 
 [[req]]
 id = "R-198"

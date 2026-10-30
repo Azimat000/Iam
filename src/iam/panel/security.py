@@ -26,7 +26,7 @@ class LocalOnly:
                 if message["type"] == "http.response.start":
                     message["headers"] = [*message.get("headers", []),
                         (b"cache-control", b"no-store"), (b"x-content-type-options", b"nosniff"),
-                        (b"referrer-policy", b"no-referrer"), (b"x-frame-options", b"DENY"),
+                        (b"referrer-policy", b"same-origin"), (b"x-frame-options", b"DENY"),
                         (b"content-security-policy", b"default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")]
                 await send(message)
             await self.app(scope, receive, secured)

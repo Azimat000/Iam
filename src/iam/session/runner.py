@@ -25,6 +25,7 @@ class SessionRunner:
     def __init__(self, controller, *, space=None):
         self.ctl = controller
         self.ledger = SessionLedger(controller)
+        self.ledger.seed_from_journal()
         self.space = space or SpaceGuard(controller.store.path)
         self.in_flight = False
         self.request_id = None

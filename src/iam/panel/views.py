@@ -16,7 +16,7 @@ def e(value):
 
 
 def dump(value):
-    return '<pre>' + e(json.dumps(value, ensure_ascii=False, indent=2)) + '</pre>'
+    return '<pre tabindex="0" role="region" aria-label="Сохранённые данные">' + e(json.dumps(value, ensure_ascii=False, indent=2)) + '</pre>'
 
 
 def duration(ms):
@@ -24,6 +24,8 @@ def duration(ms):
 
 
 def form(action, label, token, data, *, body="", reason=None, primary=False, values=None):
+    if data["sending"]:
+        return ''
     values = values or {}
     reason = values.get("reason", reason or label)
     return (f'<form method="post" action="/actions/{action}">'
@@ -48,6 +50,8 @@ def render(page, data, token, *, error=None, notice=None, values=None):
     u, state = data["usage"], data["session_state"]
     values = values or {}
     notice_html = f'<div class="notice" role="status">{e(notice)}</div>' if notice else ''
+    if data["sending"]:
+        notice_html += '<p class="notice" role="status">Telegram завершает отправку. Наблюдение доступно; команды появятся после записи исхода.</p>'
     error_html = f'<div class="error" role="alert"><h2>Действие не выполнено</h2><p>{e(error)}</p></div>' if error else ''
     if page == "":
         remaining = max(0, u["max_ms"] - u["elapsed_ms"])
@@ -56,6 +60,8 @@ def render(page, data, token, *, error=None, notice=None, values=None):
                    f'<dl class="metrics"><div><dt>Время сеанса</dt><dd>{duration(u["elapsed_ms"])}</dd></div>'
                    f'<div><dt>Осталось времени</dt><dd>{duration(remaining)}</dd></div>'
                    f'<div><dt>Обращения</dt><dd>{u["calls"]} <span>/ {u["max_calls"]}</span></dd></div></dl>')
+        if state == "stopped" and u["session_id"]:
+            content += '<p class="help">Выше — итоги последнего сеанса. Лимиты нового сеанса задаются ниже.</p>'
         if u["in_flight"]:
             content += '<p class="notice">Модель отвечает. Пауза доступна сейчас; ответ, пришедший после неё, проверит ядро.</p>'
         if state == "stopped" and not u["in_flight"]:
@@ -75,7 +81,7 @@ def render(page, data, token, *, error=None, notice=None, values=None):
             else:
                 content += '<p>Продолжение недоступно: дождитесь ответа модели или завершите сеанс с исчерпанным лимитом.</p>'
             content += form("stop", "Завершить сеанс", token, data, values=values) + '</div>'
-        content += ('<p class="help">В паузе время жизни стоит. Лимит обращений сохраняется после перезапуска. '
+        content += ('<p class="help">В паузе время жизни стоит. Лимит обращений сохраняется после перезапуска. Это лимиты приложения, а не квота подписки. '
                     'Для нового бюджета завершите сеанс и запустите следующий. Все команды записываются как вмешательства оператора.</p>'
                     '<section><h2>Последние события</h2>' + event_rows(data["events"][:5]) + '</section>')
     elif page == "events":

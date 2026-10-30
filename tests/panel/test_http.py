@@ -59,6 +59,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(self.client.get("/state?version=1").status_code, 200)
         self.assertEqual(self.client.get("/events?before=1").status_code, 200)
         self.assertEqual(self.client.put("/").status_code, 403)
+        self.assertEqual(self.client.put("/",headers={"Origin":BASE}).status_code,405)
         self.assertEqual(self.client.post("/actions/unknown",headers={"Origin":BASE}).status_code,404)
 
     def test_start_pause_resume_stop_and_replayed_form(self):

@@ -166,3 +166,20 @@ class SessionTest(StateCase):
             result = self.c.apply(self.prop(self.c,Op("world_time",path,"set",value,True),actor="model"))
             self.assertEqual(result.status,"rejected")
         self.assertEqual(s.config(),before)
+
+    def test_s08_session_migrates_known_and_unanswered_usage_once(self):
+        c=self.controller(running=True)
+        provider=ScriptedProvider([Reply(proposals=(rest(),),extra={"usage":{"calls":2,"duration_ms":1}}),
+                                   Reply(error=ProviderError("обрыв"))])
+        bridge=StubCreatorBridge()
+        cycle=Cycle(c,provider,StubMemory(),StubWorld(),StubCapabilities(),bridge)
+        runner=Runner(cycle,c,bridge,max_rounds=1)
+        bridge.say("первое","1");runner.run_pending()
+        bridge.say("второе","2");runner.run_pending()
+        s=SessionRunner(c)
+        self.assertEqual(s.usage()["calls"],4)
+        again=SessionRunner(c)
+        self.assertEqual(again.usage()["calls"],4)
+        again.command("pause","пауза")
+        again.command("resume","продолжить")
+        self.assertEqual(again.usage()["calls"],4)
