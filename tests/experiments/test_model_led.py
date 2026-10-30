@@ -12,9 +12,11 @@ from iam.experiments.runtime import CAP_NOTES, Runtime
 from iam.experiments.variants.model_led import ModelLedArchitecture
 from iam.experiments.variants.model_led.context import MAX_TEXT, bounded, numeric_fields, state_fragment
 from iam.experiments.variants.model_led.provider import GroundedProvider
-from iam.providers.claude_code import build_prompt
-from iam.providers import ClaudeCodeProvider, FakeClaude, SandboxConfig, fake
-from iam.providers.errors import ProviderFormatError
+from iam.providers.codex import build_prompt
+from iam.providers.codex import CodexProvider, FakeCodex, CodexSandboxConfig
+from iam.providers.codex import fake
+from iam.providers.errors import (ProviderAuthError, ProviderFormatError, ProviderLimitError, ProviderTimeout,
+                                  SessionLimitReached)
 from iam.state import verify
 from iam.storage import Store
 from iam.stubs import Reply, ScriptedProvider, act, attend, change, rest
@@ -183,32 +185,32 @@ class ModelLedCase(unittest.TestCase):
         self.assertIn("единственная попытка исправления", build_prompt(second))
         self.assertNotIn("единственная попытка исправления", build_prompt(first))
 
-    def test_claude_adapter_with_fake_process_parses_json_and_repairs_only_once(self):
+    def test_codex_adapter_with_fake_process_parses_json_and_repairs_only_once(self):
         calls = []
         def runner(argv, stdin, timeout_s, cleanup):
             calls.append(stdin)
             if len(calls) == 1:
                 return fake.garbage()
-            view = json.loads(stdin)
+            view = json.loads(json.loads(stdin)["prompt"].split("\n\n", 1)[1])
             proposal = {"kind": "no_action", "body": {"reason": "отдых"}, "rationale": "по ситуации",
                         "cites": [view["context"][0]["ref"]]}
             return fake.reply([proposal])
-        adapter = ClaudeCodeProvider(runner, SandboxConfig(), max_format_retries=0)
+        adapter = CodexProvider(runner, CodexSandboxConfig(), max_format_retries=0)
         result = self.bench.run(Scenario.from_dict(ticket()), ModelLedArchitecture(lambda _: adapter), self.persona)[0]
         self.assertEqual(result.trace["decision_trace"][0]["report"]["outcome"], "done")
         self.assertEqual(len(calls), 2)
         self.assertIn("единственная попытка исправления", calls[1])
 
-    def test_fake_claude_tool_attempt_is_rejected_without_retry(self):
-        runner = FakeClaude([fake.tool_attempt()])
-        adapter = ClaudeCodeProvider(runner, SandboxConfig(), max_format_retries=0)
+    def test_fake_codex_tool_attempt_is_rejected_without_retry(self):
+        runner = FakeCodex([fake.tool_attempt()])
+        adapter = CodexProvider(runner, CodexSandboxConfig(), max_format_retries=0)
         result = self.bench.run(Scenario.from_dict(ticket()), ModelLedArchitecture(lambda _: adapter), self.persona)[0]
         self.assertEqual(result.trace["decision_trace"][0]["report"]["outcome"], "rejected")
         self.assertEqual(len(runner.calls), 1)
 
-    def test_fake_claude_second_bad_format_does_not_launch_third_process(self):
-        runner = FakeClaude([fake.garbage(), fake.garbage(), fake.garbage()])
-        adapter = ClaudeCodeProvider(runner, SandboxConfig(), max_format_retries=0)
+    def test_fake_codex_second_bad_format_does_not_launch_third_process(self):
+        runner = FakeCodex([fake.garbage(), fake.garbage(), fake.garbage()])
+        adapter = CodexProvider(runner, CodexSandboxConfig(), max_format_retries=0)
         result = self.bench.run(Scenario.from_dict(ticket()), ModelLedArchitecture(lambda _: adapter), self.persona)[0]
         self.assertEqual(result.trace["decision_trace"][0]["report"]["outcome"], "rejected")
         self.assertEqual(len(runner.calls), 2)
@@ -256,6 +258,15 @@ class ModelLedCase(unittest.TestCase):
         self.assertEqual(report["outcome"], "no_decision")
         self.assertEqual(len(self.provider.calls), 1)
         self.assertNotIn("RAW PRIVATE STDERR", self.result.trace_bytes.decode())
+
+    def test_typed_provider_errors_and_session_budget_survive_wrapper(self):
+        for error in (ProviderAuthError("auth"), ProviderLimitError("limit"), ProviderTimeout("timeout"),
+                      SessionLimitReached("calls", "budget")):
+            with self.subTest(error=type(error).__name__):
+                provider = GroundedProvider(ScriptedProvider([Reply(error=error)]))
+                with self.assertRaises(type(error)) as raised:
+                    provider.propose({})
+                self.assertIs(raised.exception, error)
 
     def test_tool_claim_rejected_by_core_without_format_repair(self):
         for reply in (Reply(proposals=(act(CAP_NOTES, executed=True),)),

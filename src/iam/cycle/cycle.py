@@ -159,7 +159,7 @@ class Cycle:
 
     def _context(self, trigger: Event, focus: Focus, records: list[MemoryRecord]) -> list[dict]:
         if trigger.type == "input.arrived":   # только факт «есть новое»: содержимое не прочитано (P-1)
-            first = {"ref": focus.ref or trigger.event_id, "origin": "observation", "layer": "notice",
+            first = {"ref": trigger.event_id, "origin": "observation", "layer": "notice",
                      "text": "Есть новое сообщение."}
         elif trigger.type == "time.moment_due":
             first = {"ref": trigger.event_id, "origin": "observation", "layer": "state",

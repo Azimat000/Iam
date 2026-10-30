@@ -13,7 +13,7 @@ from iam.backup.scan import SecretScanner
 from iam.cycle import Cycle, Runner
 from iam.domain import new_id
 from iam.interfaces import Capability
-from iam.providers import ClaudeCodeProvider, SandboxConfig, subprocess_runner
+from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
 from iam.state import EventSpec, StateController
 from iam.state.session import panel_records
@@ -24,9 +24,9 @@ from iam.telegram import Client, CreatorBridge, Receiver, Sender
 
 
 class Runtime:
-    def __init__(self, db, *, demo=False, token_file=None, telegram_user=None, interval=0.5):
+    def __init__(self, db, *, demo=False, auth_file=None, telegram_user=None, interval=0.5):
         self.db, self.demo = Path(db).resolve(), demo
-        self.token_file, self.telegram_user, self.interval = token_file, telegram_user, interval
+        self.auth_file, self.telegram_user, self.interval = auth_file, telegram_user, interval
         self.jobs = queue.Queue()
         self.ready = Future()
         self.closed = False
@@ -113,7 +113,7 @@ class Runtime:
             provider = ScriptedProvider([lambda request: Reply(proposals=(rest("Демонстрация: действий нет."),))] * 100,
                                         name="demo")
         else:
-            provider = ClaudeCodeProvider(self._model_run, SandboxConfig(token_file=self.token_file))
+            provider = CodexProvider(self._model_run, CodexSandboxConfig(auth_file=self.auth_file))
         provider = self.session.provider(provider, charge=self.demo)
         self.cycle = Cycle(self.ctl, provider, StoreMemory(self.store), world, self.caps, creator)
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)

@@ -19,6 +19,8 @@ class GroundedProvider:
             response = self.provider.propose(copy.deepcopy(request))
         except ProviderFormatError:
             return {"model_led_error": "bad_format"}
+        except ProviderError:
+            raise  # авторизация, лимит, бюджет и таймаут сохраняют свой класс
         except Exception:
             # В Cycle исключение попадает в журнал: сырой stderr/текст ответа туда не передаём.
             raise ProviderError("исполнитель варианта A недоступен; решение не получено") from None

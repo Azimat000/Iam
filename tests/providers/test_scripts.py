@@ -249,44 +249,47 @@ class ScriptFlowTest(unittest.TestCase):
 
 
 class ArtifactsTest(unittest.TestCase):
-    """Статические проверки docker/: не root, без секретов, посредник только с белым списком."""
+    """Active Codex artifacts; historical Claude script checks above stay unchanged."""
 
     def test_dockerfile(self):
         text = (ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("--platform=linux/arm64", text)
-        self.assertRegex(text, r"USER 10001:10001")
+        self.assertIn("USER 10001:10001", text)
         self.assertLess(text.index("useradd"), text.index("USER 10001"))
-        self.assertRegex(text, r"ARG CLAUDE_CODE_VERSION=\d+\.\d+\.\d+")
-        for bad in ("OAUTH", "TOKEN=", "ANTHROPIC_API_KEY", "COPY ", "ADD ", "docker.sock", "VOLUME"):
-            self.assertNotIn(bad, text.replace("DISABLE_TELEMETRY", ""), bad)
+        self.assertIn("ARG CODEX_VERSION=0.166.0", text)
+        self.assertIn('"@openai/codex@${CODEX_VERSION}"', text)
+        copies = [line for line in text.splitlines() if line.startswith("COPY ")]
+        self.assertEqual(copies, ["COPY launch.cjs response.schema.json /opt/iam/"])
+        for bad in ("TOKEN=", "API_KEY", "ADD ", "docker.sock", "VOLUME", "claude", "anthropic"):
+            self.assertNotIn(bad, text)
 
     def test_proxy_allowlist_is_minimal_and_ends_with_deny_all(self):
         text = (ROOT / "docker" / "squid.conf").read_text(encoding="utf-8")
-        lines = [l.strip() for l in text.splitlines() if l.strip() and not l.strip().startswith("#")]
-        hosts = [l for l in lines if l.startswith("acl allowed_hosts")]
-        self.assertEqual(hosts, ["acl allowed_hosts dstdomain api.anthropic.com platform.claude.com"])
-        rules = [l for l in lines if l.startswith("http_access")]
+        lines = [line.strip() for line in text.splitlines() if line.strip() and not line.startswith("#")]
+        self.assertEqual([line for line in lines if line.startswith("acl allowed_hosts")],
+                         ["acl allowed_hosts dstdomain chatgpt.com auth.openai.com api.openai.com"])
+        rules = [line for line in lines if line.startswith("http_access")]
         self.assertEqual(rules[-1], "http_access deny all")
-        self.assertEqual([r for r in rules if r.startswith("http_access allow")], ["http_access allow CONNECT allowed_hosts"])
+        self.assertEqual([line for line in rules if line.startswith("http_access allow")],
+                         ["http_access allow CONNECT allowed_hosts"])
         self.assertIn("cache deny all", lines)
+        self.assertIn("access_log none", lines)
 
     def test_compose_keeps_the_sandbox_network_internal(self):
         text = (ROOT / "docker" / "compose.yaml").read_text(encoding="utf-8")
         self.assertRegex(text, r"iam-sandbox:\n\s+name: iam-sandbox\n\s+internal: true")
         self.assertIn("read_only: true", text)
         self.assertIn("cap_drop: [ALL]", text)
-        self.assertNotIn("privileged", text)
-        self.assertNotIn("docker.sock", text)
+        for bad in ("privileged", "docker.sock", "ports:"):
+            self.assertNotIn(bad, text)
 
     def test_default_config_matches_the_compose_names(self):
-        from iam.providers import SandboxConfig
-        cfg = SandboxConfig()
-        compose = (ROOT / "docker" / "compose.yaml").read_text(encoding="utf-8")
-        self.assertIn(f"name: {cfg.network}", compose)
-        self.assertIn("container_name: iam-proxy", compose)
+        from iam.providers.codex import CodexSandboxConfig
+        cfg = CodexSandboxConfig()
+        self.assertIn(f"name: {cfg.network}", (ROOT / "docker/compose.yaml").read_text())
         self.assertIn("iam-proxy", cfg.proxy_url)
-        self.assertIn(f"-t {cfg.image}", (ROOT / "docker" / "README.md").read_text(encoding="utf-8"))
-        self.assertIn(f"USER {cfg.user}", (ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8"))
+        self.assertIn(f"-t {cfg.image}", (ROOT / "docker/README.md").read_text())
+        self.assertIn(f"USER {cfg.user}", (ROOT / "docker/Dockerfile").read_text())
 
 
 if __name__ == "__main__":

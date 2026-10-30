@@ -1,4 +1,5 @@
 """Внешний исполнитель вынесен из потока SQLite; пауза проходит во время ответа."""
+import json
 import shutil
 import tempfile
 import threading
@@ -11,7 +12,7 @@ from unittest import mock
 from iam.backup import create_backup, default_backup_dir
 from iam.domain import new_id
 from iam.panel.runtime import Runtime
-from iam.providers.fake import FakeClaude, auth_error, garbage, reply
+from iam.providers.codex.fake import FakeCodex, auth_error, garbage, reply
 from iam.session import SessionConflict
 from iam.state import EventSpec, StateController, verify
 from iam.storage import AlreadyLocked, Store
@@ -22,6 +23,11 @@ class RuntimeTest(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="iam-runtime-"))
         self.addCleanup(shutil.rmtree,self.tmp,ignore_errors=True)
         self.db=self.tmp/"test.db"
+        self.auth=self.tmp/"auth.json"
+        self.auth.write_text(json.dumps({"auth_mode":"chatgpt", "tokens":{
+            "access_token":"test-access-token", "id_token":"test-id-token",
+            "refresh_token":"test-refresh-token", "account_id":"test-account"}}))
+        self.auth.chmod(0o600)
 
     def runtime(self, **kwargs):
         rt=Runtime(self.db,interval=0.01,**kwargs)
@@ -56,7 +62,7 @@ class RuntimeTest(unittest.TestCase):
         with Store.open(self.db) as s: self.assertEqual(verify(s),[])
 
     def test_missing_database_rejects_waiting_commands_and_preserves_cancellation(self):
-        rt=Runtime(self.db,token_file="/tmp/iam-test-token.env")
+        rt=Runtime(self.db,auth_file=str(self.auth))
         pending=rt.submit("view")
         cancelled=rt.submit("view");cancelled.cancel()
         with self.assertRaises(Exception):rt.start()
@@ -98,7 +104,7 @@ class RuntimeTest(unittest.TestCase):
             if not release.wait(5): raise TimeoutError("test release")
             return reply([])
         with mock.patch("iam.panel.runtime.subprocess_runner",side_effect=delayed):
-            rt=self.runtime(token_file="/tmp/iam-test-token.env")
+            rt=self.runtime(auth_file=str(self.auth))
             try:
                 rt.submit("command","start","запуск").result(5)
                 rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"привет"}))
@@ -125,9 +131,9 @@ class RuntimeTest(unittest.TestCase):
 
     def test_format_repair_counts_two_real_executions_and_resume_keeps_budget(self):
         self.seed()
-        fake=FakeClaude([garbage(),reply([])])
+        fake=FakeCodex([garbage(),reply([])])
         with mock.patch("iam.panel.runtime.subprocess_runner",fake):
-            rt=self.runtime(token_file="/tmp/iam-test-token.env")
+            rt=self.runtime(auth_file=str(self.auth))
             rt.submit("command","start","формат",max_calls=2).result(5)
             rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"test"}))
             rt.submit("inject").result(5)
@@ -142,8 +148,8 @@ class RuntimeTest(unittest.TestCase):
 
     def test_auth_error_uses_technical_pause(self):
         self.seed()
-        with mock.patch("iam.panel.runtime.subprocess_runner",FakeClaude([auth_error()])):
-            rt=self.runtime(token_file="/tmp/iam-test-token.env")
+        with mock.patch("iam.panel.runtime.subprocess_runner",FakeCodex([auth_error()])):
+            rt=self.runtime(auth_file=str(self.auth))
             rt.submit("command","start","авторизация").result(5)
             rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"test"}))
             rt.submit("inject").result(5)
@@ -159,7 +165,7 @@ class RuntimeTest(unittest.TestCase):
         client.call.return_value=[]
         original_call=client.call
         with mock.patch("iam.panel.runtime.Client",return_value=client):
-            rt=self.runtime(token_file="/tmp/iam-test-token.env",telegram_user=123)
+            rt=self.runtime(auth_file=str(self.auth),telegram_user=123)
             rt.poll=lambda: rt.receiver.poll_once()
             rt.submit("poll").result(5)
             view=rt.submit("view").result(5)
@@ -181,8 +187,8 @@ class RuntimeTest(unittest.TestCase):
         raw={"kind":"message","rationale":"проверка отправки","body":{
             "capability_id":"cap_Telegram01","to":"123","text":"тест"}}
         with mock.patch("iam.panel.runtime.Client",return_value=client), mock.patch(
-            "iam.panel.runtime.subprocess_runner",FakeClaude([reply([raw])])):
-            rt=self.runtime(token_file="/tmp/iam-test-token.env",telegram_user=123)
+            "iam.panel.runtime.subprocess_runner",FakeCodex([reply([raw])])):
+            rt=self.runtime(auth_file=str(self.auth),telegram_user=123)
             try:
                 rt.submit("command","start","отправка",max_calls=1).result(5)
                 rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"test"}))
