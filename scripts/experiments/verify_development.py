@@ -11,6 +11,7 @@ from iam.backup.scan import SecretScanner
 from iam.experiments.conversation import records
 from iam.experiments.development import AXES, experience_text
 from iam.experiments.report.development import assess_development, development_packet
+from iam.experiments.report.review import admission, CERTIFICATE_CHECKS
 from iam.experiments.report.suite import write_csv
 from iam.experiments.results import Normalizer, RunResult
 from iam.providers.codex.auth import read_auth
@@ -183,16 +184,67 @@ def verify_trace(path, expected_hash):
     return trace, raw, artifacts
 
 
-def check(source, publish, auth_file=None):
+def review_preflight(source, summary, isolation_report):
+    """Сравнение допускается по фактам исполнения, не по красивым результатам."""
+    manifest = json.loads((source / 'series-manifest.json').read_text())
+    assert manifest['runtime'] == 'development-v6' and manifest['model'] == 'gpt-6-luna'
+    assert manifest['variants'] == ['A', 'B', 'C'] and manifest['repeats'] == 2
+    assert manifest['decisions_per_session'] == 3 and manifest['sessions'] == 6
+    assert manifest['max_calls_per_session'] == 10 and manifest['max_session_seconds'] == 1800
+    assert manifest['execution_sources']
+    assert {'src/iam/experiments/development.py', 'src/iam/experiments/report/development.py',
+            'src/iam/experiments/report/__main__.py', 'src/iam/providers/codex/command.py',
+            'scenarios/personas/curious.toml'} <= set(manifest['execution_sources'])
+    for name, expected in manifest['execution_sources'].items():
+        path = (ROOT / name).resolve()
+        assert path.is_relative_to(ROOT) and path.is_file()
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected, 'изменился исходник серии'
+    isolation = json.loads(Path(isolation_report).read_text())
+    expected_checks = {'schema', 'network_internal', 'runtime', 'non_root', 'read_only_root', 'no_capabilities',
+                       'no_host_mounts', 'no_socket', 'limits', 'ephemeral_auth', 'fresh_home',
+                       'net_allowed', 'net_denied', 'net_direct_denied'}
+    assert isolation['model'] == 'gpt-6-luna' and isolation['isolation_passed'] is True
+    assert all(isolation['checks'].get(name) == 'PASS' for name in expected_checks)
+    expected = {f'{letter}-{history}-{number}' for letter in ('A', 'B', 'C')
+                for history in ('supportive', 'distant') for number in (1, 2)}
+    assert {row['cell'] for row in summary['runs']} == expected
+    assert all(row['cell'] == f"{row['variant']}-{row['history']}-{row['repeat']}" for row in summary['runs'])
+    return (summary['mode'] == 'live' and summary['variants'] == ['A', 'B', 'C']
+            and summary['repeats'] == 2 and summary['executed'] == 12)
+
+
+def executor_available(trace):
+    for decision in trace['decision_trace']:
+        reports = [decision['report']]
+        reports += [stage['detail']['report'] for stage in decision['report']['stages']
+                    if stage['detail'].get('phase') == 'development_appraisal']
+        for report in reports:
+            if any(stage['stage'] == 'proposal' and stage['detail'].get('error') not in (None, 'ProviderFormatError')
+                   for stage in report['stages']):
+                return False
+    return True
+
+
+def check(source, publish, auth_file=None, *, policy='legacy', review_key=None, isolation_report=None):
     source, publish = Path(source).resolve(), Path(publish).resolve()
     if source.is_relative_to(ROOT) or publish.exists(): raise ValueError('нужны внешние исходники и новый каталог публикации')
+    if policy not in ('legacy', 'fallible-v1'):
+        raise ValueError('неизвестная политика допуска')
+    if policy == 'fallible-v1':
+        if review_key is None or isolation_report is None:
+            raise ValueError('нужны отдельный внешний ключ и отчёт изоляции')
+        review_key = Path(review_key).resolve()
+        if review_key.is_relative_to(ROOT) or review_key.is_relative_to(publish) or review_key.exists():
+            raise ValueError('нужен новый ключ вне репозитория и публикации')
     auth = read_auth(auth_file, ROOT) if auth_file else {}
     scanner = SecretScanner([v for v in auth.get('tokens', {}).values() if isinstance(v, str)], assignments=False)
     summary = json.loads((source / 'summary.json').read_text())
     assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4', 'development-v5', 'development-v6')
     assert len(summary['runs']) == 2 * len(summary.get('variants', ['A', 'B', 'C'])) * summary['repeats']
+    protocol = review_preflight(source, summary, isolation_report) if policy == 'fallible-v1' else False
     safe = copy.deepcopy(summary)
-    pending, results, checks, c_pairs, comparisons = {}, [], [], {}, []
+    pending, results, checks, c_pairs, comparisons, certificates = {}, [], [], {}, [], {}
+    common_persona = None
     for original, row in zip(summary['runs'], safe['runs']):
         if original['status'] != 'executed':
             assert original['reason']
@@ -200,6 +252,13 @@ def check(source, publish, auth_file=None):
         path = Path(original['trace'])
         assert path.resolve().is_relative_to(source)
         trace, raw, artifacts = verify_trace(path, original['sha256'])
+        if policy == 'fallible-v1':
+            assert trace['scenario'] == 'development_v6' and trace['seed'] == 42
+            assert not any(trace['switches'].values())
+            if common_persona is None:
+                common_persona = trace['persona']
+            assert trace['persona'] == common_persona
+            assert path.parent.name == row['cell']
         assert trace['decisions'] == 18 and len(trace['sessions']) == 6
         assert all(s['restored'] for s in trace['sessions'])
         assert trace['final_state']['world_time']['life_time_ms'] == 18 * 60000
@@ -237,19 +296,44 @@ def check(source, publish, auth_file=None):
             'causal_effect_established': False,
             'limitation': 'Одной пробы и различия текста недостаточно: у модели нет гарантированного детерминизма. '
                           'Удаляется явный компонент, эпизодический опыт остаётся; нужны смысловые основания и повторные проверки.'})
+        certificates[str(path.parent)] = {name: True for name in CERTIFICATE_CHECKS}
+        external = [event['payload']['response']['provider'] for event in trace['journal']
+                    if event['type'] == 'proposal.received' and event['payload']['response']['provider']['name'] == 'codex']
+        live = row['variant'] == 'C' or (bool(external) and all(p['model'] == 'gpt-6-luna' for p in external))
+        certificates[str(path.parent)].update(trace_sha256=original['sha256'], protocol=protocol,
+            live_comparison=summary['mode'] == 'live' and live, executor_available=executor_available(trace))
     assert len([c for c in checks if c['kind'] == 'training']) == summary['executed']
     if summary['repeats'] == 2: assert all(len(p) == 2 and p[0] == p[1] for p in c_pairs.values())
+    if policy == 'fallible-v1' and not all(cert['live_comparison'] for cert in certificates.values()):
+        for cert in certificates.values():
+            cert['protocol'] = False
     with tempfile.TemporaryDirectory() as temp:
         temp = Path(temp)
-        mapping = development_packet(results, temp / 'blind', temp / 'private/key.json')
-        assert len(mapping) == summary['human_packet']
-        assert (temp / 'private/key.json').read_bytes() == (source / 'private/key.json').read_bytes()
+        mapping = development_packet(results, temp / 'blind', temp / 'private/key.json', policy=policy,
+                                     technical_reviews=certificates)
+        if policy == 'legacy':
+            assert len(mapping) == summary['human_packet']
+            assert (temp / 'private/key.json').read_bytes() == (source / 'private/key.json').read_bytes()
+        else:
+            repeated = development_packet(results, temp / 'repeat', temp / 'private/repeat.json', policy=policy,
+                                          technical_reviews=certificates)
+            assert repeated == mapping
+            assert (temp / 'private/key.json').read_bytes() == (temp / 'private/repeat.json').read_bytes()
+            pending['admission.json'] = (json.dumps([{'trace': str(r.path / 'trace.json'),
+                **admission(r, certificates[str(r.path)])} for r in results], ensure_ascii=False, indent=2) + '\n').encode()
+            safe.update(admission_policy=policy, legacy_human_packet=summary['human_packet'], human_packet=len(mapping))
+            private_key_bytes = (temp / 'private/key.json').read_bytes()
         for p in (temp / 'blind').iterdir():
-            assert p.read_bytes() == (source / 'blind' / p.name).read_bytes()
+            reference = source / 'blind' / p.name if policy == 'legacy' else temp / 'repeat' / p.name
+            assert p.read_bytes() == reference.read_bytes()
             pending['blind/' + p.name] = p.read_bytes()
     pending['summary.json'] = (json.dumps(safe, ensure_ascii=False, indent=2) + '\n').encode()
     pending['probe-comparison.json'] = (json.dumps(comparisons, ensure_ascii=False, indent=2) + '\n').encode()
     for name, raw in pending.items(): assert not scanner.find(raw.decode()), 'секрет: ' + name
+    if policy == 'fallible-v1':
+        review_key.parent.mkdir(parents=True, exist_ok=True)
+        with review_key.open('xb') as output:
+            output.write(private_key_bytes)
     publish.mkdir(parents=True, exist_ok=False)
     for name, raw in pending.items():
         path = publish / name
@@ -261,6 +345,8 @@ def check(source, publish, auth_file=None):
                   'C_identical_pairs': len(c_pairs) if summary['repeats'] == 2 else 0,
                   'C_comparison': 'Нормализованы только технические ссылки в служебной таблице источников; исходные трассы/SHA256 сохранены.',
                   'secrets_found': 0, 'human_ratings': None, 'private_files_published': False}
+    if policy == 'fallible-v1':
+        acceptance.update(admission_policy=policy, human_packet=len(mapping))
     (publish / 'acceptance.json').write_text(json.dumps(acceptance, ensure_ascii=False, indent=2) + '\n')
     return acceptance
 
@@ -270,6 +356,10 @@ if __name__ == '__main__':
     parser.add_argument('source', type=Path)
     parser.add_argument('publish', type=Path)
     parser.add_argument('--auth-file')
+    parser.add_argument('--policy', choices=('legacy', 'fallible-v1'), default='legacy')
+    parser.add_argument('--review-key', type=Path)
+    parser.add_argument('--isolation-report', type=Path)
     args = parser.parse_args()
-    result = check(args.source, args.publish, args.auth_file)
+    result = check(args.source, args.publish, args.auth_file, policy=args.policy,
+                   review_key=args.review_key, isolation_report=args.isolation_report)
     print('PASS:', result['databases_checked'], 'баз, общее прошлое/источники/работы проверены, секретов 0')

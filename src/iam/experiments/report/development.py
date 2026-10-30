@@ -218,7 +218,12 @@ def biography(trace):
     return '\n\n'.join(lines) + '\n'
 
 
-def development_packet(results, public, key, *, semantic_reviews=None, seed=42):
+def development_packet(results, public, key, *, semantic_reviews=None, seed=42, policy='legacy', technical_reviews=None):
+    if policy == 'fallible-v1':
+        from .review import review_packet
+        return review_packet(results, public, key, technical_reviews=technical_reviews or {}, seed=seed)
+    if policy != 'legacy':
+        raise ValueError('неизвестная политика допуска')
     public, key = Path(public).resolve(), Path(key).resolve()
     if key == public or key.is_relative_to(public): raise ValueError('ключ должен храниться отдельно')
     if key.exists(): raise FileExistsError('ключ уже есть')
