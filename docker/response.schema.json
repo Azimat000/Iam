@@ -1,0 +1,53 @@
+{
+  "type": "object",
+  "properties": {
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "action",
+              "message",
+              "state_change",
+              "memory_write",
+              "intention",
+              "creator_request",
+              "no_action",
+              "attend"
+            ]
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "cites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "body_json": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "rationale",
+          "cites",
+          "body_json"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "explanation": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "proposals",
+    "explanation"
+  ],
+  "additionalProperties": false
+}

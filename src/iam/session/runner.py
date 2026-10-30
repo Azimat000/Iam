@@ -115,7 +115,7 @@ class SessionRunner:
             raise SessionLimitReached("calls", "Лимит обращений исчерпан.")
 
     def provider(self, inner, *, charge=True):
-        """Для Claude charge=False: учитывается каждый запуск CLI, включая исправление формата."""
+        """Для внешнего CLI charge=False: учитывается каждый запуск, включая исправление формата."""
         owner = self
 
         class Counted:

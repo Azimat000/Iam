@@ -80,7 +80,7 @@ class IngestTest(CycleCase):
         (request,) = self.provider.calls
         self.assertNotIn(SECRET, str(request))
         first = request["context"][0]
-        self.assertEqual((first["layer"], first["ref"]), ("notice", input_id_for("stub", "tg-1")))
+        self.assertEqual((first["layer"], first["ref"]), ("notice", arrived.event_id))
         self.assertNotIn("input.read", self.types())
         self.assertEqual(self.c.state["affect"]["attention"]["focus"], "rest")   # ответ модели применён после внимания
 

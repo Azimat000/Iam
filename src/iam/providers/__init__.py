@@ -1,4 +1,4 @@
-"""Провайдеры интеллекта (S08): изолированный исполнитель Claude Code, классификатор результата, бюджет сеанса."""
+"""Рабочий исполнитель Codex; старые имена Claude сохранены для исторических контрактных тестов."""
 from .budget import (DEFAULT_MAX_CALLS, DEFAULT_MAX_MINUTES, BudgetedRunner, PausingProvider, SessionBudget,
                      SessionControl)
 from .claude_code import PURPOSES, ClaudeCodeProvider, ModelRouting, build_prompt
@@ -8,8 +8,10 @@ from .errors import (ProviderAuthError, ProviderFormatError, ProviderLimitError,
                      SessionLimitReached)
 from .fake import FakeClaude
 from .run import RunResult, Runner, subprocess_runner
+from .codex import CodexProvider, CodexSandboxConfig, DEFAULT_MODEL, FakeCodex
 
 __all__ = [
+    "CodexProvider", "CodexSandboxConfig", "DEFAULT_MODEL", "FakeCodex",
     "DEFAULT_MAX_CALLS", "DEFAULT_MAX_MINUTES", "BudgetedRunner", "PausingProvider", "SessionBudget", "SessionControl",
     "PURPOSES", "ClaudeCodeProvider", "ModelRouting", "build_prompt", "Classified", "Kind", "classify", "FIXED_ENV",
     "RESPONSE_JSON_SCHEMA", "SYSTEM_PROMPT", "SandboxCommand", "SandboxConfig", "docker_run", "ProviderAuthError",

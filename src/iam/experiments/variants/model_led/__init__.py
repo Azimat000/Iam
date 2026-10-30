@@ -33,7 +33,7 @@ class ModelLedArchitecture:
     def __init__(self, provider_factory):
         """Фабрика (runtime -> CognitiveProvider) создаёт отдельного исполнителя на каждый прогон.
 
-        Для ClaudeCodeProvider: max_format_retries=0, поскольку одну попытку исправления ведёт Cycle.
+        Для CodexProvider: max_format_retries=0, поскольку одну попытку исправления ведёт Cycle.
         Живой провайдер подключается явно; по умолчанию сетевых обращений нет.
         """
         self.provider_factory = provider_factory
