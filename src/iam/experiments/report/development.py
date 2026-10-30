@@ -83,7 +83,7 @@ def run_session(store, persona, architecture, *, number, decisions, switches, in
         events = runtime.controller.events_after(start)
         rows.append({'step': f'session_{number}_choice_{step}', 'session': number,
                      'input': 'Новое сообщение во время своей жизни.' if incoming and step == 0 else 'Свободное время.',
-                     'memory': [r.to_dict() for r in cycle.last_records],
+                     'memory': [r.to_dict() for r in cycle.choice_records],
                      'motives': list(runtime.motives), 'report': asdict(report),
                      'proposals': [e.payload for e in events if e.type == 'proposal.received'],
                      'requests': [e.payload['request'] for e in events if e.type == 'proposal.requested'],
@@ -148,7 +148,9 @@ def assess_development(trace):
     relation_values = {json.dumps(r['content']['values'], sort_keys=True) for r in relations}
     checks = {
         'all_choices_executed': len(decisions) == 18 and all(d['report']['outcome'] == 'done' and
-            all(a['status'] == 'confirmed' for a in d['report']['actions']) for d in decisions),
+            all(a['status'] == 'confirmed' for a in d['report']['actions']) and
+            all(s['status'] == 'ok' for s in d['report']['stages'] if s['detail'].get('phase') == 'development_appraisal')
+            for d in decisions),
         'six_restored_sessions': len(trace['sessions']) == 6 and all(s['restored'] for s in trace['sessions']),
         'own_work_across_sessions': own_work,
         'grounded_interest_followed_by_choice': bool(interest) and any(c['domain'] == 'interest' for c in chains),

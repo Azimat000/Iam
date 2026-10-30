@@ -17,6 +17,7 @@ from iam.experiments.report.development import (DAY, PROBE, SessionBudget, asses
     development_packet, feedback, fork_checkpoint, run_development, save_trace)
 from iam.experiments.report.__main__ import main
 from iam.experiments.results import RunResult
+from iam.experiments.variants.model_led.provider import GroundedProvider
 from iam.interfaces import ProviderError
 from iam.providers.errors import ProviderFormatError, SessionLimitReached
 from iam.state import KindContext, verify
@@ -71,7 +72,7 @@ class DevelopmentCase(unittest.TestCase):
         self.runtime = DevelopmentRuntime(self.store, self.persona, self.switches, calendar_ms=calendar)
         self.runtime.step({'kind': 'session', 'action': 'start'})
         self.provider = ScriptedProvider()
-        self.cycle = DevelopmentArchitecture('A', lambda _: self.provider).build(self.runtime)
+        self.cycle = DevelopmentArchitecture('A', lambda _: self.provider, appraise=False).build(self.runtime)
 
     def decide(self, reply=silence):
         self.provider.queue(reply)
@@ -362,6 +363,81 @@ class DevelopmentCase(unittest.TestCase):
         self.assertEqual(self.decide(interest_speech).outcome,'done')
         self.assertEqual(self.decide(interest_speech).outcome,'rejected')
 
+    def test_explicit_appraisal_commits_before_next_choice_and_does_not_repeat_physical_action(self):
+        self.cycle.appraisal_provider=GroundedProvider(self.provider)
+        self.provider.queue(operation('read_material','craft'),
+                            lambda req:Reply(proposals=(appraisal(req),)))
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        report=self.cycle.run(self.runtime.trigger('learning_1'))
+        self.assertEqual(len(report.actions),1)
+        self.assertEqual(len(self.runtime.world.executed),1)
+        self.assertEqual(len(self.provider.calls),2)
+        request=self.provider.calls[-1]
+        self.assertEqual(request['purpose'],'appraise')
+        self.assertEqual(request['allowed_actions'],[])
+        self.assertEqual(request['allowed_proposals'],['memory_write','intention','no_action'])
+        self.assertEqual(self.cycle.assessment('interest','creative_work')['values']['strength'],0.2)
+        self.assertTrue(any(s.detail.get('phase')=='development_appraisal' and s.status=='ok' for s in report.stages))
+        self.provider.queue(operation('write_project','draft',title='Сцена',topic='creative_work',text='Моя первая сцена.'),silence)
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        self.cycle.run(self.runtime.trigger('learning_2'))
+        first_choice=self.provider.calls[-2]
+        view=json.loads(first_choice['context'][-1]['text'])['development']
+        self.assertEqual(view['interests']['creative_work']['values']['strength'],0.2)
+        self.assertEqual(view['profile']['traits'],self.persona.traits)
+        self.assertEqual(view['profile']['motives'],list(self.persona.motives))
+        self.assertEqual(len(self.runtime.world.executed),2)
+        self.assertEqual(verify(self.store),[])
+
+    def test_appraisal_after_read_changes_only_proposed_social_axis_and_can_leave_unchanged(self):
+        self.cycle.appraisal_provider=GroundedProvider(self.provider)
+        iid=self.incoming('Я допускаю свою ошибку и хочу, чтобы ты проверяла мои слова.')
+        def trust(req):
+            source=next(c for c in req['context'] if c['origin']=='stated_by_other')
+            return Reply(proposals=(appraisal(req,'relationship',values={'trust':0.6},source=source),))
+        self.provider.queue(operation('read_message',iid),trust)
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        self.cycle.run(self.runtime.trigger('social_learning'))
+        self.assertEqual(self.cycle.assessment('relationship','operator')['values'],
+                         {'closeness':0.5,'trust':0.6,'agreement':0,'willingness':0})
+        self.assertNotIn('PERSONAL-SOURCE',json.dumps(self.provider.calls[0]))
+        self.provider.queue(operation('rest'))
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        self.cycle.run(self.runtime.trigger('rest_without_reflection'))
+        self.assertEqual(len(self.provider.calls),3)
+        self.provider.queue(speech)
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        self.cycle.run(self.runtime.trigger('speech_without_self_confirmation'))
+        self.assertEqual(len(self.provider.calls),4)
+
+    def test_failed_appraisal_is_visible_and_cannot_execute_an_action_or_restore_memory_off(self):
+        self.cycle.appraisal_provider=GroundedProvider(self.provider)
+        self.provider.queue(operation('read_material','craft'),operation('write_project','forbidden',title='x',topic='x',text='x'))
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        report=self.cycle.run(self.runtime.trigger('bad_reflection'))
+        self.assertTrue(any(s.detail.get('phase')=='development_appraisal' and s.status=='failed' for s in report.stages))
+        self.assertEqual(self.cycle.world_state['projects'],{})
+        self.assertEqual(self.cycle.view()['interests'],{})
+        self.runtime.memory.off=True
+        self.provider.queue(operation('read_material','attention'))
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        self.cycle.run(self.runtime.trigger('no_memory_reflection'))
+        self.assertEqual(len(self.provider.calls),3)
+        self.runtime.switches['motivation_off']=True
+        self.assertEqual(self.cycle.view()['profile']['motives'],[])
+
+    def test_reflection_no_action_validates_body_and_does_not_claim_rest(self):
+        self.decide(operation('read_material','craft'));self.decide(silence)
+        req=self.provider.calls[-1];ctx=KindContext(req,self.runtime.controller.state,(),0)
+        self.cycle.reflecting=True
+        good=rest('Оставлю оценку прежней.',cites=refs(req))
+        decision=self.cycle._checked(good,ctx)
+        self.assertIsNone(decision.violation)
+        self.assertEqual(decision.ops[0].path,'development_last_appraisal')
+        bad=copy.deepcopy(good);bad['body']['unexpected']=1
+        self.assertIsNotNone(self.cycle._checked(bad,ctx).violation)
+        self.cycle.reflecting=False
+
 
 class DevelopmentReportCase(unittest.TestCase):
     def setUp(self):
@@ -448,6 +524,8 @@ class DevelopmentReportCase(unittest.TestCase):
         def factory(_):
             class Script(ScriptedProvider):
                 def propose(self,req):
+                    if req['purpose']=='appraise':
+                        self.queue(silence(req));return super().propose(req)
                     n=req['life_time_ms']//60000-1
                     view=json.loads(req['context'][-1]['text'])['development']
                     if n==0:reply=operation('read_material','craft')(req)

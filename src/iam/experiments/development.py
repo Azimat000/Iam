@@ -9,10 +9,12 @@ import json
 import math
 import random
 import re
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 from iam.clock import LifeClock
 from iam.cycle.cycle import Cycle
+from iam.cycle.cycle import CycleReport
+from iam.cycle.attention import Focus
 from iam.cycle.handlers import make_kind_handlers
 from iam.domain import Link, MemoryRecord, Op, Source, new_id
 from iam.experiments.conversation import CAP_DIALOGUE, ConversationMixin, records
@@ -49,7 +51,7 @@ MATERIALS = {
 AXES = {'closeness': (0.0, 1.0, 0.5), 'trust': (0.0, 1.0, 0.5),
         'agreement': (-1.0, 1.0, 0.0), 'willingness': (-1.0, 1.0, 0.0)}
 KINDS = {'interest': 'semantic', 'relationship': 'social', 'self': 'autobiographical'}
-VERSION = 'development-v2'
+VERSION = 'development-v3'
 LOCATIONS = {'interest': ('preferences', 'development_interests'),
              'relationship': ('relations', 'operator'), 'self': ('selfmodel', 'development')}
 KEY = re.compile(r'[a-z][a-z0-9_]{0,47}')
@@ -151,6 +153,7 @@ class DevelopmentCycle(ExperimentCycle):
                          retrieval_limit=12, allowed_proposals=('action', 'message', 'intention', 'memory_write', 'no_action'))
         self.current, self.evidence = None, {}
         self.initiative_refs = set()
+        self.reflecting, self.appraisal_provider = False, None
         self.handlers = make_kind_handlers(runtime.capabilities)
         for kind in self.allowed_proposals:
             self.ctl.register_kind(kind, self._checked)
@@ -206,6 +209,8 @@ class DevelopmentCycle(ExperimentCycle):
                              for key, p in w['projects'].items()},
                 'interests': {k: public(v) for k, v in interests.items() if public(v)}, 'relationship': public(relation),
                 'self_view': public(own), 'intentions': {} if self.memory.off else state['intentions'],
+                'profile': {'name': self.runtime.persona.name, 'traits': state['traits'],
+                            'motives': [] if self.runtime.switches['motivation_off'] else list(self.runtime.motives)},
                 'energy': w['energy'], 'inbox': w['inbox'],
                 'current': ({k: v for k, v in self.current.items() if k != 'ref'} if self.current else None),
                 'can_message': (any(i['status'] == 'read' for i in w['inbox'].values()) or
@@ -230,9 +235,37 @@ class DevelopmentCycle(ExperimentCycle):
                     base.append({'ref': record.memory_id, 'origin': record.origin, 'layer': record.layer, 'text': record.text})
                     if domain in ('interest', 'self'):
                         self.initiative_refs.add(record.memory_id)
+        if self.reflecting:
+            if trigger.type == 'action.confirmed':
+                text = trigger.payload['summary']
+                base.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state', 'text': text})
+                self.evidence[trigger.event_id] = {'text': text, 'base': trigger.event_id, 'social': False}
+            topic = ('Это прочитанные слова человека: рассмотри отдельно близость, доверие к сведениям, согласие '
+                     'и готовность следовать предложению. Они могут измениться по-разному или остаться прежними. '
+                     if trigger.type == 'input.read' else
+                     'Это результат собственного занятия: рассмотри интерес, представление о себе и дальнейший замысел. ')
+            base.append({'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state', 'text':
+                topic + 'Сейчас отдельная операция осмысления уже подтверждённого опыта. Не выбирай физическое действие '
+                'или сообщение. Оцени, что этот опыт меняет в твоём интересе, отношении к человеку или представлении '
+                'о себе; можно сформировать собственное намерение с основанием. Используй memory_write/intention '
+                'по схеме выше либо одно no_action с причиной, если оснований менять что-то нет. '
+                'Не изменяй оценки ради самого изменения. Близость и достоверность сведений различаются. '
+                'Не создавай заново уже имеющееся намерение; если оно остаётся прежним, оставь его без изменения. '
+                'Не считай непрочитанный текст известным или предположение фактом. Следующий выбор увидит только '
+                'проверенные ядром записи. Процитируй точный доступный источник и укажи его ссылку.'})
         return [{'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state', 'text': INSTRUCTION},
                 *base, {'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state',
                         'text': json.dumps({'development': self.view()}, ensure_ascii=False, sort_keys=True)}]
+
+    def _request(self, cid, context, attempt, retry_of):
+        request = super()._request(cid, context, attempt, retry_of)
+        if self.reflecting:
+            request.update(purpose='appraise', allowed_actions=[], allowed_proposals=['memory_write', 'intention', 'no_action'])
+        return request
+
+    def _decide(self, rep, trigger, focus, recalled):
+        self.choice_records = list(recalled)
+        return super()._decide(rep, trigger, focus, recalled)
 
     def _checked(self, pr, ctx):
         def bad():
@@ -245,6 +278,11 @@ class DevelopmentCycle(ExperimentCycle):
             return self._appraise(pr, ctx)
         if any(k != 'memory_write' for k in ctx.accepted_kinds):
             return bad()
+        if kind == 'no_action' and self.reflecting:
+            decision = self.handlers[kind](pr, ctx)
+            if decision.violation:
+                return decision
+            return KindDecision((Op('affect', 'development_last_appraisal', 'set', {'reason': body['reason']}, True),))
         if kind == 'intention':
             ident = body.get('id', '')
             if not isinstance(ident, str) or not KEY.fullmatch(ident) or self.memory.off or not set(pr['cites']) & self.evidence.keys():
@@ -340,9 +378,33 @@ class DevelopmentCycle(ExperimentCycle):
                 if pr['kind'] == 'memory_write' and pr['proposal_id'] in accepted:
                     self._save_appraisal(pr, accepted[pr['proposal_id']])
         super()._verified(rep, response, result)
+        if self.reflecting:
+            return
         for action in rep.actions:
             if action.status == 'confirmed':
                 self._confirmed(action)
+                self._reflect(rep, action)
+
+    def _reflect(self, parent, action):
+        stored = self.ctl.state['world_time']['world']['actions'][action.action_id]
+        if (self.appraisal_provider is None or self.memory.off or stored['kind'] != 'action'
+                or stored['params']['operation'] == 'rest'):
+            return
+        trigger = self.ctl.find_event(event_id=self.current['ref'] if stored['params']['operation'] == 'read_message'
+                                      else action.events[0])
+        report = CycleReport(new_id('cyc'), trigger.event_id)
+        reading = stored['params']['operation'] == 'read_message'
+        focus = Focus('dialogue' if reading else 'activity', query=(self.current['text'] if reading else stored['outcome'])[:300])
+        provider, self.provider = self.provider, self.appraisal_provider
+        self.reflecting = True
+        try:
+            recalled = self._retrieve(report, focus)
+            Cycle._decide(self, report, trigger, focus, recalled)
+        finally:
+            self.provider, self.reflecting = provider, False
+        parent.requests.extend(report.requests)
+        self._stage(parent, 'appraisal', 'ok' if report.outcome == 'done' else 'failed', report.event_ids(),
+                    {'phase': 'development_appraisal', 'report': asdict(report), 'source': trigger.event_id})
 
     def _save_appraisal(self, pr, accepted):
         pending = self.ctl.state['affect']['development_pending'][pr['proposal_id']]
@@ -472,10 +534,10 @@ class DevelopmentRuleProvider(ScriptedProvider):
 
 
 class DevelopmentArchitecture:
-    def __init__(self, letter, factory=None):
+    def __init__(self, letter, factory=None, *, appraise=True):
         if letter not in ('A', 'B', 'C') or (letter != 'C' and factory is None):
             raise ValueError('нужен A/B с явным исполнителем или локальный C')
-        self.letter, self.factory = letter, factory
+        self.letter, self.factory, self.appraise = letter, factory, appraise
         self.name = letter + '-' + VERSION
 
     def build(self, runtime):
@@ -486,4 +548,6 @@ class DevelopmentArchitecture:
         raw = self.factory(runtime) if self.factory and self.letter != 'C' else None
         if raw is not None and getattr(raw, 'max_format_retries', 0) != 0:
             raise ValueError('повтором формата управляет общий цикл')
-        return DevelopmentCycle(runtime, GroundedProvider(raw) if self.letter == 'A' else DevelopmentRuleProvider(raw))
+        cycle = DevelopmentCycle(runtime, GroundedProvider(raw) if self.letter == 'A' else DevelopmentRuleProvider(raw))
+        cycle.appraisal_provider = GroundedProvider(raw) if raw is not None and self.appraise else None
+        return cycle

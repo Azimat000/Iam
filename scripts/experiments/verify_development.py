@@ -70,9 +70,12 @@ def verify_trace(path, expected_hash):
                 social = basis.source.kind == 'external_person'
             else:
                 event = event_map[source]
-                assert event.type == 'input.read'
-                text = arrived[event.payload['input_id']]
-                social = True
+                if event.type == 'input.read':
+                    text = arrived[event.payload['input_id']]
+                    social = True
+                else:
+                    assert event.type == 'action.confirmed'
+                    text, social = event.payload['summary'], False
             assert c['quote'] in text and c['quote'].strip()
             if c['domain'] == 'relationship': assert social and c['key'] == 'operator'
             previous = memory[record.links[0].target].content['values'] if record.links else {}
@@ -121,7 +124,7 @@ def check(source, publish, auth_file=None):
     auth = read_auth(auth_file, ROOT) if auth_file else {}
     scanner = SecretScanner([v for v in auth.get('tokens', {}).values() if isinstance(v, str)], assignments=False)
     summary = json.loads((source / 'summary.json').read_text())
-    assert summary['mechanism'] in ('development-v1', 'development-v2')
+    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3')
     assert len(summary['runs']) == 2 * len(summary.get('variants', ['A', 'B', 'C'])) * summary['repeats']
     safe = copy.deepcopy(summary)
     pending, results, checks, c_pairs, comparisons = {}, [], [], {}, []
