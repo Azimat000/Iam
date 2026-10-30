@@ -61,3 +61,138 @@ Read-only подагент обнаружил неполную обработк�
 Обновления хранятся не дольше 24 часов; подтверждение входящего происходит при следующем запросе
 с offset больше update_id. В sendMessage нет документированного ключа дедупликации — поэтому
 автоматическая пересылка после потери ответа небезопасна (инженерный вывод из контракта API).
+
+## Замер покрытия на этом Mac
+
+Штатный `PYTHONPATH=src .venv/bin/python tools/covcheck.py` выполнил 737 тестов успешно
+и показал 100 % строк и ветвей всех модулей src, но не собрал покрытие дочерних CLI-процессов
+служебных программ (memory, reqs, covcheck). Поэтому сам штатный измеритель завершился с кодом 1.
+Причина автоматического сбора с coverage 7.10.6 в этом окружении не установлена; штатная команда
+не объявляется успешно пройденной. Исходники измерителя и пороги не менялись.
+
+Для проверки тех же порогов выполнен отдельный полный прогон с явным измерением только
+этих трёх CLI-команд, с сохранением всех исходных аргументов и окружения тестов. Подагент проверил
+обход: тесты не исключаются, результаты не подделываются. Воспроизведение из корня репозитория:
+
+1. Сохранить следующий код во временный файл `/tmp/iam-s09-explicit-coverage.py`.
+2. Запустить команды после кода. Нужен проектный coverage 7.10.6 (dev-зависимость).
+
+```python
+"""Measure CLI tools explicitly when automatic subprocess coverage misses them on this Mac."""
+import os
+from pathlib import Path
+import subprocess
+import sys
+import unittest
+
+ROOT = Path.cwd().resolve()
+sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'tests')]
+CLI_TOOLS = {str(ROOT / 'tools' / name) for name in ('memory.py', 'reqs.py', 'covcheck.py')}
+original_run = subprocess.run
+traced_calls = 0
+
+def measured_run(args, *positional, **kwargs):
+    global traced_calls
+    if isinstance(args, (list, tuple)) and len(args) >= 2 and str(args[1]) in CLI_TOOLS:
+        args = [args[0], '-m', 'coverage', 'run', '-p', '--rcfile=' + str(ROOT / 'pyproject.toml'), *args[1:]]
+        env = dict(kwargs.get('env') or os.environ)
+        kwargs['env'] = {k: v for k, v in env.items() if not k.startswith('COVERAGE_PROCESS_')}
+        traced_calls += 1
+    return original_run(args, *positional, **kwargs)
+
+subprocess.run = measured_run
+suite = unittest.defaultTestLoader.discover(str(ROOT / 'tests'))
+result = unittest.TextTestRunner(verbosity=1).run(suite)
+print('CLI calls explicitly measured:', traced_calls)
+sys.exit(not result.wasSuccessful())
+```
+
+```sh
+.venv/bin/python -m coverage erase
+PYTHONPATH=src .venv/bin/python -m coverage run -p /tmp/iam-s09-explicit-coverage.py
+.venv/bin/python -m coverage combine -q
+.venv/bin/python -m coverage json -q -o /tmp/iam-s09-coverage.json
+.venv/bin/python tools/covcheck.py --json /tmp/iam-s09-coverage.json
+```
+
+Не запускать одновременно другие замеры с тем же файлом данных. Копии исходных тестов
+не создаются и не изменяются; объединяются реально снятые данные выполнения.
+
+## Итог измерения
+
+```text
+Ran 737 tests in 157.187s
+
+OK
+CLI calls explicitly measured: 132
+модуль                                         строки    ветви  итог
+src/iam/__init__.py                            100.0%   100.0%  ok
+src/iam/backup/__init__.py                     100.0%   100.0%  ok [критичный]
+src/iam/backup/errors.py                       100.0%   100.0%  ok [критичный]
+src/iam/backup/export.py                       100.0%   100.0%  ok [критичный]
+src/iam/backup/restore.py                      100.0%   100.0%  ok [критичный]
+src/iam/backup/scan.py                         100.0%   100.0%  ok [критичный]
+src/iam/backup/snapshots.py                    100.0%   100.0%  ok [критичный]
+src/iam/backup/space.py                        100.0%   100.0%  ok [критичный]
+src/iam/cli.py                                 100.0%   100.0%  ok
+src/iam/clock/__init__.py                      100.0%   100.0%  ok [критичный]
+src/iam/clock/lifeclock.py                     100.0%   100.0%  ok [критичный]
+src/iam/clock/moments.py                       100.0%   100.0%  ok [критичный]
+src/iam/cycle/__init__.py                      100.0%   100.0%  ok [критичный]
+src/iam/cycle/attention.py                     100.0%   100.0%  ok [критичный]
+src/iam/cycle/cycle.py                         100.0%   100.0%  ok [критичный]
+src/iam/cycle/handlers.py                      100.0%   100.0%  ok [критичный]
+src/iam/cycle/runner.py                        100.0%   100.0%  ok [критичный]
+src/iam/cycle/validator.py                     100.0%   100.0%  ok [критичный]
+src/iam/domain/__init__.py                     100.0%   100.0%  ok
+src/iam/domain/catalog.py                      100.0%   100.0%  ok
+src/iam/domain/ids.py                          100.0%   100.0%  ok
+src/iam/domain/jsonschema.py                   100.0%   100.0%  ok
+src/iam/domain/types.py                        100.0%   100.0%  ok
+src/iam/interfaces/__init__.py                 100.0%   100.0%  ok
+src/iam/interfaces/protocols.py                100.0%   100.0%  ok
+src/iam/interfaces/types.py                    100.0%   100.0%  ok
+src/iam/providers/__init__.py                  100.0%   100.0%  ok [критичный]
+src/iam/providers/budget.py                    100.0%   100.0%  ok [критичный]
+src/iam/providers/classify.py                  100.0%   100.0%  ok [критичный]
+src/iam/providers/claude_code.py               100.0%   100.0%  ok [критичный]
+src/iam/providers/command.py                   100.0%   100.0%  ok [критичный]
+src/iam/providers/errors.py                    100.0%   100.0%  ok [критичный]
+src/iam/providers/fake.py                      100.0%   100.0%  ok [критичный]
+src/iam/providers/run.py                       100.0%   100.0%  ok [критичный]
+src/iam/state/__init__.py                      100.0%   100.0%  ok [критичный]
+src/iam/state/controller.py                    100.0%   100.0%  ok [критичный]
+src/iam/state/errors.py                        100.0%   100.0%  ok [критичный]
+src/iam/state/paths.py                         100.0%   100.0%  ok [критичный]
+src/iam/state/replay.py                        100.0%   100.0%  ok [критичный]
+src/iam/state/restore.py                       100.0%   100.0%  ok [критичный]
+src/iam/state/rules.py                         100.0%   100.0%  ok [критичный]
+src/iam/state/telegram.py                      100.0%   100.0%  ok [критичный]
+src/iam/state/types.py                         100.0%   100.0%  ok [критичный]
+src/iam/storage/__init__.py                    100.0%   100.0%  ok [критичный]
+src/iam/storage/db.py                          100.0%   100.0%  ok [критичный]
+src/iam/storage/errors.py                      100.0%   100.0%  ok [критичный]
+src/iam/storage/lock.py                        100.0%   100.0%  ok [критичный]
+src/iam/storage/migrations.py                  100.0%   100.0%  ok [критичный]
+src/iam/storage/runtime.py                     100.0%   100.0%  ok [критичный]
+src/iam/storage/store.py                       100.0%   100.0%  ok [критичный]
+src/iam/stubs/__init__.py                      100.0%   100.0%  ok
+src/iam/stubs/capabilities.py                  100.0%   100.0%  ok
+src/iam/stubs/creator.py                       100.0%   100.0%  ok
+src/iam/stubs/memory.py                        100.0%   100.0%  ok
+src/iam/stubs/provider.py                      100.0%   100.0%  ok
+src/iam/stubs/world.py                         100.0%   100.0%  ok
+src/iam/telegram/__init__.py                   100.0%   100.0%  ok [критичный]
+src/iam/telegram/client.py                     100.0%   100.0%  ok [критичный]
+src/iam/telegram/mailbox.py                    100.0%   100.0%  ok [критичный]
+src/iam/telegram/receiver.py                   100.0%   100.0%  ok [критичный]
+src/iam/telegram/sender.py                     100.0%   100.0%  ok [критичный]
+tools/covcheck.py                              100.0%   100.0%  ok
+tools/memory.py                                 90.8%    84.4%  ok
+tools/reqs.py                                   95.6%    90.6%  ok
+tools/scenarios.py                             100.0%    99.4%  ok
+Модулей: 65, ниже порога: 0.
+```
+
+Код возврата полного прогона: 0. Код возврата tools/covcheck.py --json: 0.
+Все 65 модулей прошли исходные пороги D-009, весь src — 100 % строк и ветвей.
