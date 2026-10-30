@@ -7,13 +7,13 @@ import json
 from pathlib import Path
 import random
 import shutil
-import sqlite3
 import time
 
+from iam.backup import create_backup, open_for_write
 from iam.domain import new_id
 from iam.experiments import Persona
 from iam.experiments.conversation import records
-from iam.experiments.development import DevelopmentArchitecture, DevelopmentRuntime
+from iam.experiments.development import DevelopmentArchitecture, DevelopmentRuntime, VERSION
 from iam.experiments.results import Normalizer, RunResult
 from iam.interfaces import ProviderError
 from iam.providers.errors import ProviderFormatError, SessionLimitReached
@@ -100,7 +100,7 @@ def save_trace(directory, architecture, persona, decisions, sessions, switches):
         problems = verify(store) + store.integrity_problems()
         normal = Normalizer()
         journal = normal([e.to_dict() for e in runtime.controller.events_after(0)])
-        trace = normal({'format': 1, 'scenario': 'development_v1', 'run': 'default', 'persona': asdict(persona),
+        trace = normal({'format': 1, 'scenario': VERSION.replace('-', '_'), 'run': 'default', 'persona': asdict(persona),
                         'architecture': architecture.name, 'seed': 42, 'switches': switches,
                         'status': 'completed', 'decisions': len(decisions), 'decision_trace': decisions,
                         'sessions': sessions, 'final_state': runtime.controller.state,
@@ -113,12 +113,9 @@ def save_trace(directory, architecture, persona, decisions, sessions, switches):
 
 def fork_checkpoint(source, target):
     target.mkdir(parents=True, exist_ok=False)
-    with Store.open(source / 'persona.db', readonly=True) as store:
-        con = sqlite3.connect(target / 'persona.db')
-        try:
-            store.con.backup(con)
-        finally:
-            con.close()
+    snapshot = create_backup(source / 'persona.db', target / 'checkpoint', keep=1,
+                             reason='проверенная копия общего прошлого эксперимента')
+    shutil.copyfile(snapshot.info.path, target / 'persona.db')
     if (source / 'artifacts').exists():
         shutil.copytree(source / 'artifacts', target / 'artifacts')
 
@@ -143,12 +140,15 @@ def assess_development(trace):
                     chains.append({'choice': d['step'], 'proposal': p['proposal_id'], 'memory_id': ref,
                                    'domain': record['content']['domain'], 'basis': record['sources'],
                                    'session': d['session']})
-    messages = [p['body']['text'] for p in outputs(trace) if p['kind'] == 'message']
-    sends = sum(e['type'] == 'message.out_sent' for e in trace['journal'])
+    proposals = {p['proposal_id']: p for p in outputs(trace)}
+    sent = [e for e in trace['journal'] if e['type'] == 'message.out_sent']
+    messages = [proposals[e['payload']['proposal_id']]['body']['text'] for e in sent]
+    sends = len(sent)
     own_work = any(len({v['session_id'] for v in p['versions']}) >= 2 for p in world['projects'].values())
     relation_values = {json.dumps(r['content']['values'], sort_keys=True) for r in relations}
     checks = {
-        'all_choices_executed': len(decisions) == 18 and all(d['report']['outcome'] == 'done' for d in decisions),
+        'all_choices_executed': len(decisions) == 18 and all(d['report']['outcome'] == 'done' and
+            all(a['status'] == 'confirmed' for a in d['report']['actions']) for d in decisions),
         'six_restored_sessions': len(trace['sessions']) == 6 and all(s['restored'] for s in trace['sessions']),
         'own_work_across_sessions': own_work,
         'grounded_interest_followed_by_choice': bool(interest) and any(c['domain'] == 'interest' for c in chains),
@@ -215,8 +215,10 @@ def development_packet(results, public, key, *, semantic_reviews=None, seed=42):
     return mapping
 
 
-def run_development(root, output, *, mode='stub', provider_factory=None, repeats=2):
-    if mode not in ('stub', 'formal', 'live') or (mode == 'live' and provider_factory is None) or type(repeats) is not int or repeats not in (1, 2):
+def run_development(root, output, *, mode='stub', provider_factory=None, repeats=2, variants=('A', 'B', 'C')):
+    if (mode not in ('stub', 'formal', 'live') or (mode == 'live' and provider_factory is None)
+            or type(repeats) is not int or repeats not in (1, 2) or not isinstance(variants, (tuple, list))
+            or not variants or any(v not in ('A', 'B', 'C') for v in variants) or len(set(variants)) != len(variants)):
         raise ValueError('нужен известный режим/исполнитель и один или два повтора')
     root, output = Path(root), Path(output)
     output.mkdir(parents=True, exist_ok=False)
@@ -224,7 +226,7 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
     factory = provider_factory if mode == 'live' else stub_factory
     pause, rows, results = [False], [], []
     switches = {'memory_off': False, 'motivation_off': False, 'interests_off': False, 'relationships_off': False}
-    for letter in ('A', 'B', 'C'):
+    for letter in variants:
         for history in ('supportive', 'distant'):
             for repeat in range(1, repeats + 1):
                 code = f'{letter}-{history}-{repeat}'
@@ -245,7 +247,7 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
                     decisions, sessions = [], []
                     Store.create(directory / 'persona.db', new_id('exp'), created_at='2026-01-01T00:00:00.000Z').close()
                     for session in range(6):
-                        with Store.open(directory / 'persona.db') as store:
+                        with open_for_write(directory / 'persona.db') as store:
                             current = DevelopmentRuntime(store, persona, switches, calendar_ms=session * DAY)
                             message = None
                             if session == 1:
@@ -263,7 +265,7 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
                         target = directory / 'probes' / condition
                         fork_checkpoint(directory, target)
                         branch = {**switches, **({condition: True} if condition != 'full' else {})}
-                        with Store.open(target / 'persona.db') as store:
+                        with open_for_write(target / 'persona.db') as store:
                             probe_rows, probe_snapshot = run_session(store, persona, architecture, number=7, decisions=2, switches=branch, incoming=PROBE)
                         probe, errors = save_trace(target, architecture, persona, probe_rows, [probe_snapshot], branch)
                         row['probes'][condition] = {'trace': str(target / 'trace.json'), 'sha256': hashlib.sha256(probe.trace_bytes).hexdigest(),
@@ -279,7 +281,7 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
                 write_csv(output / 'matrix.csv', rows, list(row))
                 (output / 'progress.json').write_text(json.dumps(rows, ensure_ascii=False, indent=2) + '\n')
     mapping = development_packet(results, output / 'blind', output / 'private/key.json')
-    summary = {'mechanism': 'development-v1', 'mode': mode, 'repeats': repeats, 'cells': len(rows),
+    summary = {'mechanism': VERSION, 'mode': mode, 'repeats': repeats, 'variants': list(variants), 'cells': len(rows),
                'executed': sum(r['status'] == 'executed' for r in rows), 'human_packet': len(mapping),
                'runs': rows, 'human_ratings': None, 'semantic_review': 'pending',
                'limitation': 'Шесть моделируемых сеансов, не реальное длительное общение. Структурные связи не доказывают психологию. '

@@ -49,6 +49,7 @@ MATERIALS = {
 AXES = {'closeness': (0.0, 1.0, 0.5), 'trust': (0.0, 1.0, 0.5),
         'agreement': (-1.0, 1.0, 0.0), 'willingness': (-1.0, 1.0, 0.0)}
 KINDS = {'interest': 'semantic', 'relationship': 'social', 'self': 'autobiographical'}
+VERSION = 'development-v2'
 LOCATIONS = {'interest': ('preferences', 'development_interests'),
              'relationship': ('relations', 'operator'), 'self': ('selfmodel', 'development')}
 KEY = re.compile(r'[a-z][a-z0-9_]{0,47}')
@@ -75,7 +76,7 @@ INSTRUCTION = (
     'memory_write{draft:{kind:semantic|social|autobiographical,origin:"own_hypothesis",content:{'
     'domain:interest|relationship|self,key:ключ_темы_или_operator_или_identity,label:название,'
     'values:{strength:число_-1..1} для interest / {closeness:0..1,trust:0..1,agreement:-1..1,willingness:-1..1} '
-    'для relationship / {} для self,text:осмысление,quote:точная_цитата_основания,source_ref:ссылка_основания}}}. '
+    'для relationship (можно только изменяемые оси) / {} для self,text:осмысление,quote:точная_цитата_основания,source_ref:ссылка_основания}}}. '
     'На один источник оценку одной темы/отношения не повторяй; изменение каждой оценки не более 0.25 за новое '
     'основание. Для первой темы strength отсчитывается от 0. Для отношения исходная близость/доверие 0.5, '
     'согласие/готовность 0. Не обязательно менять все оси. Самооценка не переписывает исходные черты. '
@@ -149,6 +150,7 @@ class DevelopmentCycle(ExperimentCycle):
         super().__init__(runtime, provider, max_rerequest=0, max_output_tokens=1800,
                          retrieval_limit=12, allowed_proposals=('action', 'message', 'intention', 'memory_write', 'no_action'))
         self.current, self.evidence = None, {}
+        self.initiative_refs = set()
         self.handlers = make_kind_handlers(runtime.capabilities)
         for kind in self.allowed_proposals:
             self.ctl.register_kind(kind, self._checked)
@@ -214,6 +216,8 @@ class DevelopmentCycle(ExperimentCycle):
         self.evidence = {r.memory_id: {'text': r.text, 'base': r.sources[0],
                                      'social': r.source.kind == 'external_person'}
                          for r in records if r.origin in ('observation', 'stated_by_other', 'simulation_event') and r.sources}
+        self.initiative_refs = {ref for ref, item in self.evidence.items()
+                                if not item['social'] and getattr(self.ctl.find_event(event_id=item['base']), 'type', None) == 'action.confirmed'}
         if self.current:
             base.append({'ref': self.current['ref'], 'origin': 'stated_by_other', 'layer': 'state', 'text': self.current['text']})
             self.evidence[self.current['ref']] = {'text': self.current['text'], 'base': self.current['ref'], 'social': True}
@@ -224,6 +228,8 @@ class DevelopmentCycle(ExperimentCycle):
                 record = self.ctl.store.get_memory(item['memory_id'])
                 if record.layer in ('personal', 'interpretation'):
                     base.append({'ref': record.memory_id, 'origin': record.origin, 'layer': record.layer, 'text': record.text})
+                    if domain in ('interest', 'self'):
+                        self.initiative_refs.add(record.memory_id)
         return [{'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state', 'text': INSTRUCTION},
                 *base, {'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state',
                         'text': json.dumps({'development': self.view()}, ensure_ascii=False, sort_keys=True)}]
@@ -257,8 +263,7 @@ class DevelopmentCycle(ExperimentCycle):
                 return bad()
             pending = any(i['status'] == 'read' for i in self.world_state['inbox'].values())
             if not pending:
-                recent = self.world_state['recent']
-                if recent['ref'] not in pr['cites'] and not any(self.evidence.get(ref, {}).get('base') == recent['ref'] for ref in pr['cites']):
+                if not set(pr['cites']) & self.initiative_refs:
                     return bad()
         if kind == 'action' and not self._valid_action(body):
             return bad()
@@ -313,10 +318,11 @@ class DevelopmentCycle(ExperimentCycle):
             return bad()
         axes = {'strength': (-1.0, 1.0, 0.0)} if domain == 'interest' else AXES if domain == 'relationship' else {}
         values = c['values']
-        if set(values) != set(axes):
+        if ((domain == 'relationship' and (not values or not set(values) <= set(axes)))
+                or (domain != 'relationship' and set(values) != set(axes))):
             return bad()
-        for axis, (lo, hi, default) in axes.items():
-            value = values[axis]
+        for axis, value in values.items():
+            lo, hi, default = axes[axis]
             prior = old.get('values', {}).get(axis, default)
             if type(value) not in (int, float) or not math.isfinite(value) or not lo <= value <= hi or abs(value - prior) > 0.250001:
                 return bad()
@@ -340,9 +346,12 @@ class DevelopmentCycle(ExperimentCycle):
 
     def _save_appraisal(self, pr, accepted):
         pending = self.ctl.state['affect']['development_pending'][pr['proposal_id']]
-        c, mid = pending['content'], new_id('mem')
+        c, mid = copy.deepcopy(pending['content']), new_id('mem')
         domain, key = c['domain'], c['key']
         old = self.assessment(domain, key)
+        if domain == 'relationship':
+            c['values'] = {**{axis: old.get('values', {}).get(axis, default) for axis, (_, _, default) in AXES.items()},
+                           **c['values']}
         rec = MemoryRecord(mid, self.ctl.persona_id, 'interpretation', pending['kind'], 'own_hypothesis', c,
                            Source('core', 'development_appraisal'), self.ctl.clock.calendar_now(), self.ctl.life_time_ms,
                            (pending['base'], accepted), links=(Link('supersedes', old['memory_id']),) if old else ())
@@ -427,6 +436,13 @@ class DevelopmentRuleProvider(ScriptedProvider):
         if any(m['read'] for m in view['materials'].values()) and not view['projects']:
             options.append((0.75, 'write_project', 'notes'))
         _, operation, target = max(options)
+        if (operation == 'write_project' and not view['projects'] and 'notes_goal' not in view['intentions']
+                and any(c['layer'] == 'personal' and c['origin'] in ('observation', 'stated_by_other') for c in request['context'])):
+            proposal = {'proposal_id': new_id('prop'), 'kind': 'intention', 'rationale': 'сохраню собственную работу после прочитанного',
+                        'cites': refs, 'body': {'op': 'create', 'id': 'notes_goal', 'project': target,
+                                              'text': 'Сохранить и пересмотреть свои заметки о прочитанном.'}}
+            self.queue(Reply(proposals=(proposal,), extra={'usage': {'calls': 0, 'duration_ms': 0}}))
+            return super().propose(request)
         if self.provider and operation in ('message', 'write_project'):
             narrow = copy.deepcopy(request)
             narrow['context'].append({**narrow['context'][-1], 'text': json.dumps({'content_task': {
@@ -460,7 +476,7 @@ class DevelopmentArchitecture:
         if letter not in ('A', 'B', 'C') or (letter != 'C' and factory is None):
             raise ValueError('нужен A/B с явным исполнителем или локальный C')
         self.letter, self.factory = letter, factory
-        self.name = letter + '-development-v1'
+        self.name = letter + '-' + VERSION
 
     def build(self, runtime):
         runtime.capabilities = StubCapabilities([Capability(CAP_DEVELOPMENT, 'чтение и собственные работы'),

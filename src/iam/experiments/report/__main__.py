@@ -22,6 +22,7 @@ def main(argv=None):
     kind.add_argument('--life', action='store_true')
     kind.add_argument('--development', action='store_true')
     parser.add_argument('--repeats', type=int, choices=(1, 2), default=2)
+    parser.add_argument('--variants', nargs='+', choices=('A', 'B', 'C'))
     args = parser.parse_args(argv)
     if args.mode == 'live' and not args.auth_file:
         parser.error('нужен внешний --auth-file')
@@ -32,7 +33,7 @@ def main(argv=None):
         config = CodexSandboxConfig(auth_file=args.auth_file, persist_auth_updates=args.persist_auth_updates)
         factory = lambda runtime: CodexProvider(subprocess_runner, config, max_format_retries=0)
     runner = run_development if args.development else run_life if args.life else run_dialogues if args.dialogues else run_suite
-    kwargs = ({'repeats': args.repeats} if args.development else {}
+    kwargs = ({'repeats': args.repeats, 'variants': args.variants or ('A', 'B', 'C')} if args.development else {}
               if args.life or args.dialogues or not args.conversational else {'conversational': True})
     summary = runner(Path(__file__).resolve().parents[4], args.output, mode=args.mode, provider_factory=factory, **kwargs)
     if args.development:

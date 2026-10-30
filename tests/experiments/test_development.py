@@ -339,6 +339,29 @@ class DevelopmentCase(unittest.TestCase):
         wrong=operation('write_project','another',title='Чужой выбор',topic='creative_work',text='Текст.')
         self.assertIn('development_error',DevelopmentRuleProvider(ScriptedProvider([wrong])).propose(req))
 
+    def test_live_discovered_partial_social_update_preserves_other_axes(self):
+        iid=self.incoming('Я могу ошибаться. Хочу, чтобы ты могла проверять мои слова и сохранять своё мнение.')
+        self.decide(operation('read_message',iid))
+        def trust(req):
+            source=next(c for c in req['context'] if c['origin']=='stated_by_other')
+            return Reply(proposals=(appraisal(req,'relationship',values={'trust':0.6},source=source),))
+        self.assertEqual(self.decide(trust).outcome,'done')
+        self.assertEqual(self.cycle.assessment('relationship','operator')['values'],
+                         {'closeness':0.5,'trust':0.6,'agreement':0.0,'willingness':0.0})
+        self.decide(silence);req=self.provider.calls[-1];ctx=KindContext(req,self.runtime.controller.state,(),0)
+        for values in ({},{'unknown':0.1}):
+            pr=appraisal(req,'relationship',values=values,source=next(c for c in req['context'] if c['origin']=='stated_by_other'))
+            self.assertIsNotNone(self.cycle._appraise(pr,ctx).violation)
+
+    def test_live_discovered_initiative_can_use_grounded_interest_without_latest_action(self):
+        self.decide(operation('read_material','craft'));self.interest()
+        self.decide(operation('read_material','patterns'))
+        def interest_speech(req):
+            ref=self.cycle.assessment('interest','creative_work')['memory_id']
+            return Reply(proposals=(say(CAP_DIALOGUE,'operator','Мне интересно вернуться к своему черновику.',cites=[ref]),))
+        self.assertEqual(self.decide(interest_speech).outcome,'done')
+        self.assertEqual(self.decide(interest_speech).outcome,'rejected')
+
 
 class DevelopmentReportCase(unittest.TestCase):
     def setUp(self):
@@ -361,6 +384,14 @@ class DevelopmentReportCase(unittest.TestCase):
             self.assertEqual(probe['integrity'],'pass')
         self.assertIn('Сохранён собственный текст',biography(trace))
         self.assertIn('Прочитано от человека',biography(trace))
+        altered=copy.deepcopy(trace)
+        altered['decision_trace'][0]['proposals'][0]['response']['proposals'].append(
+            {'proposal_id':'prop_Rejected01','kind':'message','body':{'text':'body_json — отвергнутое предложение'},'cites':[]})
+        self.assertFalse(assess_development(altered)['checks']['enough_speech'])
+        self.assertTrue(assess_development(altered)['checks']['speech_without_internal_text'])
+        altered=copy.deepcopy(trace)
+        altered['decision_trace'][0]['report']['actions'][0]['status']='failed'
+        self.assertFalse(assess_development(altered)['checks']['all_choices_executed'])
         self.assertEqual(main(['--development','--mode','formal','--repeats','1','--output',str(self.root/'cli')]),0)
 
     def test_budget_limits_format_and_auth_pause(self):
@@ -386,7 +417,8 @@ class DevelopmentReportCase(unittest.TestCase):
         self.assertEqual(budget.in_session,1)
 
     def test_modes_pause_and_stub_never_supply_human_packet(self):
-        for kwargs in ({'mode':'bad'},{'mode':'live'},{'repeats':3},{'repeats':True}):
+        for kwargs in ({'mode':'bad'},{'mode':'live'},{'repeats':3},{'repeats':True},
+                       {'variants':[]},{'variants':['A','A']},{'variants':['X']},{'variants':'A'}):
             with self.assertRaises(ValueError):run_development(ROOT,self.root/'bad',**kwargs)
         for letter in ('bad','A','B'):
             with self.assertRaises(ValueError):DevelopmentArchitecture(letter)
