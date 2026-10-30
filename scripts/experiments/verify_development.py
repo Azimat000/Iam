@@ -9,15 +9,34 @@ import tempfile
 
 from iam.backup.scan import SecretScanner
 from iam.experiments.conversation import records
-from iam.experiments.development import AXES
+from iam.experiments.development import AXES, experience_text
 from iam.experiments.report.development import assess_development, development_packet
 from iam.experiments.report.suite import write_csv
-from iam.experiments.results import RunResult
+from iam.experiments.results import Normalizer, RunResult
 from iam.providers.codex.auth import read_auth
 from iam.state import StateController, verify
 from iam.storage import Store
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def canonical_source_metadata(trace, names):
+    """Сравнение C: меняются только технические ключи таблицы ядра, исходная трасса сохраняется."""
+    def convert(value):
+        if isinstance(value, list):
+            return [convert(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        result = {key: convert(item) for key, item in value.items()}
+        if (result.get('origin') == 'simulation_event' and result.get('layer') == 'state'
+                and isinstance(result.get('text'), str) and result['text'].startswith('{"experience_sources":')):
+            meta = json.loads(result['text'])
+            assert set(meta) == {'experience_sources', 'appraisal_kinds'}
+            assert set(meta['experience_sources']) <= names.keys(), 'неизвестная техническая ссылка'
+            meta['experience_sources'] = {names[key]: item for key, item in meta['experience_sources'].items()}
+            result['text'] = json.dumps(meta, ensure_ascii=False, sort_keys=True)
+        return result
+    return convert(trace)
 
 
 def choices(trace):
@@ -76,8 +95,20 @@ def verify_trace(path, expected_hash):
                 else:
                     assert event.type == 'action.confirmed'
                     text, social = event.payload['summary'], False
+                    if trace['scenario'] == 'development_v4':
+                        action = controller.state['world_time']['world']['actions'][event.payload['action_id']]
+                        text = experience_text(action['params'], text)
             assert c['quote'] in text and c['quote'].strip()
             if c['domain'] == 'relationship': assert social and c['key'] == 'operator'
+            if c['domain'] == 'self' and trace['scenario'] == 'development_v4':
+                basis = record.sources[0]
+                event = event_map[basis]
+                assert event.type == 'action.confirmed'
+                action = controller.state['world_time']['world']['actions'][event.payload['action_id']]
+                params = action['params']
+                assert action['status'] == 'confirmed' and params['operation'] in ('write_project', 'open_project')
+                receipt = 'Подтверждено действие Аси: ' + params['operation'] + ', цель: ' + params['target'] + '.'
+                assert c['quote'] == receipt and c['key'] == 'identity' and record.kind == 'autobiographical'
             previous = memory[record.links[0].target].content['values'] if record.links else {}
             axes = {'strength': (-1.0, 1.0, 0.0)} if c['domain'] == 'interest' else AXES if c['domain'] == 'relationship' else {}
             for axis, (lo, hi, default) in axes.items():
@@ -124,7 +155,7 @@ def check(source, publish, auth_file=None):
     auth = read_auth(auth_file, ROOT) if auth_file else {}
     scanner = SecretScanner([v for v in auth.get('tokens', {}).values() if isinstance(v, str)], assignments=False)
     summary = json.loads((source / 'summary.json').read_text())
-    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3')
+    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4')
     assert len(summary['runs']) == 2 * len(summary.get('variants', ['A', 'B', 'C'])) * summary['repeats']
     safe = copy.deepcopy(summary)
     pending, results, checks, c_pairs, comparisons = {}, [], [], {}, []
@@ -133,7 +164,7 @@ def check(source, publish, auth_file=None):
             assert original['reason']
             continue
         path = Path(original['trace'])
-        assert path.is_relative_to(source)
+        assert path.resolve().is_relative_to(source)
         trace, raw, artifacts = verify_trace(path, original['sha256'])
         assert trace['decisions'] == 18 and len(trace['sessions']) == 6
         assert all(s['restored'] for s in trace['sessions'])
@@ -146,12 +177,16 @@ def check(source, publish, auth_file=None):
         pending['biographies/' + row['cell'] + '.md'] = (path.parent / 'biography.md').read_bytes()
         for filename, content in artifacts: pending['artifacts/' + row['cell'] + '/' + filename] = content
         if summary['mode'] == 'live' or row['variant'] == 'C': results.append(RunResult(path.parent, trace))
-        if row['variant'] == 'C': c_pairs.setdefault(row['history'], []).append(raw)
+        if row['variant'] == 'C':
+            with Store.open(path.parent / 'persona.db', readonly=True) as store:
+                normal = Normalizer()
+                normal([e.to_dict() for e in StateController(store).events_after(0)])
+            c_pairs.setdefault(row['history'], []).append(canonical_source_metadata(trace, normal.names))
         checks.append({'cell': row['cell'], 'kind': 'training', 'sha256': original['sha256'], 'integrity': 'pass'})
         observed = {}
         for condition, branch in original['probes'].items():
             probe_path = Path(branch['trace'])
-            assert probe_path.is_relative_to(source)
+            assert probe_path.resolve().is_relative_to(source)
             probe, probe_raw, probe_artifacts = verify_trace(probe_path, branch['sha256'])
             assert probe['journal'][:len(trace['journal'])] == trace['journal'], 'ветви имеют разное прошлое'
             assert probe['final_state']['world_time']['life_time_ms'] == 20 * 60000
@@ -190,6 +225,7 @@ def check(source, publish, auth_file=None):
     acceptance = {'databases_checked': len(checks), 'checks': checks, 'unread_verified': True,
                   'shared_checkpoint_verified': True, 'artifacts_verified': True, 'packet_reproduced': True,
                   'C_identical_pairs': len(c_pairs) if summary['repeats'] == 2 else 0,
+                  'C_comparison': 'Нормализованы только технические ссылки в служебной таблице источников; исходные трассы/SHA256 сохранены.',
                   'secrets_found': 0, 'human_ratings': None, 'private_files_published': False}
     (publish / 'acceptance.json').write_text(json.dumps(acceptance, ensure_ascii=False, indent=2) + '\n')
     return acceptance

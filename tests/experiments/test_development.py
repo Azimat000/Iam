@@ -2,6 +2,7 @@
 import copy
 from dataclasses import replace
 import json
+import runpy
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -18,7 +19,7 @@ from iam.experiments.report.development import (DAY, PROBE, SessionBudget, asses
 from iam.experiments.report.__main__ import main
 from iam.experiments.results import RunResult
 from iam.experiments.variants.model_led.provider import GroundedProvider
-from iam.interfaces import ProviderError
+from iam.interfaces import ActionOutcome, ActionRequest, ProviderError
 from iam.providers.errors import ProviderFormatError, SessionLimitReached
 from iam.state import KindContext, verify
 from iam.storage import Store
@@ -47,7 +48,11 @@ def speech(req):
 def appraisal(req, domain='interest', key=None, values=None, text='Мне интересно пересматривать собственный текст.', source=None, quote=None):
     key = key or {'interest': 'creative_work', 'relationship': 'operator', 'self': 'identity'}[domain]
     if source is None:
-        source = next(c for c in req['context'] if c['layer'] == 'personal' and c['origin'] in ('observation', 'stated_by_other'))
+        sources = json.loads(req['context'][-2]['text'])['experience_sources']
+        source = next(c for c in req['context'] if c['layer'] == 'personal' and c['origin'] in ('observation', 'stated_by_other')
+                      and (domain != 'self' or sources.get(c['ref'], {}).get('self_quote')))
+        if domain == 'self' and quote is None:
+            quote = sources[source['ref']]['self_quote']
     values = values if values is not None else ({'strength': 0.2} if domain == 'interest' else
              {axis: default for axis, (_, _, default) in AXES.items()} if domain == 'relationship' else {})
     return {'proposal_id': new_id('prop'), 'kind': 'memory_write', 'rationale': 'Осмысление конкретного опыта',
@@ -243,6 +248,7 @@ class DevelopmentCase(unittest.TestCase):
         self.decide(operation('read_material', 'evidence'))
         traits = self.runtime.controller.state['traits']
         self.assertEqual(self.decide(lambda req: Reply(proposals=(appraisal(req,'relationship'),))).outcome,'rejected')
+        self.decide(operation('write_project','draft',title='Мои заметки',topic='creative_work',text='Поддержка и согласие различаются.'))
         self.assertEqual(self.decide(lambda req: Reply(proposals=(appraisal(req,'self',text='Я различаю поддержку и согласие.'),))).outcome,'done')
         self.assertEqual(self.runtime.controller.state['traits'],traits)
         self.assertEqual(self.cycle.assessment('self','identity')['origin'],'own_hypothesis')
@@ -438,10 +444,124 @@ class DevelopmentCase(unittest.TestCase):
         self.assertIsNotNone(self.cycle._checked(bad,ctx).violation)
         self.cycle.reflecting=False
 
+    def test_correct_self_kind_still_cannot_claim_character_or_operator_experience(self):
+        self.decide(operation('read_material','attention'))
+        def stolen(req):
+            source=next(c for c in req['context'] if c['layer']=='personal' and 'Вернувшись' in c['text'])
+            return Reply(proposals=(appraisal(req,'self',source=source,quote='он закончил один абзац',
+                                             text='Я вернулась к старому наброску и закончила абзац.'),))
+        self.assertEqual(self.decide(stolen).outcome,'rejected')
+        self.assertEqual(self.cycle.view()['self_view'],{})
+        iid=self.incoming('Я вернулся к старому наброску и закончил абзац.')
+        self.decide(operation('read_message',iid))
+        def steal_operator(req):
+            source=next(c for c in req['context'] if c['origin']=='stated_by_other')
+            return Reply(proposals=(appraisal(req,'self',source=source,quote='закончил абзац',text='Это сделала я.'),))
+        self.assertEqual(self.decide(steal_operator).outcome,'rejected')
+        self.assertEqual(self.cycle.assessment('self','identity'),{})
+
+    def test_own_fiction_is_not_biography_but_confirmed_operation_supports_hypothesis(self):
+        self.decide(operation('write_project','draft',title='Вымысел',topic='creative_work',text='Я пересекла океан на лодке.'))
+        def fiction(req):
+            source=next(c for c in req['context'] if c['layer']=='personal')
+            return Reply(proposals=(appraisal(req,'self',source=source,quote='Я пересекла океан на лодке.',
+                                             text='В моей жизни было путешествие через океан.'),))
+        self.assertEqual(self.decide(fiction).outcome,'rejected')
+        def own(req):
+            return Reply(proposals=(appraisal(req,'self',text='Я сохранила первый текст и хочу попробовать другой финал.'),))
+        self.assertEqual(self.decide(lambda req:Reply(proposals=(appraisal(req,'self',quote='.'),))).outcome,'rejected')
+        def wrong_kind(req):
+            proposal=appraisal(req,'self');proposal['body']['draft']['kind']='semantic'
+            return Reply(proposals=(proposal,))
+        self.assertEqual(self.decide(wrong_kind).outcome,'rejected')
+        self.assertEqual(self.decide(own).outcome,'done')
+        item=self.cycle.assessment('self','identity')
+        record=self.store.get_memory(item['memory_id'])
+        self.assertEqual(record.kind,'autobiographical')
+        self.assertEqual(record.content['quote'],'Подтверждено действие Аси: write_project, цель: draft.')
+        self.assertEqual(self.decide(own).outcome,'rejected')
+        self.reopen()
+        self.decide(operation('open_project','draft'))
+        self.assertEqual(self.decide(own).outcome,'done')
+        self.assertEqual(self.cycle.assessment('self','identity')['version'],2)
+        self.assertEqual(verify(self.store),[])
+
+    def test_source_metadata_tracks_consumed_basis_without_restoring_hidden_interpretations(self):
+        self.decide(operation('read_material','craft'));self.interest()
+        self.decide(silence)
+        metadata=json.loads(self.provider.calls[-1]['context'][-2]['text'])
+        self.assertEqual(metadata['appraisal_kinds'],KINDS)
+        source=next(s for s in metadata['experience_sources'].values() if s['operation']=='read_material')
+        self.assertEqual(source['self_quote'],'')
+        self.assertIn({'domain':'interest','key':'creative_work'},source['used_for'])
+        self.decide(operation('read_material','craft'));self.decide(silence)
+        sources=json.loads(self.provider.calls[-1]['context'][-2]['text'])['experience_sources']
+        self.assertTrue(all({'domain':'interest','key':'creative_work'} in s['used_for'] for s in sources.values()))
+        self.runtime.switches['interests_off']=True
+        self.decide(silence)
+        self.assertTrue(all(s['used_for']==[] for s in json.loads(self.provider.calls[-1]['context'][-2]['text'])['experience_sources'].values()))
+        self.runtime.switches['interests_off']=False
+        item=self.cycle.assessment('interest','creative_work');original=self.store.get_memory
+        archived=replace(original(item['memory_id']),layer='archive')
+        with patch.object(self.store,'get_memory',side_effect=lambda mid:archived if mid==archived.memory_id else original(mid)):
+            self.decide(silence)
+            self.assertTrue(all(s['used_for']==[] for s in json.loads(self.provider.calls[-1]['context'][-2]['text'])['experience_sources'].values()))
+        self.runtime.memory.off=True;self.cycle.current=None
+        self.decide(silence)
+        self.assertEqual(json.loads(self.provider.calls[-1]['context'][-2]['text'])['experience_sources'],{})
+
+    def test_appraisal_direct_result_and_later_memory_share_the_same_source_text(self):
+        self.cycle.appraisal_provider=GroundedProvider(self.provider)
+        self.provider.queue(operation('write_project','draft',title='Сцена',topic='creative_work',text='Персонаж вернулся домой.'),
+            lambda req:Reply(proposals=(appraisal(req,'self',text='Я начала собственную сцену.'),)))
+        self.runtime.step({'kind':'wait','life_ms':60000})
+        report=self.cycle.run(self.runtime.trigger('own_work'))
+        self.assertEqual(self.cycle.assessment('self','identity')['version'],1)
+        request=self.provider.calls[-1]
+        source=json.loads(request['context'][-2]['text'])['experience_sources']
+        direct=next(c for c in reversed(request['context']) if c['ref']==report.actions[0].events[0] and c['origin']=='observation')
+        stored=self.store.get_memory(report.actions[0].memory_id)
+        self.assertEqual(direct['text'],stored.text)
+        self.assertEqual(source[direct['ref']]['self_quote'],source[stored.memory_id]['self_quote'])
+        view=json.loads(request['context'][-1]['text'])['development']
+        self.assertIn({'operation':'open_project','target':'draft'},view['available_actions'])
+        self.assertNotIn({'operation':'read_material','target':'draft'},view['available_actions'])
+
+    def test_unconfirmed_or_missing_source_cannot_supply_self_receipt(self):
+        request=ActionRequest(new_id('act'),'action',CAP_DEVELOPMENT,{'operation':'rest','target':''})
+        self.assertIsNone(self.runtime.memory.describe(request,ActionOutcome('failed','нет результата')))
+        self.runtime.memory.off=True
+        self.assertIsNone(self.runtime.memory.describe(request,ActionOutcome('confirmed','Отдых завершён.')))
+        self.runtime.memory.off=False
+        self.assertEqual(self.cycle._source('нет','evt_MissingSource01',False)['self_quote'],'')
+        report=self.decide(operation('write_project','draft',title='Сцена',topic='creative_work',text='Текст.'))
+        original=copy.deepcopy(self.runtime.controller.state['world_time']['world']['actions'])
+        aid=report.actions[0].action_id
+        original[aid]['status']='failed'
+        with patch.object(type(self.runtime.controller),'state',new_callable=unittest.mock.PropertyMock) as state:
+            state.return_value={'world_time':{'world':{'actions':original}}}
+            self.assertEqual(self.cycle._source('Текст.',report.actions[0].events[0],False)['self_quote'],'')
+
 
 class DevelopmentReportCase(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
+
+    def test_control_comparison_changes_only_known_technical_source_keys(self):
+        compare=runpy.run_path(str(ROOT/'scripts/experiments/verify_development.py'))['canonical_source_metadata']
+        def fragment(ref, quote='собственная работа'):
+            return {'ref':'evt_00000001','origin':'simulation_event','layer':'state','text':json.dumps({
+                'experience_sources':{ref:{'self_quote':quote,'used_for':[]}},'appraisal_kinds':KINDS},ensure_ascii=False)}
+        a={'context':[fragment('mem_RandomSource01')],'text':'mem_RandomSource01 — это цитата автора'}
+        b={'context':[fragment('mem_RandomSource02')],'text':'mem_RandomSource01 — это цитата автора'}
+        original=copy.deepcopy(a)
+        self.assertEqual(compare(a,{'mem_RandomSource01':'mem_00000001'}),compare(b,{'mem_RandomSource02':'mem_00000001'}))
+        self.assertEqual(a,original)
+        b['context'][0]=fragment('mem_RandomSource02','изменённое содержание')
+        self.assertNotEqual(compare(a,{'mem_RandomSource01':'mem_00000001'}),compare(b,{'mem_RandomSource02':'mem_00000001'}))
+        with self.assertRaises(AssertionError):compare(a,{})
+        material=fragment('mem_RandomSource01');material['origin']='observation'
+        self.assertEqual(compare(material,{}),material)
 
     def test_formal_runs_restore_six_sessions_probes_share_history_but_C_not_human_candidate(self):
         summary=run_development(ROOT,self.root/'formal',mode='formal',repeats=1)

@@ -51,7 +51,7 @@ MATERIALS = {
 AXES = {'closeness': (0.0, 1.0, 0.5), 'trust': (0.0, 1.0, 0.5),
         'agreement': (-1.0, 1.0, 0.0), 'willingness': (-1.0, 1.0, 0.0)}
 KINDS = {'interest': 'semantic', 'relationship': 'social', 'self': 'autobiographical'}
-VERSION = 'development-v3'
+VERSION = 'development-v4'
 LOCATIONS = {'interest': ('preferences', 'development_interests'),
              'relationship': ('relations', 'operator'), 'self': ('selfmodel', 'development')}
 KEY = re.compile(r'[a-z][a-z0-9_]{0,47}')
@@ -69,6 +69,8 @@ INSTRUCTION = (
     'Разрешено до двух memory_write и одного действия/сообщения/намерения/no_action за ответ. '
     'action{capability_id:"cap_ExperimentDevelopment01",params:{operation:read_material,target:ключ}}; '
     'read_message/open_project имеют такой же формат; rest имеет target:"". '
+    'read_material принимает только ключ из materials; свой проект открывается только open_project, '
+    'его ключ берётся из projects. Доступные пары operation/target перечислены в available_actions. '
     'write_project: params{operation:"write_project",target:свой_ключ,title:название,topic:ключ_темы,text:полный_текст}. '
     'Написанный текст должен содержать собственную работу, а не сообщение о намерении её написать. '
     'message{capability_id:"cap_ExperimentDialogue01",to:"operator",text:естественная_реплика}. '
@@ -82,9 +84,29 @@ INSTRUCTION = (
     'На один источник оценку одной темы/отношения не повторяй; изменение каждой оценки не более 0.25 за новое '
     'основание. Для первой темы strength отсчитывается от 0. Для отношения исходная близость/доверие 0.5, '
     'согласие/готовность 0. Не обязательно менять все оси. Самооценка не переписывает исходные черты. '
+    'Строгое соответствие: domain=interest → kind=semantic; domain=relationship → kind=social; '
+    'domain=self → kind=autobiographical, key=identity, values={}. semantic для self недопустим. '
+    'experience_sources отделяет своё подтверждённое действие от содержания прочитанного или сочинённого. '
+    'События рассказа и поступки его персонажей не происходили с тобой. Для domain=self цитируй только '
+    'self_quote подтверждённой записи/открытия своего проекта; содержание вымысла не доказывает твою биографию. '
+    'used_for перечисляет уже осмысленные по этому основанию domain/key: не предлагай их повторно. '
     'Все предложения имеют содержательное rationale и cites из доступных evt_/mem_ ссылок. '
     'Внешняя схема исполнителя кодирует тело объекта строкой body_json.'
 )
+
+
+def activity_receipt(params):
+    """Факт собственной операции, без присвоения содержания прочитанного/написанного."""
+    operation, target = params['operation'], params['target']
+    return 'Подтверждено действие Аси: ' + operation + (', цель: ' + target if target else '') + '.'
+
+
+def experience_text(params, summary):
+    role = ('Содержание чужого материала; поступки персонажей не являются поступками Аси.'
+            if params['operation'] == 'read_material' else
+            'Содержание своего произведения; события текста не являются фактами биографии Аси.'
+            if params['operation'] in ('write_project', 'open_project') else 'Результат операции.')
+    return activity_receipt(params) + '\n' + role + '\n' + summary
 
 
 class DevelopmentMemory(BenchMemory):
@@ -98,6 +120,13 @@ class DevelopmentMemory(BenchMemory):
         selected = [r for _, r in ranked[:limit]]
         self.retrieved.extend(selected)
         return selected
+
+    def describe(self, action, outcome):
+        if self.off or outcome.status != 'confirmed':
+            return None
+        if action.kind == 'action':
+            return experience_text(action.params, outcome.summary)
+        return super().describe(action, outcome)
 
 
 class DevelopmentRuntime(Runtime):
@@ -211,21 +240,33 @@ class DevelopmentCycle(ExperimentCycle):
                 'self_view': public(own), 'intentions': {} if self.memory.off else state['intentions'],
                 'profile': {'name': self.runtime.persona.name, 'traits': state['traits'],
                             'motives': [] if self.runtime.switches['motivation_off'] else list(self.runtime.motives)},
+                'available_actions': ([{'operation': 'read_material', 'target': key} for key in MATERIALS]
+                    + [{'operation': 'open_project', 'target': key} for key in w['projects']]
+                    + [{'operation': 'read_message', 'target': key} for key, item in w['inbox'].items()
+                       if item['sender'] == 'operator' and item['status'] == 'unread']
+                    + [{'operation': 'write_project', 'target': 'свой_ключ'}, {'operation': 'rest', 'target': ''}]),
                 'energy': w['energy'], 'inbox': w['inbox'],
                 'current': ({k: v for k, v in self.current.items() if k != 'ref'} if self.current else None),
                 'can_message': (any(i['status'] == 'read' for i in w['inbox'].values()) or
                                 (w['recent'] is not None and not w['initiative_sent'] and not self.memory.off))}
 
+    def _source(self, text, base, social):
+        event = self.ctl.find_event(event_id=base)
+        action = (self.ctl.state['world_time']['world']['actions'].get(event.payload['action_id'])
+                  if event and event.type == 'action.confirmed' else None)
+        operation = action['params']['operation'] if action and action['status'] == 'confirmed' else None
+        receipt = activity_receipt(action['params']) if operation in ('write_project', 'open_project') else ''
+        return {'text': text, 'base': base, 'social': social, 'operation': operation, 'self_quote': receipt}
+
     def _context(self, trigger, focus, records):
         base = Cycle._context(self, trigger, focus, records)
-        self.evidence = {r.memory_id: {'text': r.text, 'base': r.sources[0],
-                                     'social': r.source.kind == 'external_person'}
+        self.evidence = {r.memory_id: self._source(r.text, r.sources[0], r.source.kind == 'external_person')
                          for r in records if r.origin in ('observation', 'stated_by_other', 'simulation_event') and r.sources}
         self.initiative_refs = {ref for ref, item in self.evidence.items()
                                 if not item['social'] and getattr(self.ctl.find_event(event_id=item['base']), 'type', None) == 'action.confirmed'}
         if self.current:
             base.append({'ref': self.current['ref'], 'origin': 'stated_by_other', 'layer': 'state', 'text': self.current['text']})
-            self.evidence[self.current['ref']] = {'text': self.current['text'], 'base': self.current['ref'], 'social': True}
+            self.evidence[self.current['ref']] = self._source(self.current['text'], self.current['ref'], True)
         # Доступ к текущим оценкам не должен возвращать архив или выключенную интерпретацию.
         for domain, key in [('interest', k) for k in self.ctl.state['preferences']['development_interests']] + [('relationship', 'operator'), ('self', 'identity')]:
             item = self.assessment(domain, key)
@@ -237,9 +278,10 @@ class DevelopmentCycle(ExperimentCycle):
                         self.initiative_refs.add(record.memory_id)
         if self.reflecting:
             if trigger.type == 'action.confirmed':
-                text = trigger.payload['summary']
+                action = self.ctl.state['world_time']['world']['actions'][trigger.payload['action_id']]
+                text = experience_text(action['params'], trigger.payload['summary'])
                 base.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state', 'text': text})
-                self.evidence[trigger.event_id] = {'text': text, 'base': trigger.event_id, 'social': False}
+                self.evidence[trigger.event_id] = self._source(text, trigger.event_id, False)
             topic = ('Это прочитанные слова человека: рассмотри отдельно близость, доверие к сведениям, согласие '
                      'и готовность следовать предложению. Они могут измениться по-разному или остаться прежними. '
                      if trigger.type == 'input.read' else
@@ -253,6 +295,20 @@ class DevelopmentCycle(ExperimentCycle):
                 'Не создавай заново уже имеющееся намерение; если оно остаётся прежним, оставь его без изменения. '
                 'Не считай непрочитанный текст известным или предположение фактом. Следующий выбор увидит только '
                 'проверенные ядром записи. Процитируй точный доступный источник и укажи его ссылку.'})
+        sources = {}
+        visible = {item['ref'] for item in base}
+        for ref, source in self.evidence.items():
+            token = hashlib.sha256((str(source['social']) + ':' + source['text']).encode()).hexdigest()
+            pairs = [('interest', k) for k in self.ctl.state['preferences']['development_interests']]
+            pairs += [('relationship', 'operator'), ('self', 'identity')]
+            used = [{'domain': domain, 'key': key} for domain, key in pairs if not self.hidden(domain)
+                    and self.assessment(domain, key).get('memory_id') in visible
+                    and (source['base'] in self.assessment(domain, key).get('bases', [])
+                         or token in self.assessment(domain, key).get('basis_tokens', []))]
+            sources[ref] = {'operation': source['operation'], 'social': source['social'],
+                            'self_quote': source['self_quote'], 'used_for': used}
+        base.append({'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state',
+                     'text': json.dumps({'experience_sources': sources, 'appraisal_kinds': KINDS}, ensure_ascii=False)})
         return [{'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state', 'text': INSTRUCTION},
                 *base, {'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state',
                         'text': json.dumps({'development': self.view()}, ensure_ascii=False, sort_keys=True)}]
@@ -344,6 +400,8 @@ class DevelopmentCycle(ExperimentCycle):
                 or not short(c['text'], 700) or not short(c['label'], 100) or not isinstance(c['values'], dict)):
             return bad()
         if (domain == 'relationship' and (key != 'operator' or not self.evidence[source]['social'])) or (domain == 'self' and key != 'identity'):
+            return bad()
+        if domain == 'self' and (not self.evidence[source]['self_quote'] or c['quote'] != self.evidence[source]['self_quote']):
             return bad()
         old = self.assessment(domain, key, ctx.state)
         if old and self.ctl.store.get_memory(old['memory_id']).layer not in ('personal', 'interpretation'):
