@@ -24,7 +24,10 @@ class Architecture(Protocol):
 class Bench:
     MAX_DECISIONS = 4
 
-    def __init__(self, data_root: str | Path):
+    def __init__(self, data_root: str | Path, *, max_decisions: int = 4):
+        if type(max_decisions) is not int or not 1 <= max_decisions <= 12:
+            raise ValueError("предел решений: от 1 до 12")
+        self.max_decisions = max_decisions
         self.results = Results(data_root)
 
     def run(self, scenario: Scenario | str | Path, architecture: Architecture, persona: Persona | str | Path,
@@ -64,7 +67,7 @@ class Bench:
             status = "completed"
             for step in steps[1:]:
                 if step["kind"] == "decide":
-                    if len(decisions) == self.MAX_DECISIONS:
+                    if len(decisions) == self.max_decisions:
                         status = "decision_limit"
                         break
                     runtime.situation = step["situation"]
@@ -81,7 +84,7 @@ class Bench:
                                       "requests": [e.payload["request"] for e in events if e.type == "proposal.requested"]})
                 else:
                     runtime.step(step)
-                snapshots.append({"after": step["id"], "state": runtime.controller.state})
+                snapshots.append({"after": step["id"], "state": runtime.controller.state, "seq": store.last_seq()})
             if runtime.controller.session_state != "stopped":
                 runtime.require(runtime.controller.stop_session())
             normalize = Normalizer()
@@ -93,6 +96,8 @@ class Bench:
                                "assertions_status": "not_evaluated", "decision_trace": decisions,
                                "snapshots": snapshots, "final_state": runtime.controller.state})
             trace["journal"] = journal
+            from .conversation import records
+            trace["memory_records"] = normalize([r.to_dict() for r in records(runtime.controller)])
             result = RunResult(path, trace)
             self.results.save(result)
             return result

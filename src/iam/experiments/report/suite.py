@@ -7,6 +7,7 @@ from pathlib import Path
 
 from iam.experiments import Bench, Persona, Scenario
 from iam.experiments.results import RunResult
+from iam.experiments.conversation import ConversationArchitecture
 from iam.experiments.variants.formal import FormalArchitecture
 from iam.experiments.variants.hybrid import HybridArchitecture
 from iam.experiments.variants.model_led import ModelLedArchitecture
@@ -83,7 +84,7 @@ def eligibility(letter, matrix, runs, technical, mode):
         checks.append('unverified')
     return checks
 
-def run_suite(root, output, *, mode='stub', provider_factory=None):
+def run_suite(root, output, *, mode='stub', provider_factory=None, conversational=False):
     root, output = Path(root).resolve(), Path(output).resolve()
     if mode not in ('stub', 'live', 'formal'):
         raise ValueError('неизвестный режим')
@@ -98,6 +99,8 @@ def run_suite(root, output, *, mode='stub', provider_factory=None):
         return provider
     architectures = [('A', ModelLedArchitecture(bounded), 'model_led'),
                      ('B', HybridArchitecture(bounded), 'hybrid'), ('C', FormalArchitecture(), 'formal')]
+    if conversational:
+        architectures = [(letter, ConversationArchitecture(arch, letter), directory) for letter, arch, directory in architectures]
     persona = Persona.load(root / 'scenarios/personas/curious.toml')
     scenarios = sorted((root / 'scenarios/experiments').glob('*.toml'))
     if len(scenarios) != 8:
@@ -170,7 +173,7 @@ def run_suite(root, output, *, mode='stub', provider_factory=None):
                                'causal_pass': causal.count('pass'), 'causal_fail': causal.count('fail'),
                                'causal_unverified': causal.count('unverified'),
                                'causality': score, 'liveliness': None, **rank(eligibility(letter, matrix, runs, technical, mode), score, None)}
-    summary = {'assessments': assessments, 'mode': mode, 'matrix_cells': len(matrix), 'executed': sum(r['status'] == 'executed' for r in matrix),
+    summary = {'mechanism': 'conversation-v1' if conversational else 'original', 'assessments': assessments, 'mode': mode, 'matrix_cells': len(matrix), 'executed': sum(r['status'] == 'executed' for r in matrix),
                'subruns': len(runs), 'decisions': sum(r['decisions'] for r in matrix),
                'complexity': {letter: complexity(root, directory) for letter, _, directory in architectures},
                'runs': runs}

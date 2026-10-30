@@ -47,7 +47,10 @@ def evaluate(assertion, trace, peers):
     kind = a['kind']
     # after в S03 ссылается на шаг билета, а не на event_id. Для событий нужен явный мост.
     if 'after' in a and kind not in ('state',):
-        return None, 'Нет однозначной привязки события к шагу after'
+        boundaries = [s.get('seq') for s in trace['snapshots'] if s['after'] == a['after']]
+        if not boundaries or boundaries[0] is None or any('seq' not in e for e in journal):
+            return None, 'Нет однозначной привязки события к шагу after'
+        journal = [e for e in journal if e['seq'] > boundaries[0]]
     if kind in ('event', 'absent'):
         events = [e for e in journal if e['type'] == a['type'] and all(
             k in e['payload'] and (v == '*' or e['payload'][k] == v) for k, v in a.get('where', {}).items())]
@@ -62,6 +65,16 @@ def evaluate(assertion, trace, peers):
                 return None, 'Нет снимка указанного шага'
             state = snapshots[0]
         present, value = lookup(state, a['path'])
+        if not present and a['path'].startswith('memory.') and 'after' not in a:
+            _, logical, *parts = a['path'].split('.')
+            matches = [r for r in trace.get('memory_records', [])
+                       if r['content'].get('logical_id', r['content'].get('subject')) == logical]
+            if matches and parts == ['history']:
+                value = [h['change'] for r in matches for h in r['history']]
+                # contains для истории означает наличие старого значения внутри исходного текста.
+                if a['op'] == 'contains':
+                    return any(a['value'] in text for text in value), 'История фактической записи памяти'
+                present = True
         op = a['op']
         expected = a.get('value')
         if op == 'absent':
