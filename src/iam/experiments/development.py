@@ -51,7 +51,7 @@ MATERIALS = {
 AXES = {'closeness': (0.0, 1.0, 0.5), 'trust': (0.0, 1.0, 0.5),
         'agreement': (-1.0, 1.0, 0.0), 'willingness': (-1.0, 1.0, 0.0)}
 KINDS = {'interest': 'semantic', 'relationship': 'social', 'self': 'autobiographical'}
-VERSION = 'development-v4'
+VERSION = 'development-v5'
 LOCATIONS = {'interest': ('preferences', 'development_interests'),
              'relationship': ('relations', 'operator'), 'self': ('selfmodel', 'development')}
 KEY = re.compile(r'[a-z][a-z0-9_]{0,47}')
@@ -81,6 +81,9 @@ INSTRUCTION = (
     'domain:interest|relationship|self,key:ключ_темы_или_operator_или_identity,label:название,'
     'values:{strength:число_-1..1} для interest / {closeness:0..1,trust:0..1,agreement:-1..1,willingness:-1..1} '
     'для relationship (можно только изменяемые оси) / {} для self,text:осмысление,quote:точная_цитата_основания,source_ref:ссылка_основания}}}. '
+    'values содержит новые абсолютные значения, а не приращения. Например, при trust=0.6 повышение на 0.1 '
+    'записывается как {trust:0.7}, не {trust:0.1}. assessment_limits показывает current/min_next/max_next '
+    'для каждого доступного числового поля; выбирай новое значение внутри этого интервала. '
     'На один источник оценку одной темы/отношения не повторяй; изменение каждой оценки не более 0.25 за новое '
     'основание. Для первой темы strength отсчитывается от 0. Для отношения исходная близость/доверие 0.5, '
     'согласие/готовность 0. Не обязательно менять все оси. Самооценка не переписывает исходные черты. '
@@ -238,6 +241,13 @@ class DevelopmentCycle(ExperimentCycle):
                              for key, p in w['projects'].items()},
                 'interests': {k: public(v) for k, v in interests.items() if public(v)}, 'relationship': public(relation),
                 'self_view': public(own), 'intentions': {} if self.memory.off else state['intentions'],
+                'assessment_limits': {
+                    'semantics': 'absolute_new_value',
+                    'new_interest': {} if self.hidden('interest') else value_limits({}, {'strength': (-1.0, 1.0, 0.0)}),
+                    'interests': {key: value_limits(public(item)['values'], {'strength': (-1.0, 1.0, 0.0)})
+                                  for key, item in interests.items() if public(item)},
+                    'relationship': {} if self.hidden('relationship') or (relation and not public(relation))
+                                    else value_limits(public(relation).get('values', {}), AXES)},
                 'profile': {'name': self.runtime.persona.name, 'traits': state['traits'],
                             'motives': [] if self.runtime.switches['motivation_off'] else list(self.runtime.motives)},
                 'available_actions': ([{'operation': 'read_material', 'target': key} for key in MATERIALS]
@@ -526,6 +536,14 @@ class DevelopmentCycle(ExperimentCycle):
             if self.memory.off and operation != 'read_message':
                 self.current = None
         self.runtime.move([Op('world_time', 'world.development', 'set', w, True)], 'результат собственной деятельности', cause=event)
+
+
+def value_limits(values, axes):
+    """Допустимое следующее абсолютное значение из уже доступной оценки."""
+    return {axis: {'current': values.get(axis, default),
+                   'min_next': max(lo, values.get(axis, default) - 0.25),
+                   'max_next': min(hi, values.get(axis, default) + 0.25)}
+            for axis, (lo, hi, default) in axes.items()}
 
 
 def short(value, maximum):

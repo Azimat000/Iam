@@ -148,6 +148,62 @@ class DevelopmentCase(unittest.TestCase):
         self.assertEqual(self.decide(speech).actions[0].status, 'confirmed')
         self.assertEqual({i['status'] for i in self.cycle.world_state['inbox'].values()}, {'answered'})
 
+    def test_absolute_value_limits_follow_current_appraisal_and_survive_reopen(self):
+        initial = self.cycle.view()['assessment_limits']
+        self.assertEqual(initial['semantics'], 'absolute_new_value')
+        self.assertEqual(initial['relationship']['trust'], {'current': 0.5, 'min_next': 0.25, 'max_next': 0.75})
+        self.assertEqual(initial['new_interest']['strength'], {'current': 0.0, 'min_next': -0.25, 'max_next': 0.25})
+        for number, trust in enumerate((0.7, 0.9)):
+            iid = self.incoming('Проверяемое основание доверия ' + str(number), 'trust_' + str(number))
+            self.decide(operation('read_message', iid))
+            def change(req, trust=trust):
+                source = next(c for c in reversed(req['context']) if c['origin'] == 'stated_by_other' and c['layer'] == 'state')
+                return Reply(proposals=(appraisal(req, 'relationship', values={'trust': trust, 'agreement': -trust + 0.5}, source=source),))
+            self.assertEqual(self.decide(change).outcome, 'done')
+        self.reopen()
+        self.decide(silence)
+        view = json.loads(self.provider.calls[-1]['context'][-1]['text'])['development']
+        self.assertEqual(view['assessment_limits']['relationship']['trust'], {'current': 0.9, 'min_next': 0.65, 'max_next': 1.0})
+        self.assertEqual(view['assessment_limits']['relationship']['agreement']['current'], -0.4)
+        # 0.1 не прибавляется к 0.9: это новый абсолютный уровень и недопустимый скачок.
+        iid = self.incoming('Другое независимое основание.', 'third')
+        self.decide(operation('read_message', iid))
+        def delta_mistake(req):
+            source = next(c for c in reversed(req['context']) if c['origin'] == 'stated_by_other' and c['layer'] == 'state')
+            return Reply(proposals=(appraisal(req, 'relationship', values={'trust': 0.1}, source=source),))
+        self.assertEqual(self.decide(delta_mistake).outcome, 'rejected')
+        self.assertEqual(self.cycle.assessment('relationship', 'operator')['values']['trust'], 0.9)
+
+    def test_interest_limits_clamp_both_ends_and_rejected_change_does_not_move_limits(self):
+        for number, strength in enumerate((-0.2, -0.4, -0.6, -0.8, -1.0)):
+            self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Версия ' + str(number)))
+            self.assertEqual(self.interest(strength).outcome, 'done')
+        before = self.cycle.view()['assessment_limits']['interests']['creative_work']['strength']
+        self.assertEqual(before, {'current': -1.0, 'min_next': -1.0, 'max_next': -0.75})
+        self.assertEqual(self.interest(-0.9).outcome, 'rejected')  # повтор того же источника
+        self.assertEqual(self.cycle.view()['assessment_limits']['interests']['creative_work']['strength'], before)
+
+    def test_assessment_limits_cannot_reveal_disabled_or_archived_values(self):
+        self.decide(operation('read_material', 'craft'))
+        self.interest()
+        iid = self.incoming('Доступное общение.')
+        self.decide(operation('read_message', iid))
+        self.decide(lambda req: Reply(proposals=(appraisal(req, 'relationship', values={'trust': 0.7},
+            source=next(c for c in req['context'] if c['origin'] == 'stated_by_other')),)))
+        relation = self.cycle.assessment('relationship', 'operator')
+        original = self.store.get_memory
+        archived = replace(original(relation['memory_id']), layer='archive')
+        with patch.object(self.store, 'get_memory', side_effect=lambda mid: archived if mid == archived.memory_id else original(mid)):
+            self.assertEqual(self.cycle.view()['assessment_limits']['relationship'], {})
+        self.runtime.switches.update(interests_off=True, relationships_off=True)
+        self.decide(silence)
+        limits = json.loads(self.provider.calls[-1]['context'][-1]['text'])['development']['assessment_limits']
+        self.assertEqual({k: limits[k] for k in ('new_interest', 'interests', 'relationship')},
+                         {'new_interest': {}, 'interests': {}, 'relationship': {}})
+        self.runtime.switches.update(interests_off=False, relationships_off=False)
+        self.runtime.memory.off = True
+        self.assertEqual(self.cycle.view()['assessment_limits'], limits)
+
     def test_unread_future_and_other_sender_do_not_supply_appraisal_evidence(self):
         iid = self.incoming('PRIVATE-UNREAD')
         self.decide(operation('read_material', 'craft'))
