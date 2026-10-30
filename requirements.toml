@@ -1438,8 +1438,8 @@ kind = "constraint"
 mechanism = "iam.experiments.Bench (общий интерфейс архитектуры)"
 check = "Тест: одинаковые входы подаются всем вариантам; различие только в архитектуре."
 slice = "S11"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S11-experiment-bench.md (общие память/мир/ядро реализованы, сравнение A/B/C ещё не выполнено); tests/experiments/test_bench.py::test_wrong_factory_is_rejected"
 
 [[req]]
 id = "R-121"
@@ -1498,8 +1498,8 @@ kind = "constraint"
 mechanism = "Список зависимостей и состав кода"
 check = "Тест/скрипт S29: в src/ и файле зависимостей нет импортов фреймворков обучения (torch, tensorflow, jax и т.п.)."
 slice = "S11"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "tests/experiments/test_bench.py::test_no_training_frameworks_in_sources_or_dependencies; docs/evidence/S11-experiment-bench.md"
 
 [[req]]
 id = "R-126"
@@ -1522,8 +1522,8 @@ kind = "constraint"
 mechanism = "iam.experiments.Bench (лимит решений на прогон)"
 check = "Тест: пятое ключевое решение в прогоне не допускается (прогон завершается); лимит равен 4."
 slice = "S11"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "tests/experiments/test_bench.py::test_four_decision_limit_is_per_run_and_later_steps_are_not_executed; docs/evidence/S11-experiment-bench.md"
 
 [[req]]
 id = "R-128"
@@ -2038,8 +2038,8 @@ kind = "functional"
 mechanism = "Переключатель memory_off (iam.experiments.Bench)"
 check = "scenarios/required/memory_off.toml (создан в S03); прогон на ядре в S25."
 slice = "S11"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "tests/experiments/test_bench.py::test_memory_ablation_changes_actual_proposal_and_removes_past_from_requests (Toy, полная смысловая проверка будущего ядра в S25 ещё не выполнена); docs/evidence/S11-experiment-bench.md"
 
 [[req]]
 id = "R-171"
