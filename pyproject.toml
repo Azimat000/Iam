@@ -8,20 +8,22 @@ version = "0.1.0"
 description = "Ядро цифровой личности: домен, хранилище, проверяющее ядро"
 requires-python = ">=3.13"
 # Ядро — только стандартная библиотека (D-004). Сторонние пакеты появляются в срезах, где нужны.
-dependencies = []
+dependencies = ["fastapi==0.162.0", "starlette==1.10.0", "uvicorn==0.54.0"]
 
 [project.optional-dependencies]
 # Только для разработки: измеритель покрытия (D-011). Версия зафиксирована.
-dev = ["coverage==7.10.6"]
+dev = ["coverage==7.10.6", "httpx==0.28.1"]
 
 [project.scripts]
 iam = "iam.cli:main"
+iam-panel = "iam.panel.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 "iam.domain" = ["schemas/*.json"]
+"iam.panel" = ["*.css"]
 
 # --- Покрытие тестами (D-009, D-011) ---------------------------------------
 [tool.coverage.run]
@@ -50,4 +52,8 @@ critical = [
     "src/iam/cycle/*.py",   # цикл, валидатор предложений, подтверждённый результат (S07)
     "src/iam/providers/*.py",   # изоляция исполнителя, классификатор результата, бюджет и пауза (S08)
     "src/iam/telegram/*.py",   # приём/подтверждение, права, секреты, неопределённая отправка (S09)
+    "src/iam/session/*.py",    # бюджет, время, пауза и вмешательства оператора (S10)
+    "src/iam/panel/security.py",  # Host, Origin и CSRF (S10)
+    "src/iam/panel/app.py",    # проверка форм и направлений команд (S10)
+    "src/iam/panel/runtime.py",  # единственный писатель и фиксация внешнего исхода до паузы (S10)
 ]
