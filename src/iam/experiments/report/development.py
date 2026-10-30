@@ -120,6 +120,30 @@ def fork_checkpoint(source, target):
         shutil.copytree(source / 'artifacts', target / 'artifacts')
 
 
+def intention_progress(trace):
+    """Временная цепочка замысла; качество исполнения его смысла проверяется отдельно."""
+    events = {event['event_id']: event for event in trace['journal']}
+    accepted = {event['payload']['proposal_id']: event for event in events.values() if event['type'] == 'proposal.accepted'}
+    projects = trace['final_state']['world_time']['world']['development']['projects']
+    result = []
+    for key, intention in trace['final_state']['intentions'].items():
+        creation = accepted[intention['proposal_id']]
+        versions = projects.get(intention['project'], {}).get('versions', [])
+        later = [{'version': number, 'source': version['source'], 'session_id': version['session_id']}
+                 for number, version in enumerate(versions, 1) if events[version['source']]['seq'] > creation['seq']]
+        choices = [proposal['proposal_id'] for proposal in outputs(trace)
+                   if proposal['kind'] in ('action', 'message') and proposal['proposal_id'] in accepted and creation['event_id'] in proposal['cites']
+                   and accepted[proposal['proposal_id']]['seq'] > creation['seq']]
+        result.append({'id': key, 'text': intention['text'], 'project': intention['project'], 'status': intention['status'],
+                       'created_event': creation['event_id'], 'created_seq': creation['seq'],
+                       'later_project_versions': later, 'later_choices_citing_intention': choices,
+                       'result_ref': intention.get('result_ref'),
+                       'declared_done_with_later_write': intention['status'] == 'done' and
+                           any(version['source'] == intention.get('result_ref') for version in later),
+                       'semantic_fulfilment': 'requires_review'})
+    return result
+
+
 def assess_development(trace):
     """Структурный допуск; смысл ссылок и естественность требуют отдельного просмотра."""
     state, decisions = trace['final_state'], trace['decision_trace']
@@ -161,6 +185,7 @@ def assess_development(trace):
         'speech_without_internal_text': all(not MARKERS.search(t) and not any(x in t.lower() for x in INTERNAL) for t in messages),
     }
     return {'checks': checks, 'structural_admission': all(checks.values()), 'chains': chains,
+            **({'intention_progress': intention_progress(trace)} if trace.get('scenario') == 'development_v6' else {}),
             'interpretations': len(appraisals), 'interest_versions': len(interest), 'relationship_versions': len(relations),
             'semantic_review': 'pending', 'human_ratings': None, 'eligible_for_human_packet': False}
 
@@ -176,6 +201,13 @@ def biography(trace):
         elif e['type'] == 'input.arrived': lines.append('Пришло уведомление; его текст ещё неизвестен.')
         elif e['type'] == 'input.read': lines.append('Прочитано от человека: ' + incoming[p['input_id']])
         elif e['type'] == 'message.out_sent': lines.append('Собеседница: ' + proposals[p['proposal_id']]['body']['text'])
+        elif e['type'] == 'proposal.accepted' and p['kind'] == 'intention' and trace.get('scenario') == 'development_v6':
+            body = proposals[p['proposal_id']]['body']
+            text = trace['final_state']['intentions'][body['id']]['text']
+            status = ('сохранён будущий замысел' if body['op'] == 'create' else {
+                'active': 'возобновлён', 'deferred': 'отложен', 'waiting_opportunity': 'ожидает возможности',
+                'abandoned': 'оставлен', 'done': 'отмечен выполненным после подтверждённой записи проекта'}[body['to_status']])
+            lines.append('Собственный замысел «' + text + '»: ' + status + '.')
         elif e['type'] == 'action.confirmed':
             params = proposals[p['proposal_id']]['body']['params']
             if params['operation'] == 'write_project': lines.append('Сохранён собственный текст «' + params['title'] + '»:\n\n' + params['text'])

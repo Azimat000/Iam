@@ -15,7 +15,7 @@ from iam.experiments.conversation import CAP_DIALOGUE, records
 from iam.experiments.development import (AXES, CAP_DEVELOPMENT, KINDS, MATERIALS, DevelopmentArchitecture,
                                          DevelopmentRuleProvider, DevelopmentRuntime)
 from iam.experiments.report.development import (DAY, PROBE, SessionBudget, assess_development, biography,
-    development_packet, feedback, fork_checkpoint, run_development, save_trace)
+    development_packet, feedback, fork_checkpoint, intention_progress, run_development, save_trace)
 from iam.experiments.report.__main__ import main
 from iam.experiments.results import RunResult
 from iam.experiments.variants.model_led.provider import GroundedProvider
@@ -43,6 +43,11 @@ def silence(req):
 
 def speech(req):
     return Reply(proposals=(say(CAP_DIALOGUE, 'operator', 'Я хочу продолжить свою работу.', cites=refs(req)),))
+
+
+def intention(body, cites=refs):
+    return lambda req: Reply(proposals=({'proposal_id': new_id('prop'), 'kind': 'intention',
+        'rationale': 'Мой замысел и его подтверждённый результат', 'cites': cites(req), 'body': body},))
 
 
 def appraisal(req, domain='interest', key=None, values=None, text='Мне интересно пересматривать собственный текст.', source=None, quote=None):
@@ -97,6 +102,12 @@ class DevelopmentCase(unittest.TestCase):
         self.store.close()
         self.store = Store.open(self.path)
         self.open_cycle(DAY)
+
+    def current_trace(self):
+        events = self.runtime.controller.events_after(0)
+        return {'scenario': 'development_v6', 'journal': [event.to_dict() for event in events],
+                'final_state': self.runtime.controller.state,
+                'decision_trace': [{'proposals': [event.payload for event in events if event.type == 'proposal.received']}]}
 
     def test_own_work_interest_intention_revision_and_real_reopen(self):
         self.assertEqual(self.cycle.view()['interests'], {})
@@ -335,6 +346,144 @@ class DevelopmentCase(unittest.TestCase):
             a=operation('rest')(req).proposals[0]
             return Reply(proposals=(a,operation('read_material','craft')(req).proposals[0]))
         self.assertEqual(len(self.decide(double).actions),1)
+
+    def test_project_creation_has_free_key_rule_and_existing_project_gets_next_version(self):
+        view = self.cycle.view()
+        self.assertTrue(view['project_creation']['can_create'])
+        self.assertEqual(view['project_creation']['remaining'], 4)
+        self.assertIn({'operation': 'write_project', 'target_rule': 'choose_new_key'}, view['available_actions'])
+        self.assertEqual(self.decide(operation('open_project', 'my_note')).outcome, 'rejected')
+        self.assertEqual(self.decide(operation('write_project', 'my_note', title='Заметка', topic='my_topic', text='Первая версия.')).outcome, 'done')
+        self.reopen()
+        self.assertIn({'operation': 'write_project', 'target': 'my_note'}, self.cycle.view()['available_actions'])
+        self.decide(operation('write_project', 'my_note', title='Заметка', topic='my_topic', text='Осмысленно изменённая версия.'))
+        self.assertEqual(len(self.cycle.world_state['projects']['my_note']['versions']), 2)
+        for number in range(3):
+            self.decide(operation('write_project', 'other_' + str(number), title='Заметка', topic='my_topic', text='Текст.'))
+        self.assertEqual(self.cycle.view()['project_creation']['remaining'], 0)
+        self.assertFalse(self.cycle.view()['project_creation']['can_create'])
+        self.assertFalse(any('target_rule' in item for item in self.cycle.view()['available_actions']))
+        self.assertEqual(self.decide(operation('write_project', 'fifth', title='Заметка', topic='my_topic', text='Текст.')).outcome, 'rejected')
+
+    def test_own_intention_precedes_work_survives_reopen_and_done_requires_result_cite(self):
+        self.decide(operation('read_material', 'craft'))
+        create = {'op': 'create', 'id': 'scene_goal', 'project': 'future_scene', 'text': 'Написать сцену без прямого объяснения героя.'}
+        self.assertEqual(self.decide(intention(create)).outcome, 'done')
+        stored = self.runtime.controller.state['intentions']['scene_goal']
+        self.assertTrue(stored['sources'])
+        self.assertGreater(stored['created_seq'], 0)
+        self.assertNotIn('future_scene', self.cycle.world_state['projects'])
+        self.reopen()
+        self.decide(silence)
+        self.assertNotIn('done', self.cycle.view()['intention_options']['scene_goal'])
+        self.assertIn(self.cycle.intention_refs['scene_goal'], refs(self.provider.calls[-1]))
+        self.assertEqual(self.cycle.view()['intentions']['scene_goal']['text'], create['text'])
+        self.cycle.appraisal_provider = GroundedProvider(self.provider)
+        def finish(req):
+            meta = json.loads(req['context'][-2]['text'])['experience_sources']
+            result = next(ref for ref, source in meta.items() if 'scene_goal' in source['completion_for'])
+            self.assertTrue(result.startswith('evt_'))
+            return intention({'op': 'transition', 'id': 'scene_goal', 'to_status': 'done', 'result_ref': result},
+                             cites=lambda _: [result])(req)
+        self.provider.queue(operation('write_project', 'future_scene', title='Сцена', topic='creative_work', text='Она убрала чашку. Круг на столе остался.'), finish)
+        self.runtime.step({'kind': 'wait', 'life_ms': 60000})
+        report = self.cycle.run(self.runtime.trigger('real_intention_result'))
+        goal = self.runtime.controller.state['intentions']['scene_goal']
+        self.assertEqual(goal['status'], 'done')
+        self.assertEqual(goal['result_ref'], report.actions[0].events[0])
+        self.assertEqual(self.cycle.view()['intention_options']['scene_goal'], [])
+        self.assertEqual(verify(self.store), [])
+        self.reopen()
+        self.assertEqual(self.runtime.controller.state['intentions']['scene_goal']['status'], 'done')
+        progress = intention_progress(self.current_trace())[0]
+        self.assertTrue(progress['declared_done_with_later_write'])
+        self.assertEqual(len(progress['later_project_versions']), 1)
+        self.assertTrue(progress['later_choices_citing_intention'])
+        self.assertEqual(progress['semantic_fulfilment'], 'requires_review')
+        self.assertIn('отмечен выполненным после подтверждённой записи', biography(self.current_trace()))
+        verify_intentions = runpy.run_path(str(ROOT / 'scripts/experiments/verify_development.py'))['verify_intentions']
+        events = self.runtime.controller.events_after(0)
+        event_map = {event.event_id: event for event in events}
+        verify_intentions(self.store, events, event_map)
+        damaged = copy.deepcopy(events)
+        for event in damaged:
+            if event.type == 'proposal.received':
+                for proposal in event.payload['response']['proposals']:
+                    if proposal['kind'] == 'intention' and proposal['body'].get('to_status') == 'done':
+                        proposal['body']['result_ref'] = progress['created_event']
+        with self.assertRaises(AssertionError):
+            verify_intentions(self.store, damaged, event_map)
+
+    def test_intention_cannot_be_completed_by_old_other_open_failed_or_hidden_work(self):
+        old_write = self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Старый текст.')).actions[0].events[0]
+        self.decide(intention({'op': 'create', 'id': 'goal', 'project': 'draft', 'text': 'Переписать сцену.'}))
+        for operation_name, target, params in (
+                ('open_project', 'draft', {}), ('read_material', 'craft', {}),
+                ('write_project', 'other', {'title': 'Иное', 'topic': 'creative_work', 'text': 'Другой проект.'})):
+            self.decide(operation(operation_name, target, **params))
+            self.decide(silence)
+            self.assertNotIn('done', self.cycle.view()['intention_options']['goal'])
+        self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': old_write})).outcome, 'rejected')
+        for failure in ('fail', 'unknown', 'crash'):
+            self.runtime.world.will(CAP_DEVELOPMENT, failure)
+            self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Не подтверждено.'))
+            self.decide(silence)
+            self.assertNotIn('done', self.cycle.view()['intention_options']['goal'])
+        result = self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Новая сцена.')).actions[0].events[0]
+        self.decide(silence)
+        self.assertIn('done', self.cycle.view()['intention_options']['goal'])
+        source_memory = next(r for r in records(self.runtime.controller) if result in r.sources)
+        for body, cites in (
+                ({'op': 'transition', 'id': 'goal', 'to_status': 'done'}, refs),
+                ({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': []}, refs),
+                ({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': self.cycle.intention_refs['goal']}, refs),
+                ({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': source_memory.memory_id}, refs),
+                ({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': result}, lambda req: [self.cycle.intention_refs['goal']])):
+            self.assertEqual(self.decide(intention(body, cites)).outcome, 'rejected')
+        original = self.store.get_memory
+        archived = replace(original(source_memory.memory_id), layer='archive')
+        with patch.object(self.store, 'get_memory', side_effect=lambda mid: archived if mid == archived.memory_id else original(mid)):
+            self.decide(silence)
+            self.assertNotIn('done', self.cycle.view()['intention_options']['goal'])
+            self.assertNotIn(result, refs(self.provider.calls[-1]))
+        self.runtime.memory.off = True
+        self.cycle.current = None
+        self.decide(silence)
+        self.assertEqual(self.cycle.view()['intention_options'], {})
+        self.assertNotIn(result, refs(self.provider.calls[-1]))
+        self.assertEqual(self.runtime.controller.state['intentions']['goal']['status'], 'active')
+        progress = intention_progress(self.current_trace())[0]
+        self.assertFalse(progress['declared_done_with_later_write'])
+
+    def test_intention_status_changes_can_cite_own_goal_and_stale_done_cannot_apply(self):
+        self.decide(operation('read_material', 'craft'))
+        self.decide(intention({'op': 'create', 'id': 'goal', 'project': 'draft', 'text': 'Написать сцену.'}))
+        self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': 'deferred'},
+            cites=lambda req: [req['context'][0]['ref']])).outcome, 'rejected')
+        self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': 'deferred', 'extra': 1})).outcome, 'rejected')
+        for status in ('waiting_opportunity', 'active', 'deferred', 'active'):
+            self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': status},
+                cites=lambda req: [self.cycle.intention_refs['goal']])).outcome, 'done')
+        action = self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Сцена.')).actions[0]
+        def stale(req):
+            reply = intention({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': action.events[0]})(req)
+            return replace(reply, before=lambda _: self.runtime.move([Op('affect', 'other', 'set', 1, True)], 'устарел результат запроса'))
+        self.assertEqual(self.decide(stale).outcome, 'no_decision')
+        self.assertEqual(self.runtime.controller.state['intentions']['goal']['status'], 'active')
+        self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': 'done', 'result_ref': action.events[0]})).outcome, 'done')
+        self.assertEqual(self.decide(intention({'op': 'transition', 'id': 'goal', 'to_status': 'active'})).outcome, 'rejected')
+        text = biography(self.current_trace())
+        self.assertIn('ожидает возможности', text)
+        self.assertIn('отложен', text)
+        self.assertIn('возобновлён', text)
+
+    def test_legacy_goal_without_creation_boundary_cannot_gain_done_evidence(self):
+        self.runtime.move([Op('intentions', 'legacy', 'set', {
+            'text': 'Старая цель', 'project': 'draft', 'status': 'active'}, True)], 'восстановлен прежний формат')
+        self.decide(operation('write_project', 'draft', title='Сцена', topic='creative_work', text='Текст.'))
+        self.decide(silence)
+        self.assertNotIn('done', self.cycle.view()['intention_options']['legacy'])
+        self.assertNotIn('legacy', self.cycle.intention_refs)
 
     def test_archived_interpretation_is_neither_exposed_nor_silently_revised(self):
         self.decide(operation('read_material','craft'));self.interest(text='ARCHIVED-PRIVATE')

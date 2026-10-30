@@ -59,6 +59,38 @@ def choices(trace):
     return {'choices': signature, 'messages': messages}
 
 
+def verify_intentions(store, events, event_map):
+    """Проверка происхождения замысла и результата по исходному журналу, без доверия отчёту."""
+    proposals = {proposal['proposal_id']: proposal for event in events if event.type == 'proposal.received'
+                 for proposal in event.payload['response']['proposals']}
+    requests = {event.payload['request']['request_id']: event for event in events if event.type == 'proposal.requested'}
+    creations = {}
+    for event in events:
+        if event.type != 'proposal.accepted' or event.payload['kind'] != 'intention':
+            continue
+        proposal = proposals[event.payload['proposal_id']]
+        body = proposal['body']
+        request_event = requests[event.payload['request_id']]
+        request = request_event.payload['request']
+        state = store.get_snapshot(event.epoch, event.state_version).state
+        goal = state['intentions'][body['id']]
+        if body['op'] == 'create':
+            assert body['id'] not in creations
+            assert goal['proposal_id'] == proposal['proposal_id']
+            assert request_event.seq <= goal['created_seq'] < event.seq
+            assert goal['sources'] and set(goal['sources']) <= set(proposal['cites'])
+            assert goal['text'] == body['text'] and goal['project'] == body['project']
+            creations[body['id']] = event
+        elif body['to_status'] == 'done':
+            result = event_map[body['result_ref']]
+            assert result.event_id in proposal['cites'] and result.event_id in {item['ref'] for item in request['context']}
+            assert result.type == 'action.confirmed' and creations[body['id']].seq < result.seq < event.seq
+            action = state['world_time']['world']['actions'][result.payload['action_id']]
+            assert action['status'] == 'confirmed' and action['params']['operation'] == 'write_project'
+            assert action['params']['target'] == goal['project']
+            assert goal['status'] == 'done' and goal['result_ref'] == result.event_id
+
+
 def verify_trace(path, expected_hash):
     raw = path.read_bytes()
     assert hashlib.sha256(raw).hexdigest() == expected_hash, 'неверный SHA256'
@@ -70,6 +102,8 @@ def verify_trace(path, expected_hash):
         memory = {r.memory_id: r for r in records(controller)}
         events = controller.events_after(0)
         event_map = {e.event_id: e for e in events}
+        if trace['scenario'] == 'development_v6':
+            verify_intentions(store, events, event_map)
         arrived = {e.payload['input_id']: e.payload['text'] for e in events if e.type == 'input.arrived'}
         read = set()
         for event in events:
@@ -95,12 +129,12 @@ def verify_trace(path, expected_hash):
                 else:
                     assert event.type == 'action.confirmed'
                     text, social = event.payload['summary'], False
-                    if trace['scenario'] in ('development_v4', 'development_v5'):
+                    if trace['scenario'] in ('development_v4', 'development_v5', 'development_v6'):
                         action = controller.state['world_time']['world']['actions'][event.payload['action_id']]
                         text = experience_text(action['params'], text)
             assert c['quote'] in text and c['quote'].strip()
             if c['domain'] == 'relationship': assert social and c['key'] == 'operator'
-            if c['domain'] == 'self' and trace['scenario'] in ('development_v4', 'development_v5'):
+            if c['domain'] == 'self' and trace['scenario'] in ('development_v4', 'development_v5', 'development_v6'):
                 basis = record.sources[0]
                 event = event_map[basis]
                 assert event.type == 'action.confirmed'
@@ -155,7 +189,7 @@ def check(source, publish, auth_file=None):
     auth = read_auth(auth_file, ROOT) if auth_file else {}
     scanner = SecretScanner([v for v in auth.get('tokens', {}).values() if isinstance(v, str)], assignments=False)
     summary = json.loads((source / 'summary.json').read_text())
-    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4', 'development-v5')
+    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4', 'development-v5', 'development-v6')
     assert len(summary['runs']) == 2 * len(summary.get('variants', ['A', 'B', 'C'])) * summary['repeats']
     safe = copy.deepcopy(summary)
     pending, results, checks, c_pairs, comparisons = {}, [], [], {}, []

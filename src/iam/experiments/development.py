@@ -23,6 +23,7 @@ from iam.experiments.runtime import ExperimentCycle, Runtime, SimTime
 from iam.experiments.variants.model_led.provider import GroundedProvider
 from iam.interfaces import ActionOutcome, Capability
 from iam.state import EventSpec, KindDecision, StateController, Violation
+from iam.state.rules import INTENTION_MACHINE
 from iam.stubs import Reply, ScriptedProvider, StubCapabilities, StubCreatorBridge, StubWorld, act
 
 CAP_DEVELOPMENT = 'cap_ExperimentDevelopment01'
@@ -51,7 +52,7 @@ MATERIALS = {
 AXES = {'closeness': (0.0, 1.0, 0.5), 'trust': (0.0, 1.0, 0.5),
         'agreement': (-1.0, 1.0, 0.0), 'willingness': (-1.0, 1.0, 0.0)}
 KINDS = {'interest': 'semantic', 'relationship': 'social', 'self': 'autobiographical'}
-VERSION = 'development-v5'
+VERSION = 'development-v6'
 LOCATIONS = {'interest': ('preferences', 'development_interests'),
              'relationship': ('relations', 'operator'), 'self': ('selfmodel', 'development')}
 KEY = re.compile(r'[a-z][a-z0-9_]{0,47}')
@@ -70,13 +71,28 @@ INSTRUCTION = (
     'action{capability_id:"cap_ExperimentDevelopment01",params:{operation:read_material,target:ключ}}; '
     'read_message/open_project имеют такой же формат; rest имеет target:"". '
     'read_material принимает только ключ из materials; свой проект открывается только open_project, '
-    'его ключ берётся из projects. Доступные пары operation/target перечислены в available_actions. '
+    'его ключ берётся из projects. available_actions различает готовые пары и правило choose_new_key. '
     'write_project: params{operation:"write_project",target:свой_ключ,title:название,topic:ключ_темы,text:полный_текст}. '
+    'Чтобы СОЗДАТЬ проект, самостоятельно выбери новый ключ по project_creation.key_pattern; пустой projects '
+    'не запрещает создание. Например, новый ключ my_note допустим: он не обязан заранее быть в projects. '
+    'Чтобы ПРОДОЛЖИТЬ проект, используй его существующий ключ: сохранится следующая версия полного текста. '
+    'open_project только читает уже существующий проект и ничего не создаёт. Лимит новых проектов виден '
+    'в project_creation; title и topic выбираешь сама, topic тоже является допустимым ключом. '
     'Написанный текст должен содержать собственную работу, а не сообщение о намерении её написать. '
     'message{capability_id:"cap_ExperimentDialogue01",to:"operator",text:естественная_реплика}. '
     'Не передавай человеку служебные задания, названия полей, устройств или ссылки. '
     'intention{op:"create",id:ключ,text:замысел,project:ключ_своего_проекта}; '
-    'либо intention{op:"transition",id:ключ,to_status:active|deferred|abandoned}. '
+    'project может быть выбранным тобой ключом БУДУЩЕГО проекта. Если хочешь сохранить собственный будущий '
+    'замысел между сеансами, выбери intention/create с конкретным результатом, который собираешься получить; '
+    'это добровольный выбор, не обязанность после каждого чтения. Готовая работа не доказывает, что замысел '
+    'существовал до неё. Намерение не пишет текст за тебя: для исполнения позже выбери write_project. '
+    'intention{op:"transition",id:ключ,to_status:active|waiting_opportunity|deferred|abandoned}; '
+    'допустимые переходы текущего статуса перечислены в intention_options. '
+    'Для завершения: intention{op:"transition",id:ключ,to_status:"done",result_ref:evt_ссылка}. '
+    'result_ref — точный evt_ ключ experience_sources, где completion_for содержит id этого замысла; '
+    'добавь ту же ссылку в cites. Ядро требует подтверждённую запись этого проекта ПОСЛЕ появления замысла. '
+    'Отмечай done только если текст результата действительно выполняет твою цель; любая запись файла сама '
+    'по себе этого не доказывает. Открытие старого файла и заявление о намерении не являются выполнением. '
     'memory_write{draft:{kind:semantic|social|autobiographical,origin:"own_hypothesis",content:{'
     'domain:interest|relationship|self,key:ключ_темы_или_operator_или_identity,label:название,'
     'values:{strength:число_-1..1} для interest / {closeness:0..1,trust:0..1,agreement:-1..1,willingness:-1..1} '
@@ -184,6 +200,7 @@ class DevelopmentCycle(ExperimentCycle):
         super().__init__(runtime, provider, max_rerequest=0, max_output_tokens=1800,
                          retrieval_limit=12, allowed_proposals=('action', 'message', 'intention', 'memory_write', 'no_action'))
         self.current, self.evidence = None, {}
+        self.intention_refs = {}
         self.initiative_refs = set()
         self.reflecting, self.appraisal_provider = False, None
         self.handlers = make_kind_handlers(runtime.capabilities)
@@ -239,8 +256,16 @@ class DevelopmentCycle(ExperimentCycle):
                               for key, value in MATERIALS.items()},
                 'projects': {key: {'title': p['title'], 'topic': p['topic'], 'versions': len(p['versions'])}
                              for key, p in w['projects'].items()},
+                'project_creation': {'can_create': len(w['projects']) < 4, 'remaining': 4 - len(w['projects']),
+                                     'key_pattern': KEY.pattern, 'operation': 'write_project'},
                 'interests': {k: public(v) for k, v in interests.items() if public(v)}, 'relationship': public(relation),
-                'self_view': public(own), 'intentions': {} if self.memory.off else state['intentions'],
+                'self_view': public(own), 'intentions': {} if self.memory.off else {
+                    key: {field: item[field] for field in ('text', 'project', 'status')}
+                    for key, item in state['intentions'].items()},
+                'intention_options': {} if self.memory.off else {
+                    key: sorted(status for status in INTENTION_MACHINE.table[item['status']]
+                                if status != 'done' or any(self._completion_ok(item, source) for source in self.evidence.values()))
+                    for key, item in state['intentions'].items()},
                 'assessment_limits': {
                     'semantics': 'absolute_new_value',
                     'new_interest': {} if self.hidden('interest') else value_limits({}, {'strength': (-1.0, 1.0, 0.0)}),
@@ -254,7 +279,9 @@ class DevelopmentCycle(ExperimentCycle):
                     + [{'operation': 'open_project', 'target': key} for key in w['projects']]
                     + [{'operation': 'read_message', 'target': key} for key, item in w['inbox'].items()
                        if item['sender'] == 'operator' and item['status'] == 'unread']
-                    + [{'operation': 'write_project', 'target': 'свой_ключ'}, {'operation': 'rest', 'target': ''}]),
+                    + [{'operation': 'write_project', 'target': key} for key in w['projects']]
+                    + ([{'operation': 'write_project', 'target_rule': 'choose_new_key'}] if len(w['projects']) < 4 else [])
+                    + [{'operation': 'rest', 'target': ''}]),
                 'energy': w['energy'], 'inbox': w['inbox'],
                 'current': ({k: v for k, v in self.current.items() if k != 'ref'} if self.current else None),
                 'can_message': (any(i['status'] == 'read' for i in w['inbox'].values()) or
@@ -268,8 +295,16 @@ class DevelopmentCycle(ExperimentCycle):
         receipt = activity_receipt(action['params']) if operation in ('write_project', 'open_project') else ''
         return {'text': text, 'base': base, 'social': social, 'operation': operation, 'self_quote': receipt}
 
+    def _completion_ok(self, intention, source):
+        if intention['status'] != 'active' or 'created_seq' not in intention or source['operation'] != 'write_project':
+            return False
+        event = self.ctl.find_event(event_id=source['base'])
+        action = self.ctl.state['world_time']['world']['actions'][event.payload['action_id']]
+        return event.seq > intention['created_seq'] and action['params']['target'] == intention['project']
+
     def _context(self, trigger, focus, records):
         base = Cycle._context(self, trigger, focus, records)
+        self.intention_refs = {}
         self.evidence = {r.memory_id: self._source(r.text, r.sources[0], r.source.kind == 'external_person')
                          for r in records if r.origin in ('observation', 'stated_by_other', 'simulation_event') and r.sources}
         self.initiative_refs = {ref for ref, item in self.evidence.items()
@@ -305,6 +340,19 @@ class DevelopmentCycle(ExperimentCycle):
                 'Не создавай заново уже имеющееся намерение; если оно остаётся прежним, оставь его без изменения. '
                 'Не считай непрочитанный текст известным или предположение фактом. Следующий выбор увидит только '
                 'проверенные ядром записи. Процитируй точный доступный источник и укажи его ссылку.'})
+        if not self.memory.off:
+            for key, intention in self.ctl.state['intentions'].items():
+                event = self.ctl.find_event(key='prop:' + intention.get('proposal_id', '') + ':accept')
+                if event:
+                    self.intention_refs[key] = event.event_id
+                    base.append({'ref': event.event_id, 'origin': 'own_hypothesis', 'layer': 'state',
+                                 'text': json.dumps({'intention': key, **{field: intention[field]
+                                    for field in ('text', 'project', 'status')}}, ensure_ascii=False)})
+            for source in list(self.evidence.values()):
+                if (source['base'] not in self.evidence and any(self._completion_ok(item, source)
+                        for item in self.ctl.state['intentions'].values())):
+                    base.append({'ref': source['base'], 'origin': 'observation', 'layer': 'state', 'text': source['text']})
+                    self.evidence[source['base']] = source
         sources = {}
         visible = {item['ref'] for item in base}
         for ref, source in self.evidence.items():
@@ -316,7 +364,9 @@ class DevelopmentCycle(ExperimentCycle):
                     and (source['base'] in self.assessment(domain, key).get('bases', [])
                          or token in self.assessment(domain, key).get('basis_tokens', []))]
             sources[ref] = {'operation': source['operation'], 'social': source['social'],
-                            'self_quote': source['self_quote'], 'used_for': used}
+                            'self_quote': source['self_quote'], 'used_for': used,
+                            'completion_for': [key for key, item in self.ctl.state['intentions'].items()
+                                if ref == source['base'] and self._completion_ok(item, source)]}
         base.append({'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state',
                      'text': json.dumps({'experience_sources': sources, 'appraisal_kinds': KINDS}, ensure_ascii=False)})
         return [{'ref': trigger.event_id, 'origin': 'simulation_event', 'layer': 'state', 'text': INSTRUCTION},
@@ -351,15 +401,31 @@ class DevelopmentCycle(ExperimentCycle):
             return KindDecision((Op('affect', 'development_last_appraisal', 'set', {'reason': body['reason']}, True),))
         if kind == 'intention':
             ident = body.get('id', '')
-            if not isinstance(ident, str) or not KEY.fullmatch(ident) or self.memory.off or not set(pr['cites']) & self.evidence.keys():
+            if not isinstance(ident, str) or not KEY.fullmatch(ident) or self.memory.off:
                 return bad()
             old = ctx.state['intentions'].get(ident)
             if body.get('op') == 'create':
                 if (set(body) != {'op', 'id', 'text', 'project'} or old or not short(body['text'], 500)
-                        or not isinstance(body['project'], str) or not KEY.fullmatch(body['project'])):
+                        or not isinstance(body['project'], str) or not KEY.fullmatch(body['project'])
+                        or not set(pr['cites']) & self.evidence.keys()):
                     return bad()
-                return KindDecision((Op('intentions', ident, 'set', {'text': body['text'], 'project': body['project'], 'status': 'active'}, True),))
-            if set(body) != {'op', 'id', 'to_status'} or body['op'] != 'transition' or not old or body['to_status'] not in ('active', 'deferred', 'abandoned'):
+                return KindDecision((Op('intentions', ident, 'set', {
+                    'text': body['text'], 'project': body['project'], 'status': 'active',
+                    'created_seq': self.ctl.store.last_seq(), 'proposal_id': pr['proposal_id'],
+                    'sources': [ref for ref in pr['cites'] if ref in self.evidence]}, True),))
+            if body.get('op') != 'transition' or not old or body.get('to_status') not in INTENTION_MACHINE.table[old['status']]:
+                return bad()
+            if not set(pr['cites']) & (set(self.evidence) | {self.intention_refs.get(ident)}):
+                return bad()
+            if body['to_status'] == 'done':
+                ref = body.get('result_ref')
+                if (set(body) != {'op', 'id', 'to_status', 'result_ref'} or not isinstance(ref, str)
+                        or ref not in pr['cites'] or ref not in self.evidence
+                        or self.evidence[ref]['base'] != ref or not self._completion_ok(old, self.evidence[ref])):
+                    return bad()
+                return KindDecision((Op('intentions', ident + '.status', 'transition', 'done', True),
+                                     Op('intentions', ident + '.result_ref', 'set', ref, True)))
+            if set(body) != {'op', 'id', 'to_status'}:
                 return bad()
             return KindDecision((Op('intentions', ident + '.status', 'transition', body['to_status'], True),))
         if kind == 'message':
