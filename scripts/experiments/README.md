@@ -20,7 +20,7 @@ PYTHONPATH=src .venv/bin/python -m iam.experiments.report \
 
 ```sh
 scripts/experiments/run_real.sh \
-  "$HOME/.iam-evidence/s16-new-live" "$HOME/.iam-secrets/codex-login/auth.json"
+  "$HOME/.iam-evidence/s16-new-live" "$HOME/.iam-secrets/iam-managed.json"
 ```
 
 ### Восстановление входа после G13
@@ -33,18 +33,44 @@ scripts/experiments/run_real.sh \
 umask 077
 mkdir -m 700 -p "$HOME/.iam-secrets/codex-login"
 CODEX_HOME="$HOME/.iam-secrets/codex-login" \
-  codex -c 'cli_auth_credentials_store="file"' login --device-auth
+  codex -c 'cli_auth_credentials_store="file"' login
 ```
 
-Завершите вход по ссылке и одноразовому коду, которые покажет сама команда. Если вход по коду недоступен в вашем аккаунте, используйте ту же команду без `--device-auth` для обычного входа через браузер. Проверка IAM требует, чтобы созданный `auth.json` находился вне проекта и имел права `600`; токены нельзя присылать в чат. Затем повторите живую проверку:
+Завершите обычный вход в открывшемся браузере. В продолжении S16 вход по устройственному коду вернул ошибку страницы, а обычный браузерный вход прошёл. Проверка IAM требует, чтобы файл входа находился вне проекта и имел права `600`; токены нельзя присылать в чат.
+
+Импортируйте вход в отдельный рабочий файл IAM. Имя `auth.json` запрещено для записи: в него может писать штатный `codex login`. Новый адаптер принимает служебные поля свежего CLI, оставляя в передаче только известные поля подписки и `last_refresh`. Команда сохраняет оригинал, ничего не выводит и отказывается перезаписывать старый импорт:
+
+```sh
+umask 077
+PYTHONPATH=src .venv/bin/python - <<'PY'
+import json, os, stat
+from pathlib import Path
+from iam.providers.codex.auth import normalize_auth, validate_auth_path
+from iam.providers.codex.command import REPO_ROOT
+source = Path.home() / '.iam-secrets/codex-login/auth.json'
+validate_auth_path(str(source), REPO_ROOT)
+fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+with os.fdopen(fd) as stream:
+    clean = normalize_auth(json.load(stream), include_refresh=True)
+target = Path.home() / '.iam-secrets/iam-managed.json'
+assert stat.S_IMODE(target.parent.stat().st_mode) == 0o700
+fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(fd, 'w') as stream:
+    json.dump(clean, stream)
+PY
+```
+
+С этого момента рабочим файлом владеет только IAM. Не запускайте исходный login одновременно с импортом и не редактируйте рабочий файл вручную во время сеанса. Для нового входа остановите IAM, используйте отдельный CODEX_HOME и новое имя импорта. Затем повторите живую проверку:
 
 ```sh
 PYTHONPATH=src .venv/bin/python scripts/codex/verify.py \
-  --auth-file "$HOME/.iam-secrets/codex-login/auth.json" \
-  --output-dir "$HOME/.iam-evidence/s16-restored-check" --live
+  --auth-file "$HOME/.iam-secrets/iam-managed.json" \
+  --output-dir "$HOME/.iam-evidence/s16-restored-check" --live --persist-auth-updates
 ```
 
-**Ограничение текущего исполнителя:** обновлённый внутри контейнера файл входа пока не возвращается в защищённое хранилище. Отдельный вход убирает совместное использование с desktop Codex, но ещё не решает сохранение будущих обновлений. Не запускайте несколько исполнителей с одной сессией входа и не считайте один успешный запрос подтверждением длительной работы. Официальная [инструкция OpenAI](https://learn.chatgpt.com/docs/auth/ci-cd-auth) требует сохранять обновлённый файл после каждого эфемерного запуска. До реализации этого обмена новый отказ обновления требует остановки, а не повторов старой копии. Исходный файл текущего Codex не изменяем.
+`run_real.sh` включает сохранение обновлений автоматически. Launcher возвращает текущую авторизацию отдельным завершающим конвертом; адаптер исключает его до разбора ответа модели и атомарно сохраняет изменения с правами 600. Блокировка рядом с рабочим файлом допускает только одного IAM-исполнителя; чужие изменения проверяются перед записью. Она не координирует произвольные программы, которые игнорируют блокировку, поэтому рабочий файл нельзя разделять со сторонними писателями. Папки компьютера в Docker не монтируются.
+
+Это реализует обычное сохранение обновлений по [инструкции OpenAI](https://learn.chatgpt.com/docs/auth/ci-cd-auth). При таймауте, убийстве процесса или повреждении завершающего конверта — техническая пауза; восстановление входа в этих случаях не гарантируется. По умолчанию CodexProvider и панель остаются в режиме чтения авторизации; доработка включена для S16 и явно выбранной проверки, а не для всех путей приложения.
 
 Скрипт сначала проверяет изоляцию без вызова модели. Его каталог вывода должен быть абсолютным и вне проекта, поскольку проверочный отчёт изоляции хранится снаружи. Затем запускается только закреплённая GPT-6-Luna в существующей изоляции Docker. Нужны установленное окружение `.venv`, образ `iam-codex:1`, сеть и посредник из `docker/README.md`, внешний файл подписочного входа с правами 600. Секреты не выводятся и не копируются в репозиторий.
 

@@ -11,6 +11,7 @@ from ..classify import Classified, Kind
 from ..errors import (ProviderAuthError, ProviderFormatError, ProviderLimitError, ProviderTimeout, ProviderUnavailable)
 from ..run import Runner, subprocess_runner
 from .auth import read_auth
+from .auth_session import auth_session
 from .classify import _json, classify
 from .command import DEFAULT_MODEL, REPO_ROOT, SYSTEM_PROMPT, CodexSandboxConfig, docker_run
 
@@ -63,6 +64,13 @@ class CodexProvider:
         self.last_calls = 0
 
     def propose(self, request: dict) -> dict:
+        self.last_calls = 0
+        if self.sandbox.persist_auth_updates:
+            with auth_session(self.sandbox.auth_file, REPO_ROOT) as session:
+                return self._propose(request, session)
+        return self._propose(request)
+
+    def _propose(self, request: dict, session=None) -> dict:
         started, self.last_calls = time.monotonic(), 0
         timeout = min(self.timeout_s, request["limits"]["deadline_ms"] / 1000)
         deadline = started + timeout
@@ -70,7 +78,7 @@ class CodexProvider:
         if self.sandbox.auth_file is None and self._run is subprocess_runner:
             raise ProviderAuthError("Codex requires subscription credentials")
         for attempt in range(self.max_format_retries + 1):
-            auth = read_auth(self.sandbox.auth_file, REPO_ROOT)
+            auth = session.auth if session is not None else read_auth(self.sandbox.auth_file, REPO_ROOT)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise ProviderTimeout("Codex exceeded its total deadline")
@@ -80,6 +88,8 @@ class CodexProvider:
             payload = json.dumps({"auth": auth, "prompt": actual_prompt}, ensure_ascii=False)
             run = self._run(command.argv, payload, remaining, command.kill_argv())
             self.last_calls += 1
+            if session is not None:
+                run = session.accept(run)
             result = classify(run)
             if result.kind is Kind.TOOL_USE:
                 return self._response(request, [], result, started, True)

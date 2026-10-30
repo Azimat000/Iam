@@ -271,10 +271,13 @@ class ReportCase(unittest.TestCase):
         with patch('iam.experiments.report.__main__.run_suite', return_value={'matrix_cells': 48, 'executed': 0, 'subruns': 0}) as run:
             self.assertEqual(main(['--output', str(self.root / 'cli'), '--mode', 'formal']), 0)
             self.assertIsNone(run.call_args.kwargs['provider_factory'])
-            with patch('iam.experiments.report.__main__.CodexSandboxConfig'):
-                self.assertEqual(main(['--output', str(self.root / 'cli2'), '--mode', 'live', '--auth-file', '/external/auth']), 0)
+            with patch('iam.experiments.report.__main__.CodexSandboxConfig') as config:
+                self.assertEqual(main(['--output', str(self.root / 'cli2'), '--mode', 'live', '--auth-file', '/external/auth', '--persist-auth-updates']), 0)
+                config.assert_called_once_with(auth_file='/external/auth', persist_auth_updates=True)
                 with patch('iam.experiments.report.__main__.CodexProvider') as provider:
                     run.call_args.kwargs['provider_factory'](None)
                     self.assertEqual(provider.call_args.kwargs['max_format_retries'], 0)
         with self.assertRaises(SystemExit):
             main(['--output', str(self.root / 'cli3'), '--mode', 'live'])
+        with self.assertRaises(SystemExit):
+            main(['--output', str(self.root / 'cli4'), '--mode', 'stub', '--persist-auth-updates'])

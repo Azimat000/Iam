@@ -8,4 +8,4 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 PYTHONPATH="$root/src" "$root/.venv/bin/python" "$root/scripts/codex/verify.py" \
   --output-dir "$1-isolation"
 PYTHONPATH="$root/src" "$root/.venv/bin/python" -m iam.experiments.report \
-  --mode live --output "$1" --auth-file "$2"
+  --mode live --output "$1" --auth-file "$2" --persist-auth-updates
