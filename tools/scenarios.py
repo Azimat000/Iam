@@ -434,6 +434,8 @@ def load_catalog(root: Path) -> tuple[dict[str, dict], list[str]]:
     if not base.is_dir():
         return out, [f"нет каталога {SCEN_DIR}/"]
     for d in sorted(p for p in base.iterdir() if p.is_dir()):
+        if d.name == "personas":  # S11: профили, а не экзаменационные билеты
+            continue
         if d.name not in GROUPS:
             errs.append(f"{SCEN_DIR}/{d.name}: неизвестная группа (допустимо {sorted(GROUPS)})")
             continue
