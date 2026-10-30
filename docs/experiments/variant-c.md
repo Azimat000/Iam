@@ -82,6 +82,18 @@ PY
 | Непрочитанное не влияет на решение; шаблон не выбирает действие | test_unread_content_does_not_affect_any_decision_or_state; test_language_changes_words_only_and_world_must_confirm |
 | Отказы ядра, пауза, повторы и неподтверждённые действия | test_rejections_repeat_pause_and_failed_language_never_fake_completion; test_language_changes_words_only_and_world_must_confirm |
 
+Основной агент запустил весь набор: **887 тестов за 181.453 с, OK**, включая 132 явно измеренных дочерних CLI-запуска. Все **97 модулей** проходят пороги покрытия; formal — **100 % строк и ветвей**. Отчёт: `docs/evidence/S14-coverage.txt`. Первый обычный запуск также прошёл 887 тестов, но автоматический замер пропустил дочерние tools/memory.py, reqs.py и часть covcheck.py. Поэтому повторён применявшийся в S09–S13 явный замер без изменения тестов и порогов:
+
+```sh
+.venv/bin/python -m coverage erase
+PYTHONPATH=src .venv/bin/python -m coverage run -p /tmp/iam-s11-explicit-coverage.py
+.venv/bin/python -m coverage combine -q
+.venv/bin/python -m coverage json -q -o /tmp/iam-s14-coverage.json
+.venv/bin/python tools/covcheck.py --json /tmp/iam-s14-coverage.json
+```
+
+Временный запускатель оборачивает дочерние вызовы трёх tools-команд в `coverage run -p` и выполняет обычный unittest discover; он не подменяет результаты проверок. Дополнительно напрямую прочитаны все 24 сохранённые трассы и базы: пересчитаны суммы вкладов и выбранные максимумы, хеши сверены с CSV/манифестами. Общий стенд и A/B сверены с исходным b0f13a2 и не имеют изменений. Реестр требований, каталог сценариев, память проекта и git diff --check проходят. Отдельное ревью другим агентом не выполнялось; проверки и чтение фактических файлов выполнены основным агентом.
+
 ## Журнал слабых мест
 
 - **Разный опыт:** тёплая и холодная предыстория из каталога не имеют числового valence и дают одинаковые оценки. Тест закрепляет этот предел. Искусственные числовые метки меняют выбор, но их нельзя выдавать за понимание свободного текста.
