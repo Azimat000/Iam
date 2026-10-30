@@ -1,5 +1,6 @@
 """Поведение S16: прочитанные источники, пересмотр, разговор и честная оценка."""
 import copy
+from dataclasses import replace
 import json
 import tempfile
 import unittest
@@ -84,6 +85,21 @@ class ConversationCase(unittest.TestCase):
         self.assertEqual(active['origin'], 'stated_by_other')
         self.assertEqual(active['claim_kind'], 'fact_claim')
         self.assertTrue(evaluate({'kind':'state','path':'memory.meeting.history','op':'contains','value':'четверг'}, trace, {})[0])
+
+    def test_live_discovered_correction_of_unlabelled_statement(self):
+        def correction(req):
+            old = next(c['ref'] for c in req['context'] if c['layer'] == 'personal' and c['text'] == 'Клуб встречается в четверг.')
+            return Reply(proposals=(draft(req, 'Теперь клуб встречается в субботу.', supersedes=old), self.reply(req).proposals[0]))
+        trace = self.run_turns(['Клуб встречается в четверг.', 'Теперь клуб встречается в субботу.', 'Когда встречается клуб?'],
+                               [self.reply, correction, self.reply])
+        revision = next(e for e in trace['journal'] if e['type'] == 'memory.revised')
+        old = next(r for r in trace['memory_records'] if r['memory_id'] == revision['payload']['supersedes'])
+        new = next(r for r in trace['memory_records'] if r['memory_id'] == revision['payload']['memory_id'])
+        self.assertEqual(old['claim_kind'], 'statement_made')
+        self.assertEqual(old['content']['text'], 'Клуб встречается в четверг.')
+        self.assertEqual(old['history'][-1]['superseded_by'], new['memory_id'])
+        self.assertNotIn('superseded_by', old['content'])
+        self.assertNotIn(old['memory_id'], [r['memory_id'] for r in trace['decision_trace'][-1]['memory']])
 
     def test_memory_off_hides_previous_turns_and_prevents_writes(self):
         def memory(req):
@@ -232,9 +248,18 @@ class ConversationCase(unittest.TestCase):
         self.assertIsNotNone(cycle._memory_draft(bad, ctx).violation)
         self.assertIsNotNone(cycle._memory_draft(pr, KindContext(req, {}, ('memory_write',), 0)).violation)
         for update in ({'speaker':'stranger'}, {'subject':'other'}, {'superseded_by':'mem_NewVersion01'}):
-            cycle.memory.retrieved = [__import__('dataclasses').replace(previous, content={**previous.content, **update})]
+            cycle.memory.retrieved = [replace(previous, content={**previous.content, **update})]
             self.assertIsNotNone(cycle._memory_draft(pr, ctx).violation)
-        cycle.memory.retrieved = [__import__('dataclasses').replace(previous, layer='archive')]
+        # Исходное высказывание может быть исправлено до первого семантического обобщения.
+        raw = replace(previous, content={'text':'старое', 'speaker':'operator'}, claim_kind='statement_made')
+        cycle.memory.retrieved = [raw]
+        self.assertIsNone(cycle._memory_draft(pr, ctx).violation)
+        # У записи другого вида отсутствие темы не даёт права произвольного пересмотра.
+        cycle.memory.retrieved = [replace(raw, claim_kind=None)]
+        self.assertIsNotNone(cycle._memory_draft(pr, ctx).violation)
+        cycle.memory.retrieved = [replace(previous, history=({'version':1,'at_seq':1,'change':'old','superseded_by':'mem_NewVersion01'},))]
+        self.assertIsNotNone(cycle._memory_draft(pr, ctx).violation)
+        cycle.memory.retrieved = [replace(previous, layer='archive')]
         self.assertIsNotNone(cycle._memory_draft(pr, ctx).violation)
         cycle.current = None
         self.assertIsNotNone(cycle._memory_draft(pr, ctx).violation)
@@ -243,14 +268,16 @@ class ConversationCase(unittest.TestCase):
         from iam.experiments.memory import BenchMemory
         a = MemoryRecord('mem_ArchiveMemory01','exp_ArchivePersona01','archive','semantic','observation',
                          {'text':'PRIVATE ARCHIVE'},Source('core','test'),'2026-01-01T00:00:00.000Z',0,('evt_ArchiveEvent01',))
-        old = __import__('dataclasses').replace(a,memory_id='mem_OldMemory01',layer='personal',content={'text':'OLD','superseded_by':'mem_CurrentMemory01'})
-        current = __import__('dataclasses').replace(a,memory_id='mem_CurrentMemory01',layer='personal',content={'text':'CURRENT'})
+        old = replace(a,memory_id='mem_OldMemory01',layer='personal',content={'text':'OLD','superseded_by':'mem_CurrentMemory01'})
+        current = replace(a,memory_id='mem_CurrentMemory01',layer='personal',content={'text':'CURRENT'})
         entries = {r.memory_id:r for r in (a,old,current)}
         controller = SimpleNamespace(events_after=lambda _: [SimpleNamespace(payload={'changes':[{'group':'memory','path':mid} for mid in entries]})],
                                      store=SimpleNamespace(get_memory=entries.__getitem__))
         memory = BenchMemory(controller); memory.conversational = True
         self.assertEqual([r.text for r in memory.retrieve('PRIVATE OLD')], ['CURRENT'])
         self.assertEqual(memory.retrieve('CURRENT', limit=0), [])
+        entries[old.memory_id] = replace(old, content={'text':'OLD'}, history=({'version':1,'at_seq':1,'change':'OLD','superseded_by':current.memory_id},))
+        self.assertEqual([r.text for r in memory.retrieve('OLD')], ['CURRENT'])
 
     def test_cli_dialogues_and_memory_projection_other_operators(self):
         from iam.experiments.report.__main__ import main

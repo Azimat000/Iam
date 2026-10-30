@@ -173,7 +173,7 @@ def run_suite(root, output, *, mode='stub', provider_factory=None, conversationa
                                'causal_pass': causal.count('pass'), 'causal_fail': causal.count('fail'),
                                'causal_unverified': causal.count('unverified'),
                                'causality': score, 'liveliness': None, **rank(eligibility(letter, matrix, runs, technical, mode), score, None)}
-    summary = {'mechanism': 'conversation-v1' if conversational else 'original', 'assessments': assessments, 'mode': mode, 'matrix_cells': len(matrix), 'executed': sum(r['status'] == 'executed' for r in matrix),
+    summary = {'mechanism': 'conversation-v2' if conversational else 'original', 'assessments': assessments, 'mode': mode, 'matrix_cells': len(matrix), 'executed': sum(r['status'] == 'executed' for r in matrix),
                'subruns': len(runs), 'decisions': sum(r['decisions'] for r in matrix),
                'complexity': {letter: complexity(root, directory) for letter, _, directory in architectures},
                'runs': runs}

@@ -76,7 +76,7 @@ def run_dialogues(root, output, *, mode='stub', provider_factory=None):
                 rows.append(row)
                 write_csv(output / 'matrix.csv', rows, list(row))
     mapping = build_blind(results, output / 'blind', output / 'private/key.json', dialogues=True)
-    summary = {'mechanism': 'conversation-v1', 'mode': mode, 'cells': len(rows),
+    summary = {'mechanism': 'conversation-v2', 'mode': mode, 'cells': len(rows),
                'executed': sum(r['status'] == 'executed' for r in rows), 'complete_dialogues': len(results),
                'blind_dialogues': len(mapping), 'runs': rows, 'human_ratings': None,
                'limitation': 'Фиксированные реплики человека; мир и отправки симулируются; C — локальные цитаты.'}
