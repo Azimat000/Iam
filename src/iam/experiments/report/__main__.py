@@ -6,6 +6,7 @@ from iam.providers.codex import CodexProvider, CodexSandboxConfig
 from iam.providers.run import subprocess_runner
 from .suite import run_suite
 from .dialogues import run_dialogues
+from .life import run_life
 
 
 def main(argv=None):
@@ -15,7 +16,9 @@ def main(argv=None):
     parser.add_argument('--auth-file')
     parser.add_argument('--persist-auth-updates', action='store_true')
     parser.add_argument('--conversational', action='store_true')
-    parser.add_argument('--dialogues', action='store_true')
+    kind = parser.add_mutually_exclusive_group()
+    kind.add_argument('--dialogues', action='store_true')
+    kind.add_argument('--life', action='store_true')
     args = parser.parse_args(argv)
     if args.mode == 'live' and not args.auth_file:
         parser.error('нужен внешний --auth-file')
@@ -25,9 +28,12 @@ def main(argv=None):
     if args.mode == 'live':
         config = CodexSandboxConfig(auth_file=args.auth_file, persist_auth_updates=args.persist_auth_updates)
         factory = lambda runtime: CodexProvider(subprocess_runner, config, max_format_retries=0)
-    runner = run_dialogues if args.dialogues else run_suite
-    kwargs = {} if args.dialogues or not args.conversational else {'conversational': True}
+    runner = run_life if args.life else run_dialogues if args.dialogues else run_suite
+    kwargs = {} if args.life or args.dialogues or not args.conversational else {'conversational': True}
     summary = runner(Path(__file__).resolve().parents[4], args.output, mode=args.mode, provider_factory=factory, **kwargs)
+    if args.life:
+        print(f"Биографий: {summary['cells']}; исполнено: {summary['executed']}; в пакете: {summary['episodes']}")
+        return 0
     if args.dialogues:
         print(f"Разговоров: {summary['cells']}; исполнено: {summary['executed']}; в пакете: {summary['blind_dialogues']}")
         return 0
