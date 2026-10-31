@@ -103,7 +103,7 @@ def verify_trace(path, expected_hash):
         memory = {r.memory_id: r for r in records(controller)}
         events = controller.events_after(0)
         event_map = {e.event_id: e for e in events}
-        if trace['scenario'] == 'development_v6':
+        if trace['scenario'] in ('development_v6', 'agency_v1'):
             verify_intentions(store, events, event_map)
         arrived = {e.payload['input_id']: e.payload['text'] for e in events if e.type == 'input.arrived'}
         read = set()
@@ -130,12 +130,12 @@ def verify_trace(path, expected_hash):
                 else:
                     assert event.type == 'action.confirmed'
                     text, social = event.payload['summary'], False
-                    if trace['scenario'] in ('development_v4', 'development_v5', 'development_v6'):
+                    if trace['scenario'] in ('development_v4', 'development_v5', 'development_v6', 'agency_v1'):
                         action = controller.state['world_time']['world']['actions'][event.payload['action_id']]
                         text = experience_text(action['params'], text)
             assert c['quote'] in text and c['quote'].strip()
             if c['domain'] == 'relationship': assert social and c['key'] == 'operator'
-            if c['domain'] == 'self' and trace['scenario'] in ('development_v4', 'development_v5', 'development_v6'):
+            if c['domain'] == 'self' and trace['scenario'] in ('development_v4', 'development_v5', 'development_v6', 'agency_v1'):
                 basis = record.sources[0]
                 event = event_map[basis]
                 assert event.type == 'action.confirmed'
@@ -239,7 +239,7 @@ def check(source, publish, auth_file=None, *, policy='legacy', review_key=None, 
     auth = read_auth(auth_file, ROOT) if auth_file else {}
     scanner = SecretScanner([v for v in auth.get('tokens', {}).values() if isinstance(v, str)], assignments=False)
     summary = json.loads((source / 'summary.json').read_text())
-    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4', 'development-v5', 'development-v6')
+    assert summary['mechanism'] in ('development-v1', 'development-v2', 'development-v3', 'development-v4', 'development-v5', 'development-v6', 'agency-v1')
     assert len(summary['runs']) == 2 * len(summary.get('variants', ['A', 'B', 'C'])) * summary['repeats']
     protocol = review_preflight(source, summary, isolation_report) if policy == 'fallible-v1' else False
     safe = copy.deepcopy(summary)

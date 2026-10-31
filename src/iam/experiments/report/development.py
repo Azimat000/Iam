@@ -100,7 +100,7 @@ def save_trace(directory, architecture, persona, decisions, sessions, switches):
         problems = verify(store) + store.integrity_problems()
         normal = Normalizer()
         journal = normal([e.to_dict() for e in runtime.controller.events_after(0)])
-        trace = normal({'format': 1, 'scenario': VERSION.replace('-', '_'), 'run': 'default', 'persona': asdict(persona),
+        trace = normal({'format': 1, 'scenario': getattr(architecture, 'protocol_version', VERSION).replace('-', '_'), 'run': 'default', 'persona': asdict(persona),
                         'architecture': architecture.name, 'seed': 42, 'switches': switches,
                         'status': 'completed', 'decisions': len(decisions), 'decision_trace': decisions,
                         'sessions': sessions, 'final_state': runtime.controller.state,
@@ -185,7 +185,7 @@ def assess_development(trace):
         'speech_without_internal_text': all(not MARKERS.search(t) and not any(x in t.lower() for x in INTERNAL) for t in messages),
     }
     return {'checks': checks, 'structural_admission': all(checks.values()), 'chains': chains,
-            **({'intention_progress': intention_progress(trace)} if trace.get('scenario') == 'development_v6' else {}),
+            **({'intention_progress': intention_progress(trace)} if trace.get('scenario') in ('development_v6', 'agency_v1') else {}),
             'interpretations': len(appraisals), 'interest_versions': len(interest), 'relationship_versions': len(relations),
             'semantic_review': 'pending', 'human_ratings': None, 'eligible_for_human_packet': False}
 
@@ -201,7 +201,7 @@ def biography(trace):
         elif e['type'] == 'input.arrived': lines.append('Пришло уведомление; его текст ещё неизвестен.')
         elif e['type'] == 'input.read': lines.append('Прочитано от человека: ' + incoming[p['input_id']])
         elif e['type'] == 'message.out_sent': lines.append('Собеседница: ' + proposals[p['proposal_id']]['body']['text'])
-        elif e['type'] == 'proposal.accepted' and p['kind'] == 'intention' and trace.get('scenario') == 'development_v6':
+        elif e['type'] == 'proposal.accepted' and p['kind'] == 'intention' and trace.get('scenario') in ('development_v6', 'agency_v1'):
             body = proposals[p['proposal_id']]['body']
             text = trace['final_state']['intentions'][body['id']]['text']
             status = ('сохранён будущий замысел' if body['op'] == 'create' else {
@@ -254,11 +254,13 @@ def development_packet(results, public, key, *, semantic_reviews=None, seed=42, 
     return mapping
 
 
-def run_development(root, output, *, mode='stub', provider_factory=None, repeats=2, variants=('A', 'B', 'C')):
+def run_development(root, output, *, mode='stub', provider_factory=None, repeats=2, variants=('A', 'B', 'C'), profile='legacy'):
     if (mode not in ('stub', 'formal', 'live') or (mode == 'live' and provider_factory is None)
             or type(repeats) is not int or repeats not in (1, 2) or not isinstance(variants, (tuple, list))
             or not variants or any(v not in ('A', 'B', 'C') for v in variants) or len(set(variants)) != len(variants)):
         raise ValueError('нужен известный режим/исполнитель и один или два повтора')
+    if profile not in ('legacy', 'agency-v1') or (profile == 'agency-v1' and (tuple(variants) != ('A',) or mode == 'formal')):
+        raise ValueError('agency-v1 проверяет только A с моделью или заглушкой')
     root, output = Path(root), Path(output)
     output.mkdir(parents=True, exist_ok=False)
     persona = Persona.load(root / 'scenarios/personas/curious.toml')
@@ -282,7 +284,11 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
                         provider = SessionBudget(factory(runtime), pause)
                         providers.append(provider)
                         return provider
-                    architecture = DevelopmentArchitecture(letter, bounded)
+                    if profile == 'agency-v1':
+                        from iam.experiments.agency import AgencyArchitecture
+                        architecture = AgencyArchitecture(bounded)
+                    else:
+                        architecture = DevelopmentArchitecture(letter, bounded)
                     decisions, sessions = [], []
                     Store.create(directory / 'persona.db', new_id('exp'), created_at='2026-01-01T00:00:00.000Z').close()
                     for session in range(6):
@@ -320,7 +326,7 @@ def run_development(root, output, *, mode='stub', provider_factory=None, repeats
                 write_csv(output / 'matrix.csv', rows, list(row))
                 (output / 'progress.json').write_text(json.dumps(rows, ensure_ascii=False, indent=2) + '\n')
     mapping = development_packet(results, output / 'blind', output / 'private/key.json')
-    summary = {'mechanism': VERSION, 'mode': mode, 'repeats': repeats, 'variants': list(variants), 'cells': len(rows),
+    summary = {'mechanism': 'agency-v1' if profile == 'agency-v1' else VERSION, 'mode': mode, 'repeats': repeats, 'variants': list(variants), 'cells': len(rows),
                'executed': sum(r['status'] == 'executed' for r in rows), 'human_packet': len(mapping),
                'runs': rows, 'human_ratings': None, 'semantic_review': 'pending',
                'limitation': 'Шесть моделируемых сеансов, не реальное длительное общение. Структурные связи не доказывают психологию. '
