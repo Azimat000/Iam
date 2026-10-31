@@ -1,11 +1,14 @@
 """Заглушечные цели проверяют доступность механизма, не живое желание."""
 import json
+from dataclasses import replace
 import unittest
+from unittest.mock import patch
 
 import experiments.test_development as support
 from iam.experiments.development import DevelopmentRuntime
 from iam.experiments.provenance import INSTRUCTION as PREVIOUS, ProvenanceArchitecture
 from iam.experiments.volition import INSTRUCTION, OLD_LIMIT, NEW_LIMIT, VolitionArchitecture
+from iam.experiments.conversation import records
 from iam.state import verify
 from iam.stubs import Reply, ScriptedProvider
 
@@ -77,3 +80,38 @@ class VolitionTests(unittest.TestCase):
         self.decide(support.silence);self.assertFalse(self.runtime.controller.state['intentions'])
         self.runtime.memory.off=True
         self.assertEqual(self.decide(support.intention({'op':'create','id':'hidden','text':'Буду писать.','project':'draft'})).outcome,'rejected')
+
+    def test_goal_and_actual_write_are_accepted_in_both_orders_before_confirmation(self):
+        self.write()
+        for reverse in (False,True):
+            key='goal_'+str(int(reverse))
+            def reply(req):
+                goal=self.goal(req,key)
+                action=support.operation('write_project','draft',title='Сцена',topic='creative_work',text='Текущее действие, не будущая цель.')(req).proposals[0]
+                return Reply(proposals=(action,goal) if reverse else (goal,action))
+            report=self.decide(reply)
+            self.assertEqual(report.actions[0].status,'confirmed')
+            goal=self.runtime.controller.state['intentions'][key]
+            event=self.runtime.controller.find_event(event_id=report.actions[0].events[0])
+            self.assertLess(goal['created_seq'],event.seq)
+            self.assertEqual(goal['status'],'active') # запись сама не завершает замысел
+
+    def test_new_write_does_not_make_same_answer_done_claim_valid(self):
+        self.write();self.decide(lambda q:Reply(proposals=(self.goal(q),)))
+        def reply(req):
+            prior=next(c['ref'] for c in req['context'] if c['layer']=='personal')
+            done=support.intention({'op':'transition','id':'later','to_status':'done','result_ref':prior})(req).proposals[0]
+            action=support.operation('write_project','draft',title='Сцена',topic='creative_work',text='Новая запись.')(req).proposals[0]
+            return Reply(proposals=(action,done))
+        self.assertEqual(self.decide(reply).actions[0].status,'confirmed')
+        self.assertEqual(self.runtime.controller.state['intentions']['later']['status'],'active')
+
+    def test_archived_basis_cannot_create_goal_beside_valid_action(self):
+        self.write();original=self.store.get_memory
+        hidden={r.memory_id:replace(r,layer='archive') for r in records(self.runtime.controller)}
+        def reply(req):
+            self.assertFalse(any(c['layer']=='personal' for c in req['context']))
+            return Reply(proposals=(self.goal(req),support.operation('rest')(req).proposals[0]))
+        with patch.object(self.store,'get_memory',side_effect=lambda mid:hidden.get(mid) or original(mid)):
+            self.assertEqual(self.decide(reply).actions[0].status,'confirmed')
+        self.assertFalse(self.runtime.controller.state['intentions'])

@@ -68,6 +68,20 @@ def check(root,require_final=True):
             old_state=initial.state;old_life=source['life_ms']
             requests=[e for e in new if e.type=='proposal.requested']
             assert len(requests)==row['calls']<=row['decisions']*2
+            pairs=[]
+            for request in requests:
+                accepted=[e for e in new if e.type=='proposal.accepted' and e.payload['request_id']==request.payload['request']['request_id']]
+                kinds=[e.payload['kind'] for e in accepted]
+                assert kinds.count('memory_write')<=2
+                primary=[k for k in kinds if k!='memory_write']
+                if row['profile']=='control':assert len(primary)<=1
+                else:
+                    assert kinds.count('intention')<=1 and sum(k in ('action','message') for k in kinds)<=1
+                    assert kinds.count('no_action')<=1 and ('no_action' not in kinds or len(primary)==1)
+                if 'intention' in kinds and any(k in ('action','message') for k in kinds):
+                    pairs.append({'request_id':request.payload['request']['request_id'],'accepted_order':primary,
+                                  'events':[e.event_id for e in accepted if e.payload['kind']!='memory_write']})
+            counts['accepted_goal_action_pairs']+=len(pairs)
             wanted={(e.epoch,e.payload['request']['state_version']) for e in requests}
             memories={(r.epoch,r.state_version):r.memory for r in replay(store) if (r.epoch,r.state_version) in wanted}
             for number,(start,stop,saved) in enumerate(zip(starts,stops,trace['sessions'])):
@@ -128,7 +142,8 @@ def check(root,require_final=True):
                 assert row['sessions']==summary['sessions_per_run'] and row['decisions']==summary['sessions_per_run']*summary['choices_per_session']
             else:assert row['status']=='technical_pause' and trace['status']=='technical_pause'
             analysis=ASSESS(trace,source['prefix_seq'],set(initial.state['world_time']['world']['development']['projects']))
-            results.append({'code':row['code'],'sha256':row['sha256'],'verified':True,'assessment':analysis})
+            results.append({'code':row['code'],'profile':row['profile'],'sha256':row['sha256'],'verified':True,
+                            'coaccepted_pairs':pairs,'assessment':analysis})
             counts['runs']+=1;counts['decisions']+=row['decisions'];counts['calls']+=row['calls']
     return {'protocol':summary['protocol'],'live':summary['live'],'counts':dict(counts),'runs':results,
             'all_completed':len(results)==4 and all(r['status']=='completed' for r in summary['runs']),
