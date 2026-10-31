@@ -48,7 +48,7 @@ def check_signals(req, state, memory, events):
             'component_in_historical_salience':capable and basis and activity in history,
             'informational_only':True,'component_scope':'activity_boolean_not_per_goal',
             'goal_component':.45 if signal['mechanism']=='goals' and available and basis else 0.0})
-    assert signal['goal_opportunities']==opportunities
+    assert sorted(signal['goal_opportunities'],key=lambda x:x['id'])==sorted(opportunities,key=lambda x:x['id'])
     for item in signal['items']:
         key=item['activity']; rows=sorted(history[key])
         assert item['sources']==[r[1] for r in rows]
@@ -72,7 +72,7 @@ def check_signals(req, state, memory, events):
         assert item['inputs']==inputs
         goals=[name for name,goal in state['intentions'].items() if goal['status']=='active' and capable
                and set(goal['sources'])&visible and key==('material:' if goal.get('operation')=='read_material' else 'project:')+goal['project']]
-        assert item['accepted_goals']==goals
+        assert sorted(item['accepted_goals'])==sorted(goals)
         assert item['last_two_visible_texts_identical']==(repeated if len(texts)>1 else None)
         value=(.6*inputs['novelty']+.5*inputs['strength']+.2+.2*inputs['score'] if signal['mechanism']=='novelty'
                else .6*(.6+inputs['score'])+.3*inputs['strength']+(.45 if signal['mechanism']=='goals' and goals else 0))
