@@ -166,6 +166,8 @@ class Cycle:
                      "text": "Наступил плановый момент." + (f" Дело: {focus.query}" if focus.query else "")}
         else:
             first = {"ref": trigger.event_id, "origin": "observation", "layer": "state", "text": f"Событие {trigger.type}."}
+        if hasattr(self.memory, "context"):
+            return self.memory.context(trigger, first, records)
         return [first] + [{"ref": r.memory_id, "origin": r.origin, "layer": r.layer, "text": r.text} for r in records]
 
     def _request(self, cid: str, context: list[dict], attempt: int, retry_of: str | None) -> dict:
@@ -266,7 +268,16 @@ class Cycle:
         confirmed = outcome.status == "confirmed" and done.applied
         self._stage(rep, "confirmation", "ok" if done.applied else "failed", (e.event_id for e in done.events[:1]),
                     {"action_id": aid, "outcome": outcome.status, "status": done.status})
-        memory_id = self._remember(rep, request, outcome, done.events[0]) if confirmed else None
+        memory_id = None
+        if done.applied and hasattr(self.memory, "remember_outcome"):
+            saved = self.memory.remember_outcome(request, outcome, done.events[0])
+            if saved is not None:
+                rec, result = saved
+                memory_id = rec.memory_id if result.applied else None
+                self._stage(rep, "memory_update", "ok" if result.applied else "failed",
+                            (e.event_id for e in result.events), {"memory_id": memory_id})
+        elif confirmed:
+            memory_id = self._remember(rep, request, outcome, done.events[0])
         rep.actions.append(ActionReport(aid, kind, _RESULT_STATUS[outcome.status] if done.applied else "attempted",
                                         tuple(e.event_id for e in done.events[:1]), memory_id))
 

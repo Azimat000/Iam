@@ -45,6 +45,7 @@ critical_min_lines = 98.0
 critical_min_branches = 100.0
 # Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
 critical = [
+    "src/iam/memory/*.py",  # постоянная память, происхождение и изоляция архива (S18)
     "src/iam/experiments/fidelity.py",  # замысел и критерий, привязка отдельной оценки (S17)
     "src/iam/experiments/evidence_scope.py",  # собственный текст не является независимым наблюдением (S17)
     "src/iam/experiments/commitment.py",  # критерий цели, видимый результат и восстановление (S17)

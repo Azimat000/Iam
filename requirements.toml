@@ -514,8 +514,8 @@ kind = "constraint"
 mechanism = "iam.memory (поле слоя) [spec: docs/spec/provenance.md#layers]"
 check = "Тест схемы: слой обязателен; запросы к слоям изолированы."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (personal/interpretation доступны, archive и журнал исключены из обычного извлечения, технический архив остаётся журналом переходов, D-055)"
 
 [[req]]
 id = "R-044"
@@ -526,8 +526,8 @@ kind = "constraint"
 mechanism = "iam.memory (тип происхождения «чужое утверждение») [spec: docs/spec/provenance.md#truth]"
 check = "Сценарий «Повтор критики» и тест: сообщение оператора сохраняется как утверждение, не как факт. Сценарии каталога: scenarios/experiments/exp_repeat_criticism.toml, scenarios/required/repeat_criticism.toml."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py; tests/panel/test_memory.py (чужое утверждение имеет отдельное происхождение и предупреждение, полный сценарий повторной критики/убеждений остаётся S21/S25)"
 
 [[req]]
 id = "R-045"
@@ -538,8 +538,8 @@ kind = "functional"
 mechanism = "iam.memory (обязательные поля записи) [spec: docs/spec/events.md#event-envelope] [spec: docs/spec/provenance.md#origin-types]"
 check = "Тест: запись без любого из полей отклоняется."
 slice = "S18"
-status = "planned"
-evidence = "docs/evidence/S17-provenance.md (Экспериментальный профиль S17 различает источник выбора и исхода по проверенной трассе, полная память S18 не выполнена); tests/experiments/test_provenance.py"
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (обязательные поля, доступные основания/связи, история по фактическому событию, replay и повтор проверены)"
 
 [[req]]
 id = "R-046"
@@ -550,8 +550,8 @@ kind = "constraint"
 mechanism = "iam.memory (перечисление origin) [spec: docs/spec/provenance.md#origin-types]"
 check = "Тест: все шесть типов допустимы, иной тип отклоняется; воображение не учитывается как выполнение."
 slice = "S18"
-status = "planned"
-evidence = "docs/evidence/S17-provenance.md (Метаданные выбора отделены от содержания произведения, типы origin полной памяти S18 ещё не реализованы); tests/experiments/test_provenance.py"
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/domain/test_domain.py; tests/memory/test_persistent.py; tests/memory/test_cycle.py (типы происхождения, недопуск симуляции в постоянную память и выдуманного подтверждения результата)"
 
 [[req]]
 id = "R-047"
@@ -562,8 +562,8 @@ kind = "functional"
 mechanism = "iam.memory (сенсорный буфер) [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: сигналы попадают во временный буфер и вытесняются по сроку, не становясь записями личной памяти без решения."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py::test_context_sensory_ttl (безопасные уведомления, ёмкость и срок, непрочитанный текст не переносится в буфер)"
 
 [[req]]
 id = "R-048"
@@ -574,8 +574,8 @@ kind = "functional"
 mechanism = "iam.memory (рабочий контекст с пределом) [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: рабочий контекст ограничен по размеру; переполнение вытесняет по правилу, а не растёт неограниченно."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (предел числа элементов и размера контекста, отключение памяти)"
 
 [[req]]
 id = "R-049"
@@ -586,8 +586,8 @@ kind = "functional"
 mechanism = "iam.memory (вид «эпизод») [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: событие записывается как эпизод со временем и участниками; извлекается по запросу и свежести."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_cycle.py (эпизоды реальных в контрактном цикле исходов со ссылкой на событие/действие, confirmed/failed/unknown); tests/memory/test_persistent.py (сохранение, извлечение, свежесть)"
 
 [[req]]
 id = "R-050"
@@ -598,8 +598,8 @@ kind = "functional"
 mechanism = "iam.memory (вид «факт»), iam.beliefs [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: факт/понятие записывается с уверенностью и основаниями; обобщение ссылается на исходные эпизоды."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (семантические записи с происхождением и основаниями сохраняются и извлекаются, обобщение S19, полноценные убеждения S21)"
 
 [[req]]
 id = "R-051"
@@ -610,8 +610,8 @@ kind = "functional"
 mechanism = "iam.memory (вид «автобиография») [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: значимое событие и изменение личности попадают в автобиографию со ссылкой на причину."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (автобиографическая запись только от собственного наблюдения с источником, полная история изменения личности и живая проверка остаются S25)"
 
 [[req]]
 id = "R-052"
@@ -670,8 +670,8 @@ kind = "functional"
 mechanism = "iam.memory (перечень видов в схеме) [spec: docs/spec/provenance.md#kinds]"
 check = "Тест схемы: перечень видов памяти содержит ровно девять значений."
 slice = ["S18", "S21", "S22", "S23"]
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py::test_nine_kinds_restart_schema (все девять видов записаны и извлечены после открытия базы заново, механизмы эмоций/привычек/отношений будущих срезов этим не закрыты)"
 
 [[req]]
 id = "R-057"
@@ -682,8 +682,8 @@ kind = "constraint"
 mechanism = "iam.storage (единая таблица записей памяти) [spec: docs/spec/provenance.md#kinds]"
 check = "Тест схемы: одна таблица записей памяти с полем вида; отдельных баз по видам нет."
 slice = "S18"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py::test_nine_kinds_restart_schema (одна модель MemoryRecord, одна SQLite-база/таблица для всех видов)"
 
 [[req]]
 id = "R-058"
@@ -718,8 +718,8 @@ kind = "constraint"
 mechanism = "iam.memory (запрос доступной памяти не видит архивный слой) [spec: docs/spec/provenance.md#layers]"
 check = "Тест: обычное извлечение не возвращает архивные записи; сценарий «Забывание». Сценарии каталога: scenarios/required/forgetting.toml."
 slice = "S18"
-status = "planned"
-evidence = "docs/evidence/S17-provenance.md (Архив, отключение и сокращение проверены для экспериментального профиля, это не завершение всей памяти S18); tests/experiments/test_provenance.py"
+status = "verified"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py::test_archive_never_enters_context_or_associations (точное совпадение, контекст и источники исключают архив, полный жизненный цикл забывания относится к S19)"
 
 [[req]]
 id = "R-061"
@@ -1842,8 +1842,8 @@ kind = "functional"
 mechanism = "iam.panel (память и убеждения)"
 check = "Тест панели: записи, убеждения и история изменений."
 slice = ["S18", "S21"]
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S18-close.md; docs/evidence/S18-browser.json; tests/panel/test_memory.py (записи, происхождение, источники, связи и история доступны на странице памяти, убеждения остаются S21)"
 
 [[req]]
 id = "R-154"
