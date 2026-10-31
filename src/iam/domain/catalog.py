@@ -40,6 +40,7 @@ _RAW = [
     ("activity.abandoned", True, "act:<action_id>:drop"),
     ("proposal.requested", False, "req:<request_id>"),
     ("proposal.received", False, "resp:<request_id>"),
+    ("proposal.assessed", False, "assess:<request_id>"),
     ("proposal.accepted", True, "prop:<proposal_id>:accept"),
     ("proposal.rejected", False, "prop:<proposal_id>:reject"),
     ("proposal.stale", False, "resp:<request_id>:stale"),

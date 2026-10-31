@@ -1,4 +1,6 @@
 """Общая минимальная память стенда: только доступный опыт текущего персонажа."""
+import re
+
 from iam.stubs import StubMemory
 
 
@@ -24,7 +26,9 @@ class BenchMemory:
                 # Старые версии остаются в базе и журнале, но обычное извлечение их не возвращает.
                 records = [r for r in records if r.layer in ("personal", "interpretation")
                            and not superseded(r)]
-                matching = StubMemory(records[::-1]).retrieve(query, limit=limit)
+                # StubMemory сам разворачивает пустой поиск. Здесь fallback уже
+                # идёт от новых к старым: второй разворот возвращал самое старое.
+                matching = StubMemory(records[::-1]).retrieve(query, limit=limit) if re.search(r'\w', query) else []
                 selected = {r.memory_id for r in matching}
                 records = (matching + [r for r in records[::-1] if r.memory_id not in selected])[:limit]
             else:

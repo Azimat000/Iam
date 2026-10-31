@@ -45,6 +45,12 @@ critical_min_lines = 98.0
 critical_min_branches = 100.0
 # Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
 critical = [
+    "src/iam/experiments/fidelity.py",  # замысел и критерий, привязка отдельной оценки (S17)
+    "src/iam/experiments/evidence_scope.py",  # собственный текст не является независимым наблюдением (S17)
+    "src/iam/experiments/commitment.py",  # критерий цели, видимый результат и восстановление (S17)
+    "src/iam/experiments/volition.py",  # независимый слот добровольного замысла, прежние проверки (S17)
+    "src/iam/experiments/provenance.py",  # подготовка/свой выбор/читаемая версия и доступность (S17)
+    "src/iam/experiments/transfer.py",  # видимый опыт, неудачи и свободный выбор A (S17)
     "src/iam/panel/experiments.py",  # изолированное чтение снимка и экранирование экспериментальных текстов (R-156)
     "src/iam/experiments/agency.py",  # добровольное осмысление, скрытая память и сохранение контрактов (D-037)
     "src/iam/experiments/report/review.py",  # допуск достоверных полных биографий и сохранение ошибок (D-036)
