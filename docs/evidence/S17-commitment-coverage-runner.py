@@ -14,7 +14,7 @@ traced_calls = 0
 def measured_run(args, *positional, **kwargs):
     global traced_calls
     if isinstance(args, (list, tuple)) and len(args) >= 2 and str(args[1]) in CLI_TOOLS:
-        args = [args[0], '-m', 'coverage', 'run', '-p', '--data-file=/Users/azamatsibgatullin/.iam-evidence/s17-commitment-20261031/checks/final-cli', '--rcfile=' + str(ROOT / 'pyproject.toml'), *args[1:]]
+        args = [args[0], '-m', 'coverage', 'run', '-p', '--data-file=/Users/azamatsibgatullin/.iam-evidence/s17-commitment-20261031/checks/verified-cli', '--rcfile=' + str(ROOT / 'pyproject.toml'), *args[1:]]
         env = dict(kwargs.get('env') or os.environ)
         kwargs['env'] = {k: v for k, v in env.items() if not k.startswith('COVERAGE_PROCESS_')}
         traced_calls += 1

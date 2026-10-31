@@ -30,17 +30,23 @@ def check_signals(req, state, memory, events):
         key=('project:' if p['operation']=='write_project' else 'material:')+p['target']
         history.setdefault(key,[]).append((event.seq,rec['memory_id'],action,ref))
     assert {x['activity'] for x in signal['items']}==set(history)
-    visible={ref for rows in history.values() for row in rows for ref in (row[1],row[3])}
+    sources=json.loads(req['context'][-2]['text'])['experience_sources']
+    visible={base for ref,source in sources.items() if source['social'] or payload['experience_provenance'].get(ref,{}).get('operation')
+             for base in (ref,memory[ref]['sources'][0] if ref in memory else ref)}
+    capable=CAP_DEVELOPMENT in req['allowed_actions']
     world=state['world_time']['world']['development']
     opportunities=[]
     for name,goal in state['intentions'].items():
         if goal['status']!='active':continue
         operation=goal.get('operation','write_project');target=goal['project']
         available=(target in MATERIALS if operation=='read_material' else target in world['projects'] if operation=='open_project' else target in world['projects'] or len(world['projects'])<4)
+        available=available and capable
         basis=bool(set(goal['sources'])&visible)
         activity=('material:' if operation=='read_material' else 'project:')+target
         opportunities.append({'id':name,'operation':operation,'target':target,'basis_available':basis,
             'available':available,'activity_history_present':activity in history,
+            'component_in_historical_salience':capable and basis and activity in history,
+            'informational_only':True,'component_scope':'activity_boolean_not_per_goal',
             'goal_component':.45 if signal['mechanism']=='goals' and available and basis else 0.0})
     assert signal['goal_opportunities']==opportunities
     for item in signal['items']:
@@ -64,7 +70,7 @@ def check_signals(req, state, memory, events):
         inputs={'score':-min(1.0,.25*failures),'strength':max(0.0,strength),
                 'novelty':0.0 if repeated else 1.0,'skill':0.0,'repeats':len(texts),'failures':failures,'sources':[]}
         assert item['inputs']==inputs
-        goals=[name for name,goal in state['intentions'].items() if goal['status']=='active'
+        goals=[name for name,goal in state['intentions'].items() if goal['status']=='active' and capable
                and set(goal['sources'])&visible and key==('material:' if goal.get('operation')=='read_material' else 'project:')+goal['project']]
         assert item['accepted_goals']==goals
         assert item['last_two_visible_texts_identical']==(repeated if len(texts)>1 else None)

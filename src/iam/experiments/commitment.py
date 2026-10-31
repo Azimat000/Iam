@@ -7,7 +7,7 @@ from dataclasses import replace
 import json
 
 from iam.domain import Op
-from iam.experiments.development import MATERIALS, short
+from iam.experiments.development import CAP_DEVELOPMENT, MATERIALS, short
 from iam.experiments.volition import INSTRUCTION as PREVIOUS, VolitionArchitecture, VolitionCycle
 from iam.state import KindDecision, Violation
 
@@ -30,7 +30,8 @@ INSTRUCTION = PREVIOUS[:START] + (
     'результате и доступном тексте. Цитата не доказывает выполнения смысла criterion. '
     'Для старой цели без criterion сохраняется прежний формат done без result_quote; критерий ей не выдумывай. '
     'motivation.goal_opportunities показывает доступность принятой цели, в том числе до первого '
-    'результата; goal_component — только прежний вклад цели, не дополнительная награда и не команда. '
+    'результата; goal_component — только прежний общий вклад цели для занятия, не дополнительная '
+    'награда за каждую цель и не команда. Он не суммируется повторно с salience. '
 ) + PREVIOUS[END:]
 
 
@@ -57,12 +58,15 @@ class CommitmentCycle(VolitionCycle):
         result = super().signals(recalled)
         if not result['enabled']:
             return result
-        visible = {ref for item in result['items'] for mid in item['sources']
-                   for ref in (mid, self.ctl.store.get_memory(mid).sources[0])}
+        visible = {ref for key, source in self.evidence.items()
+                   if source['social'] or self.full_outcome_visible(source['base'],source['text'])
+                   for ref in (key,source['base'])}
+        cap = self.runtime.capabilities.get(CAP_DEVELOPMENT)
+        capable = bool(cap and cap.available)
         goals = {key: goal for key, goal in self.ctl.state['intentions'].items()
                  if goal['status'] == 'active' and set(goal['sources']) & visible}
         for item in result['items']:
-            matching = [key for key, goal in goals.items() if item['activity'] ==
+            matching = [key for key, goal in goals.items() if capable and item['activity'] ==
                         ('material:' if goal.get('operation') == 'read_material' else 'project:') + goal['project']]
             item['accepted_goals'] = matching
             item['salience'] = self.mechanism.score(item['inputs'], result['fixed_activity_need'], bool(matching))
@@ -77,10 +81,13 @@ class CommitmentCycle(VolitionCycle):
             available = any(a['operation']==operation and a.get('target')==target for a in view['available_actions'])
             if operation=='write_project' and target not in view['projects']:
                 available = view['project_creation']['can_create']
+            available = available and capable
             activity = ('material:' if operation=='read_material' else 'project:') + target
             result['goal_opportunities'].append({'id':key,'operation':operation,'target':target,
                 'basis_available':key in goals,'available':available,
                 'activity_history_present':any(item['activity']==activity for item in result['items']),
+                'component_in_historical_salience':any(key in item['accepted_goals'] for item in result['items']),
+                'informational_only':True,'component_scope':'activity_boolean_not_per_goal',
                 'goal_component':component if available and key in goals else 0.0})
         return result
 

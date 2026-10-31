@@ -7,7 +7,7 @@ from unittest.mock import patch
 import experiments.test_development as support
 from iam.experiments.commitment import CommitmentArchitecture, INSTRUCTION
 from iam.experiments.conversation import records
-from iam.experiments.development import DevelopmentRuntime
+from iam.experiments.development import CAP_DEVELOPMENT, DevelopmentRuntime
 from iam.experiments.volition import VolitionArchitecture
 from iam.state import verify
 from iam.stubs import Reply, ScriptedProvider
@@ -118,7 +118,9 @@ class CommitmentTests(unittest.TestCase):
         self.assertFalse(any(i['activity']=='material:craft' for i in signal['items']))
         item=signal['goal_opportunities'][0]
         self.assertEqual(item,{'id':'later','operation':'read_material','target':'craft','basis_available':True,
-                               'available':True,'activity_history_present':False,'goal_component':0.45})
+                               'available':True,'activity_history_present':False,'goal_component':0.45,
+                               'component_in_historical_salience':False,'informational_only':True,
+                               'component_scope':'activity_boolean_not_per_goal'})
         self.decide(support.intention({'op':'transition','id':'later','to_status':'deferred'}))
         self.assertFalse(json.loads(self.capture()['context'][-1]['text'])['motivation']['goal_opportunities'])
 
@@ -136,3 +138,24 @@ class CommitmentTests(unittest.TestCase):
     def test_receipt_text_does_not_count_as_result_quote(self):
         self.write();self.decide(self.goal());self.write()
         self.assertEqual(self.decide(lambda q:self.done(q,'Подтверждено действие Аси: write_project, цель: draft.')).outcome,'rejected')
+
+    def test_open_only_basis_is_available_without_scored_open_history(self):
+        self.write();opened=self.decide(support.operation('open_project','draft')).actions[0].memory_id
+        self.decide(support.intention({'op':'create','id':'later','text':'Прочитать материал.','operation':'read_material',
+            'target':'craft','criterion':'Получен текст материала.'},cites=lambda q:[opened]))
+        item=json.loads(self.capture()['context'][-1]['text'])['motivation']['goal_opportunities'][0]
+        self.assertTrue(item['basis_available']);self.assertEqual(item['goal_component'],0.45)
+
+    def test_unavailable_capability_removes_component_and_two_goals_do_not_double_salience(self):
+        self.write();self.decide(self.goal())
+        self.decide(self.goal(id='second'))
+        signal=json.loads(self.capture()['context'][-1]['text'])['motivation'];item=signal['items'][0]
+        self.assertEqual(set(item['accepted_goals']),{'later','second'})
+        self.assertEqual(item['salience'],self.cycle.mechanism.score(item['inputs'],0.6,True))
+        self.assertTrue(all(x['component_in_historical_salience'] and x['informational_only'] for x in signal['goal_opportunities']))
+        self.runtime.capabilities.set_status(CAP_DEVELOPMENT,'revoked')
+        signal=json.loads(self.capture()['context'][-1]['text'])['motivation']
+        self.assertTrue(all(not x['available'] and x['goal_component']==0 for x in signal['goal_opportunities']))
+        self.assertFalse(signal['items'][0]['accepted_goals'])
+        with patch.dict(self.runtime.capabilities._caps,{},clear=True):
+            self.assertFalse(json.loads(self.capture()['context'][-1]['text'])['motivation']['goal_opportunities'][0]['available'])
