@@ -67,6 +67,7 @@
 | `activity.abandoned` | ядро | да | `act:<action_id>:drop` |
 | `proposal.requested` | ядро | нет | `req:<request_id>` |
 | `proposal.received` | ядро | нет | `resp:<request_id>` |
+| `proposal.assessed` | ядро, отдельная модельная оценка без действий и личной памяти | нет | `assess:<request_id>` |
 | `proposal.accepted` | ядро | да | `prop:<proposal_id>:accept` |
 | `proposal.rejected` | ядро | нет | `prop:<proposal_id>:reject` |
 | `proposal.stale` | ядро | нет | `resp:<request_id>:stale` |
