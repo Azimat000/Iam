@@ -119,6 +119,7 @@ def main(argv=None):
     parser.add_argument('--auth-file')
     parser.add_argument('--output-dir', required=True)
     parser.add_argument('--live', action='store_true')
+    parser.add_argument('--persist-auth-updates', action='store_true')
     args = parser.parse_args(argv)
     try:
         output = Path(args.output_dir)
@@ -131,7 +132,9 @@ def main(argv=None):
             raise ValueError
         if args.live and not args.auth_file:
             raise ValueError
-        cfg = CodexSandboxConfig(auth_file=args.auth_file)
+        if args.persist_auth_updates and not args.live:
+            raise ValueError
+        cfg = CodexSandboxConfig(auth_file=args.auth_file, persist_auth_updates=args.persist_auth_updates)
         if args.auth_file:
             read_auth(args.auth_file, ROOT)
         output.mkdir(parents=True, exist_ok=True)
@@ -141,6 +144,7 @@ def main(argv=None):
     results = collect(cfg, live=args.live)
     passed = verdict(results, args.live)
     report = {'model': 'gpt-6-luna', 'cli_version': '0.166.0', 'live_requested': args.live,
+              'auth_updates_enabled': args.persist_auth_updates,
               'isolation_passed': verdict({key: results[key] for key in REQUIRED}), 'passed': passed, 'checks': results}
     try:
         fd, temporary = tempfile.mkstemp(prefix='.report-', dir=output)

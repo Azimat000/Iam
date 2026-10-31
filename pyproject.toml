@@ -23,7 +23,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "iam.domain" = ["schemas/*.json"]
-"iam.panel" = ["*.css"]
+"iam.panel" = ["*.css", "experiments.json"]
 
 # --- Покрытие тестами (D-009, D-011) ---------------------------------------
 [tool.coverage.run]
@@ -45,6 +45,12 @@ critical_min_lines = 98.0
 critical_min_branches = 100.0
 # Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
 critical = [
+    "src/iam/panel/experiments.py",  # изолированное чтение снимка и экранирование экспериментальных текстов (R-156)
+    "src/iam/experiments/agency.py",  # добровольное осмысление, скрытая память и сохранение контрактов (D-037)
+    "src/iam/experiments/report/review.py",  # допуск достоверных полных биографий и сохранение ошибок (D-036)
+    "src/iam/experiments/development.py",  # источники развития, интересы, отношения, свои работы и отключения (S16)
+    "src/iam/experiments/life.py",  # чтение, выбор, подтверждённый прогресс и выключение опыта (S16)
+    "src/iam/experiments/conversation.py",  # чтение, источники и пересмотр экспериментальной памяти (S16)
     "src/iam/experiments/motivation/cycle.py",  # подтверждения, внимание и выключение мотивации (S15)
     "src/iam/experiments/motivation/goals.py",  # основания целей и отсутствие новых прав (S15)
     "src/iam/experiments/variants/formal/*.py",  # формальный выбор и числовые основания (S14)

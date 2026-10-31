@@ -1,0 +1,79 @@
+/Users/azamatsibgatullin/Documents/IAM/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+.........................................................................................................................................................................................................................................................................................................................................................................................................................usage: iam-s11-explicit-coverage.py [-h] --output OUTPUT
+                                    [--mode {stub,formal,live}]
+                                    [--auth-file AUTH_FILE]
+                                    [--persist-auth-updates]
+                                    [--conversational] [--dialogues | --life |
+                                    --development] [--repeats {1,2}]
+                                    [--variants {A,B,C} [{A,B,C} ...]]
+iam-s11-explicit-coverage.py: error: нужен внешний --auth-file
+usage: iam-s11-explicit-coverage.py [-h] --output OUTPUT
+                                    [--mode {stub,formal,live}]
+                                    [--auth-file AUTH_FILE]
+                                    [--persist-auth-updates]
+                                    [--conversational] [--dialogues | --life |
+                                    --development] [--repeats {1,2}]
+                                    [--variants {A,B,C} [{A,B,C} ...]]
+iam-s11-explicit-coverage.py: error: сохранение входа доступно только в live
+..............................usage: iam-s11-explicit-coverage.py [-h] --db DB (--demo |
+                                    --codex-auth-file CODEX_AUTH_FILE)
+                                    [--telegram-user TELEGRAM_USER]
+                                    [--port PORT]
+iam-s11-explicit-coverage.py: error: Демонстрация не подключается к Telegram.
+.......................................................................................................................................................................................................................................................................................................................................................................................................................................FFF...........................................................................................................................................................
+======================================================================
+FAIL: test_failing_tests_invalidate_measurement (test_covcheck.FullRunTest.test_failing_tests_invalidate_measurement)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/Documents/IAM/tests/test_covcheck.py", line 165, in test_failing_tests_invalidate_measurement
+    self.assertIn("Тесты упали", p.stdout)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'Тесты упали' not found in ''
+
+======================================================================
+FAIL: test_full_run_below_threshold (test_covcheck.FullRunTest.test_full_run_below_threshold)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/Documents/IAM/tests/test_covcheck.py", line 159, in test_full_run_below_threshold
+    self.assertIn("НИЖЕ ПОРОГА", p.stdout)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'НИЖЕ ПОРОГА' not found in ''
+
+======================================================================
+FAIL: test_full_run_passes (test_covcheck.FullRunTest.test_full_run_passes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/Documents/IAM/tests/test_covcheck.py", line 152, in test_full_run_passes
+    self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : ----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+/Users/azamatsibgatullin/Documents/IAM/.venv/lib/python3.13/site-packages/coverage/inorout.py:521: CoverageWarning: Module tools was never imported. (module-not-imported)
+  self.warn(f"Module {pkg} was never imported.", slug="module-not-imported")
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/Documents/IAM/tools/covcheck.py", line 183, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/azamatsibgatullin/Documents/IAM/tools/covcheck.py", line 171, in main
+    results = evaluate(report, cfg, ROOT)
+  File "/Users/azamatsibgatullin/Documents/IAM/tools/covcheck.py", line 105, in evaluate
+    rel = p.relative_to(root).as_posix() if p.is_absolute() else p.as_posix()
+          ~~~~~~~~~~~~~^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/pathlib/_local.py", line 385, in relative_to
+    raise ValueError(f"{str(self)!r} is not in the subpath of {str(other)!r}")
+ValueError: '/Users/azamatsibgatullin/Documents/IAM/src/iam/__init__.py' is not in the subpath of '/private/var/folders/7q/6f7d54ks3zz8mx9n9rtc30zc0000gn/T/iam-cov-sibe16c9'
+
+
+----------------------------------------------------------------------
+Ran 1020 tests in 370.170s
+
+FAILED (failures=3)
+Разговоров: 12; исполнено: 12; в пакете: 12
+Биографий: 6; исполнено: 2; допущено к оценке: 0
+Биографий: 18; исполнено: 6; в пакете: 2
+Ячеек: 48; исполнено: 0; вложенных прогонов: 0
+Ячеек: 48; исполнено: 0; вложенных прогонов: 0
+CLI calls explicitly measured: 132

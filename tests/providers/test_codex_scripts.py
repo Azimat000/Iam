@@ -105,6 +105,7 @@ class VerificationTest(unittest.TestCase):
             with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 for args in (['--output-dir', '.'], ['--output-dir', str(ROOT / 'out')],
                              ['--output-dir', output, '--live'],
+                             ['--output-dir', output, '--persist-auth-updates'],
                              ['--output-dir', output, '--auth-file', str(auth) + '-missing'],
                              ['--output-dir', str(Path(directory) / '..' / 'out')]):
                     self.assertEqual(verify.main(args), 2)
@@ -124,6 +125,12 @@ class VerificationTest(unittest.TestCase):
                 report = json.loads((Path(output) / 'report.json').read_text())
                 self.assertTrue(report['isolation_passed'])
                 self.assertNotIn('synthetic-value', json.dumps(report))
+                managed = Path(directory) / 'iam-managed.json'
+                managed.write_text(json.dumps(AUTH)); managed.chmod(0o600)
+                with patch.object(verify, 'collect', return_value=passed | {'live': 'PASS'}) as collect:
+                    self.assertEqual(verify.main(['--output-dir', output, '--auth-file', str(managed), '--live', '--persist-auth-updates']), 0)
+                    self.assertTrue(collect.call_args.args[0].persist_auth_updates)
+                    self.assertTrue(json.loads((Path(output) / 'report.json').read_text())['auth_updates_enabled'])
                 with patch.object(verify, 'collect', return_value=passed | {'live': 'FAIL'}):
                     self.assertEqual(verify.main(['--output-dir', output, '--auth-file', str(auth), '--live']), 1)
                 with patch.object(verify, 'collect', return_value=passed), patch.object(Path, 'write_text', side_effect=OSError()):
@@ -148,7 +155,7 @@ class VerificationTest(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which('node'), 'Node required for bootstrap checks')
 class BootstrapTest(unittest.TestCase):
-    def run_bootstrap(self, payload, command=None, existing=False):
+    def run_bootstrap(self, payload, command=None, existing=False, writeback=False):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / 'home'
             if existing:
@@ -156,7 +163,7 @@ class BootstrapTest(unittest.TestCase):
                 (home / 'auth.json').write_text('preserve')
             done = subprocess.run(['node', str(ROOT / 'docker/launch.cjs'), *(command or [])],
                                   input=payload, capture_output=True, text=True,
-                                  env={**os.environ, 'CODEX_HOME': str(home)}, timeout=10)
+                                  env={**os.environ, 'CODEX_HOME': str(home), 'IAM_AUTH_WRITEBACK': '1' if writeback else '0'}, timeout=10)
             preserved = (home / 'auth.json').read_text() if (home / 'auth.json').exists() else None
             return done, preserved
 
@@ -227,6 +234,55 @@ console.log(output);
             self.assertIsNone(remaining)
         done, _ = self.run_bootstrap(json.dumps({'auth':dict(AUTH,tokens=dict(AUTH['tokens'],account_id='account')),'prompt':'ok'}), ['node','-e','process.stdin.resume()'])
         self.assertEqual(done.returncode, 0)
+
+    def test_private_handoff_after_success_or_failure_and_cleanup(self):
+        auth = dict(AUTH, last_refresh='2026-10-30T10:00:00Z')
+        probe = """
+const fs=require('fs'),p=process.env.CODEX_HOME+'/auth.json';
+process.stdin.resume();process.stdin.on('end',()=>{
+ const auth=JSON.parse(fs.readFileSync(p));
+ auth.tokens.refresh_token='synthetic-rotated';
+ auth.tokens.account_id='synthetic-account';
+ auth.tokens.login_owner_id='synthetic-owner';auth.tokens.oauth_provenance={source:'synthetic'};
+ auth.OPENAI_API_KEY=null;auth.last_refresh='2026-10-30T11:00:00Z';
+ fs.writeFileSync(p,JSON.stringify(auth));console.log('model-output');
+ console.error('synthetic-stderr-secret');process.exit(STATUS);
+});
+"""
+        for status in (0, 3):
+            done, remaining = self.run_bootstrap(json.dumps({'auth':auth,'prompt':'synthetic prompt'}),
+                                                 ['node','-e',probe.replace('STATUS', str(status))], writeback=True)
+            self.assertEqual(done.returncode, status)
+            lines = [line for line in done.stdout.splitlines() if line]
+            self.assertEqual(lines[0], 'model-output')
+            event = json.loads(lines[-1])
+            self.assertEqual(set(event), {'type','auth'})
+            self.assertEqual(event['type'], 'iam.auth.updated')
+            self.assertEqual(event['auth']['tokens']['refresh_token'], 'synthetic-rotated')
+            self.assertEqual(event['auth']['last_refresh'], '2026-10-30T11:00:00Z')
+            self.assertNotIn('login_owner_id', event['auth']['tokens'])
+            self.assertNotIn('oauth_provenance', event['auth']['tokens'])
+            self.assertNotIn('synthetic-stderr-secret', done.stderr + done.stdout)
+            self.assertIsNone(remaining)
+
+    def test_invalid_private_handoff_never_echoes_file_or_partial_credentials(self):
+        corruptions = ["fs.unlinkSync(p)", "fs.writeFileSync(p,'not JSON')", "fs.writeFileSync(p,'x'.repeat(65537))"]
+        for changes in ("auth.OPENAI_API_KEY='synthetic-secret'", "auth.extra='synthetic-secret'",
+                        "auth.tokens.extra='synthetic-secret'", "auth.auth_mode='api'", "auth.tokens=null"):
+            corruptions.append("const auth=JSON.parse(fs.readFileSync(p));" + changes + ";fs.writeFileSync(p,JSON.stringify(auth))")
+        for corrupt in corruptions:
+            script = "const fs=require('fs'),p=process.env.CODEX_HOME+'/auth.json';process.stdin.resume();process.stdin.on('end',()=>{" + corrupt + "});"
+            done, remaining = self.run_bootstrap(json.dumps({'auth':AUTH,'prompt':'synthetic prompt'}), ['node','-e',script], writeback=True)
+            self.assertNotEqual(done.returncode, 0)
+            self.assertEqual(done.stdout, '')
+            self.assertEqual(done.stderr, 'Codex auth handoff failed.\n')
+            self.assertIsNone(remaining)
+        for timestamp in (None, 'invalid'):
+            done, remaining = self.run_bootstrap(json.dumps({'auth':dict(AUTH,last_refresh=timestamp),'prompt':'synthetic prompt'}),
+                                                 ['node','-e',''], writeback=True)
+            self.assertEqual(done.stderr, 'Codex bootstrap failed.\n')
+            self.assertEqual(done.stdout, '')
+            self.assertIsNone(remaining)
 
 
 if __name__ == '__main__':

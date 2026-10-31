@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Sequence
 
 from .auth import validate_auth_path
+from .auth_session import validate_writeback_path
 
 DEFAULT_MODEL = "gpt-6-luna"
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -52,6 +53,7 @@ class CodexSandboxConfig:
     home_size: str = "128m"
     work_size: str = "64m"
     platform: str = "linux/arm64"
+    persist_auth_updates: bool = False
 
     def __post_init__(self):
         if not _NAME.fullmatch(self.image):
@@ -72,6 +74,10 @@ class CodexSandboxConfig:
             raise ValueError("invalid Codex tmpfs bound")
         if self.auth_file is not None:
             validate_auth_path(self.auth_file, REPO_ROOT)
+        if type(self.persist_auth_updates) is not bool:
+            raise ValueError('persist_auth_updates must be a boolean')
+        if self.persist_auth_updates:
+            validate_writeback_path(self.auth_file, REPO_ROOT)
 
 
 @dataclass(frozen=True)
@@ -101,6 +107,8 @@ def docker_run(cfg: CodexSandboxConfig, *, model: str = DEFAULT_MODEL,
                        "WS_PROXY": cfg.proxy_url, "WSS_PROXY": cfg.proxy_url,
                        "http_proxy": cfg.proxy_url, "https_proxy": cfg.proxy_url}.items():
         argv += ["-e", f"{key}={value}"]
+    if cfg.persist_auth_updates and command is None:
+        argv += ['-e', 'IAM_AUTH_WRITEBACK=1']
     argv += [cfg.image]
     tail = list(command) if command is not None else [
         "node", "/opt/iam/launch.cjs", "codex", "exec", "--model", model, "--json", "--ephemeral",

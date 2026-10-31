@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iam"
+version = "0.1.0"
+description = "Ядро цифровой личности: домен, хранилище, проверяющее ядро"
+requires-python = ">=3.13"
+# Ядро — только стандартная библиотека (D-004). Сторонние пакеты появляются в срезах, где нужны.
+dependencies = ["fastapi==0.162.0", "starlette==1.10.0", "uvicorn==0.54.0"]
+
+[project.optional-dependencies]
+# Только для разработки: измеритель покрытия (D-011). Версия зафиксирована.
+dev = ["coverage==7.10.6", "httpx==0.28.1"]
+
+[project.scripts]
+iam = "iam.cli:main"
+iam-panel = "iam.panel.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"iam.domain" = ["schemas/*.json"]
+"iam.panel" = ["*.css"]
+
+# --- Покрытие тестами (D-009, D-011) ---------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["src", "tools"]
+# Тесты инструментов запускают их подпроцессами — меряем и подпроцессы.
+patch = ["subprocess"]
+parallel = true
+data_file = ".coverage"
+
+[tool.coverage.report]
+# Единственное разрешённое исключение; «pragma: no cover» запрещена (tools/covcheck.py проверяет).
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.iam.coverage]
+# Пороги D-009: по каждому модулю, не по среднему.
+min_lines = 90.0
+critical_min_lines = 98.0
+critical_min_branches = 100.0
+# Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
+critical = [
+    "src/iam/experiments/report/review.py",  # допуск достоверных полных биографий и сохранение ошибок (D-036)
+    "src/iam/experiments/development.py",  # источники развития, интересы, отношения, свои работы и отключения (S16)
+    "src/iam/experiments/life.py",  # чтение, выбор, подтверждённый прогресс и выключение опыта (S16)
+    "src/iam/experiments/conversation.py",  # чтение, источники и пересмотр экспериментальной памяти (S16)
+    "src/iam/experiments/motivation/cycle.py",  # подтверждения, внимание и выключение мотивации (S15)
+    "src/iam/experiments/motivation/goals.py",  # основания целей и отсутствие новых прав (S15)
+    "src/iam/experiments/variants/formal/*.py",  # формальный выбор и числовые основания (S14)
+    "src/iam/experiments/variants/hybrid/*.py",  # правила выбора и узкая операция модели (S13)
+    "src/iam/experiments/variants/model_led/*.py",  # контекст, основания и технические права (S12)
+    "src/iam/experiments/memory.py",  # отключение опыта и исключение архива (S11)
+    "src/iam/storage/*.py",
+    "src/iam/state/*.py",
+    "src/iam/clock/*.py",
+    "src/iam/backup/*.py",   # копии, восстановление, экспорт, сканер секретов, защита места (S06)
+    "src/iam/cycle/*.py",   # цикл, валидатор предложений, подтверждённый результат (S07)
+    "src/iam/providers/*.py",   # изоляция исполнителя, классификатор результата, бюджет и пауза (S08)
+    "src/iam/telegram/*.py",   # приём/подтверждение, права, секреты, неопределённая отправка (S09)
+    "src/iam/session/*.py",    # бюджет, время, пауза и вмешательства оператора (S10)
+    "src/iam/panel/security.py",  # Host, Origin и CSRF (S10)
+    "src/iam/panel/app.py",    # проверка форм и направлений команд (S10)
+    "src/iam/panel/runtime.py",  # единственный писатель и фиксация внешнего исхода до паузы (S10)
+]
