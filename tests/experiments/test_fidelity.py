@@ -10,7 +10,7 @@ import experiments.test_evidence_scope as scope
 from iam.domain import new_id
 from iam.experiments.development import DevelopmentRuntime
 from iam.experiments.evidence_scope import ScopeArchitecture
-from iam.experiments.fidelity import (FidelityArchitecture, INSTRUCTION, REVIEW, parse_review, review_request)
+from iam.experiments.fidelity import (FidelityArchitecture, INSTRUCTION, REQUIREMENT, REVIEW, parse_review, parse_requirement, review_request)
 from iam.interfaces import ProviderError
 from iam.state import KindContext, verify
 from iam.stubs import Reply, ScriptedProvider, rest
@@ -20,7 +20,16 @@ def judgment(request, verdict='pass', quote='Вывод пока не прове
     value = dict(verdict=verdict, goal_met=True, criterion_met=True,
                  evidence_sufficient=True, support_quote=quote, reason='Проверен исходный объём.')
     value.update(updates)
-    return Reply(proposals=(rest(json.dumps(value, ensure_ascii=False), cites=[request['context'][1]['ref']]),))
+    pr=rest('',cites=[request['context'][1]['ref']]);pr['body']=value
+    return Reply(proposals=(pr,))
+
+
+def classification(request, kind='artifact', **updates):
+    goal=json.loads(request['context'][1]['text'])['goal']
+    value=dict(required_kind=kind,support_quote=goal['text'][:100],reason='Требование исходного замысла.')
+    value.update(updates)
+    pr=rest('',cites=[request['context'][1]['ref']]);pr['body']=value
+    return Reply(proposals=(pr,))
 
 
 class FidelityTests(unittest.TestCase):
@@ -42,8 +51,10 @@ class FidelityTests(unittest.TestCase):
         body.update(updates)
         return scope.ScopeTests.goal(self, **body)
 
-    def decide(self, reply=support.silence, review=None):
+    def decide(self, reply=support.silence, review=None, requirement=None):
         self.provider.queue(reply)
+        if review is not None or requirement is not None:
+            self.provider.queue(requirement or classification)
         if review is not None:
             self.provider.queue(review)
         self.n += 1
@@ -60,13 +71,13 @@ class FidelityTests(unittest.TestCase):
     def test_confirmed_artifact_checked_separately_and_survives_restart(self):
         self.prepared(); self.reopen()
         self.assertEqual(self.decide(self.done, judgment).outcome, 'done')
-        audit = self.audits()[0]; query = audit.payload['request']
+        audit = self.audits()[0]; query = audit.payload['evaluation']['request']
         self.assertEqual(query['purpose'], 'appraise'); self.assertEqual(query['allowed_actions'], [])
         self.assertEqual(query['context'][0]['text'], REVIEW)
         packet = json.loads(query['context'][1]['text'])
         self.assertIn('Наблюдение: число 15.', packet['available_result']['text'])
         self.assertEqual(packet['goal']['text'], 'Записать наблюдение и отдельный вывод с указанием неопределённости.')
-        self.assertEqual(len(self.provider.calls), 2)
+        self.assertEqual(len(self.provider.calls), 3)
         self.assertNotEqual(self.provider.calls[0]['request_id'], query['request_id'])
         self.assertEqual(len([e for e in self.runtime.controller.events_after(0)
                               if e.type == 'proposal.requested' and e.payload['request']['purpose']=='appraise']), 0)
@@ -79,11 +90,47 @@ class FidelityTests(unittest.TestCase):
     def test_wrong_self_classified_artifact_does_not_verify_prediction(self):
         self.prepared(text='Проверить прогноз по независимому значению.', criterion='В заметке записано21.')
         self.write('Собственный расчёт21. Вывод пока не проверен.')
-        result = self.decide(self.done, lambda q: judgment(q, 'fail', goal_met=False, evidence_sufficient=False))
+        result = self.decide(self.done, requirement=lambda q:classification(q,'independent_observation'))
         self.assertEqual(result.outcome, 'rejected')
         self.assertEqual(self.runtime.controller.state['intentions']['later']['status'], 'active')
         self.assertNotIn('completion_assessment', self.runtime.controller.state['intentions']['later'])
-        self.assertEqual(self.audits()[0].payload['assessment']['verdict'], 'fail')
+        self.assertFalse(self.audits()[0].payload['scope_match']);self.assertIsNone(self.audits()[0].payload['evaluation'])
+        query=self.audits()[0].payload['requirement']['request']
+        self.assertEqual(query['context'][0]['text'],REQUIREMENT)
+        goal=json.loads(query['context'][1]['text'])['goal']
+        self.assertEqual(set(goal),{'text','criterion','operation','target'})
+        self.assertNotIn('evidence_kind',goal)
+
+    def test_uncertain_requirement_is_not_claimed_as_failure_and_never_gets_result(self):
+        self.prepared()
+        before=len(self.provider.calls)
+        self.assertEqual(self.decide(self.done,requirement=lambda q:classification(q,'uncertain',support_quote='')).outcome,'rejected')
+        audit=self.audits()[-1].payload
+        self.assertIsNone(audit['error']);self.assertIsNone(audit['evaluation'])
+        self.assertFalse(audit['passed']);self.assertEqual(len(self.provider.calls)-before,2)
+
+    def test_requirement_errors_deny_before_evaluation(self):
+        self.prepared()
+        for reply in (Reply(error=ProviderError('сырой секрет')),Reply(raw={'broken':True}),
+                      lambda q:classification(q,support_quote='Чужая цитата')):
+            self.assertEqual(self.decide(self.done,requirement=reply).outcome,'rejected')
+            audit=self.audits()[-1].payload
+            self.assertTrue(audit['error']);self.assertIsNone(audit['evaluation'])
+        self.assertNotIn('сырой секрет',str(self.audits()))
+
+    def test_save_prediction_is_artifact_but_test_prediction_needs_other_source(self):
+        self.prepared(text='Сохранить вычисленное21 в заметке.',criterion='Есть запись21.')
+        self.write('Сохранено21.')
+        self.assertEqual(self.decide(lambda q:self.done(q,'Сохранено21.'),
+            lambda q:judgment(q,quote='Сохранено21.')).outcome,'done')
+        self.decide(self.goal(id='compare',text='Проверить прогноз21 по новому независимому значению.',criterion='Записать совпадение.'))
+        self.write('Сохранено21.')
+        def done(q):
+            sources=json.loads(q['context'][-2]['text'])['experience_sources']
+            ref=next(k for k,v in sources.items() if 'compare' in v['completion_for'])
+            return support.intention(dict(op='transition',id='compare',to_status='done',result_ref=ref,result_quote='Сохранено21.'))(q)
+        self.assertEqual(self.decide(done,requirement=lambda q:classification(q,'independent_observation')).outcome,'rejected')
+        self.assertEqual(self.runtime.controller.state['intentions']['compare']['status'],'active')
 
     def test_read_words_does_not_prove_method_but_read_only_goal_can_complete(self):
         self.write(); self.decide(self.goal(kind='received_text', operation='read_material', target='craft',
@@ -96,7 +143,7 @@ class FidelityTests(unittest.TestCase):
         quote = self.runtime.controller.state['world_time']['world']['actions'][
             self.runtime.controller.find_event(event_id=self.cycle.evidence[ref]['base']).payload['action_id']]['outcome'][:60]
         self.assertEqual(self.decide(lambda q: self.done(q,quote),
-            lambda q: judgment(q,'uncertain',quote,goal_met=False)).outcome,'rejected')
+            lambda q: judgment(q,'uncertain',quote,goal_met=False),requirement=lambda q:classification(q,'received_text')).outcome,'rejected')
         self.assertEqual(self.audits()[-1].payload['assessment']['verdict'],'uncertain')
 
     def test_no_judge_for_no_goal_invalid_done_or_unavailable_source(self):
@@ -118,7 +165,7 @@ class FidelityTests(unittest.TestCase):
             text='Получить доступный текст о последовательности.', criterion='Текст получен.'))
         self.decide(support.operation('read_material','patterns'))
         quote='Разности растут на единицу.'
-        self.assertEqual(self.decide(lambda q:self.done(q,quote),lambda q:judgment(q,quote=quote)).outcome,'done')
+        self.assertEqual(self.decide(lambda q:self.done(q,quote),lambda q:judgment(q,quote=quote),requirement=lambda q:classification(q,'received_text')).outcome,'done')
         self.decide(self.goal(id='design',text='Спроектировать различающее наблюдение.',
             criterion='Выписаны разные предсказания двух гипотез.'))
         self.write('При n=7 гипотеза A предсказывает28, гипотеза B23. Измерения пока нет.')
@@ -137,7 +184,7 @@ class FidelityTests(unittest.TestCase):
                        lambda q: judgment(q,quote='Отсутствует в результате.')):
             calls=len(self.provider.calls)
             self.assertEqual(self.decide(self.done,review).outcome,'rejected')
-            self.assertEqual(len(self.provider.calls)-calls,2)
+            self.assertEqual(len(self.provider.calls)-calls,3)
             self.assertEqual(self.runtime.controller.state['intentions']['later']['status'],'active')
         self.assertEqual(self.audits()[0].payload['error'],'ProviderError')
         self.assertNotIn('сырой секрет',str(self.audits()))
@@ -167,7 +214,7 @@ class FidelityTests(unittest.TestCase):
         self.prepared();original_checked=self.cycle._checked
         q=self.capture();pr=self.done(q).proposals[0]
         # Одна валидная квитанция ещё не принята ядром: дальше изменяется только проверяемый объект.
-        self.provider.queue(Reply(proposals=(pr,)),judgment)
+        self.provider.queue(Reply(proposals=(pr,)),classification,judgment)
         self.cycle.provider.propose(q)
         state=self.runtime.controller.state;ctx=KindContext(q,state,(),0)
         self.assertIsNone(original_checked(pr,ctx).violation)
@@ -208,22 +255,28 @@ class FidelityTests(unittest.TestCase):
     def test_total_wall_deadline_includes_both_calls_without_actor_retry(self):
         self.prepared()
         # Симулируемые часы мира не идут во время модели, поэтому нужен и реальный monotonic.
-        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,59]):
+        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,40,41,59]):
             self.assertEqual(self.decide(self.done,judgment).outcome,'done')
         audit=self.audits()[-1]
-        self.assertEqual(audit.payload['request']['limits']['deadline_ms'],24999)
-        self.assertTrue(audit.payload['attempted'])
+        self.assertEqual(audit.payload['requirement']['request']['limits']['deadline_ms'],24999)
+        self.assertTrue(audit.payload['requirement']['attempted'])
 
     def test_no_judge_after_exhausted_deadline_and_late_pass_is_denied(self):
         self.prepared()
         with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,60]):
             self.assertEqual(self.decide(self.done).outcome,'rejected')
-        self.assertFalse(self.audits()[-1].payload['attempted'])
+        self.assertFalse(self.audits()[-1].payload['requirement']['attempted'])
         self.assertEqual(self.audits()[-1].payload['error'],'assessment_deadline')
-        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,66]):
+        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,40,41,66]):
             self.assertEqual(self.decide(self.done,judgment).outcome,'rejected')
         self.assertEqual(self.audits()[-1].payload['error'],'assessment_deadline')
         self.assertEqual(self.runtime.controller.state['intentions']['later']['status'],'active')
+        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,60]):
+            self.assertEqual(self.decide(self.done,requirement=classification).outcome,'rejected')
+        self.assertEqual(self.audits()[-1].payload['error'],'assessment_deadline')
+        with patch('iam.experiments.fidelity.time.monotonic',side_effect=[0,35,59,60]):
+            self.assertEqual(self.decide(self.done,requirement=classification).outcome,'rejected')
+        self.assertFalse(self.audits()[-1].payload['evaluation']['attempted'])
 
     def test_audit_failure_denies_done_and_two_done_get_one_review(self):
         self.prepared(); original=self.runtime.controller.record_event
@@ -238,7 +291,7 @@ class FidelityTests(unittest.TestCase):
             return Reply(proposals=(p,{**copy.deepcopy(p),'proposal_id':new_id('prop')}))
         before=len(self.provider.calls)
         self.assertEqual(self.decide(pair,judgment).outcome,'done')
-        self.assertEqual(len(self.provider.calls)-before,2)
+        self.assertEqual(len(self.provider.calls)-before,3)
 
 
 class ParsingTests(unittest.TestCase):
@@ -283,6 +336,20 @@ class ParsingTests(unittest.TestCase):
             with self.subTest(update=update):
                 self.assertIsNone(self.parse(self.answer(lambda q:judgment(q,**update))))
         self.assertEqual(self.parse(self.answer(lambda q:judgment(q,'fail',quote='',goal_met=False)))['verdict'],'fail')
+
+    def test_requirement_is_strict_flat_quote_of_original_goal(self):
+        goal={'text':'Сохранить расчёт21.','criterion':'Есть запись.'}
+        query=review_request(self.parent,{'goal':goal},REQUIREMENT)
+        def parse(reply):
+            self.provider.queue(reply);answer=self.provider.propose(query)
+            return parse_requirement(answer,query,self.envelope,goal)
+        self.assertEqual(parse(classification)['required_kind'],'artifact')
+        for update in ({'required_kind':'unknown'},{'required_kind':[]},{'support_quote':''},
+                       {'support_quote':'Чужая цитата'},{'reason':''},{'extra':True}):
+            self.assertIsNone(parse(lambda q:classification(q,**update)))
+        self.assertIsNone(parse(Reply(raw={'broken':True})))
+        self.assertIsNone(parse(lambda q:Reply(proposals=(rest(json.dumps(dict(required_kind='artifact',support_quote=goal['text'],reason='nested')),cites=[q['context'][1]['ref']]),))))
+        self.assertEqual(parse(lambda q:classification(q,'uncertain',support_quote=''))['required_kind'],'uncertain')
 
 
 if __name__=='__main__':unittest.main()
