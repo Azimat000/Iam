@@ -91,10 +91,12 @@ def full_biography(trace):
                     lines.append('Вернулась к своей сохранённой работе и открыла её текст.')
                 elif operation == 'rest':
                     lines.append('Отдых.')
-        elif kind == 'memory.recorded':
+        elif kind in ('memory.recorded', 'memory.revised'):
             record = memories[payload['memory_id']]
             if record['origin'] == 'own_hypothesis':
-                lines.append('**Внутренняя запись — собственное предположение:**\n\n' + record['content']['text'])
+                label = {'memory.recorded': 'собственное предположение',
+                         'memory.revised': 'пересмотр собственного предположения'}[kind]
+                lines.append('**Внутренняя запись — ' + label + ':**\n\n' + record['content']['text'])
         elif kind == 'proposal.accepted':
             proposal = proposals[payload['proposal_id']]
             body = proposal['body']

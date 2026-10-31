@@ -156,6 +156,20 @@ class ReviewCase(unittest.TestCase):
         self.assertIn('без принятого результата', text)
         self.assertIn('потребовалось исправление формы', text)
 
+    def test_revised_hypothesis_keeps_both_original_texts_in_time_order(self):
+        trace = self.detailed_trace()
+        index = next(i for i, e in enumerate(trace['journal']) if e['type'] == 'memory.recorded') + 1
+        trace['memory_records'].append({'memory_id': 'revised', 'origin': 'own_hypothesis',
+                                       'content': {'text': 'Теперь думаю иначе; прежняя ошибка остаётся в прошлом.'}})
+        trace['journal'][index:index] = [
+            {'event_id': 'revised_event', 'type': 'memory.revised', 'payload': {'memory_id': 'revised'}},
+            {'event_id': 'other_revision', 'type': 'memory.revised', 'payload': {'memory_id': 'observation'}}]
+        text = full_biography(trace)
+        self.assertLess(text.index('Мне кажется, что я ошибаюсь.'), text.index('Теперь думаю иначе;'))
+        self.assertEqual(text.count('Теперь думаю иначе; прежняя ошибка остаётся в прошлом.'), 1)
+        self.assertIn('пересмотр собственного предположения', text)
+        self.assertNotIn('service', text)
+
     def test_malformed_draft_text_is_not_fabricated_by_renderer(self):
         for body in ({'draft': []}, {'draft': {'content': []}}, {'draft': {'content': {'text': 1}}}):
             self.assertEqual(proposal_text({'kind': 'memory_write', 'body': body}), '')
