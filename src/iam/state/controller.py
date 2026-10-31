@@ -322,7 +322,9 @@ class StateController:
         if not internal and {carrier.type, *(s.type for s in p.companions)} & rules.RESERVED_CARRIERS:
             v.append(Violation("carrier_reserved", "события сеанса, моментов и создания личности пишут методы контроллера"))
         for spec in (carrier, *p.companions):
-            if not rules.permitted_in(self.session_state, spec.type):
+            restoring = (p.actor == 'operator' and carrier.type == 'operator.intervention'
+                         and carrier.payload.get('kind') == 'restore_from_archive' and spec.type == 'memory.recorded')
+            if not rules.permitted_in(self.session_state, spec.type) and not restoring:
                 v.append(Violation("session_forbids", f"{spec.type} недопустимо при сеансе {self.session_state}"))
         if not privileged:
             v += self._protected(t.ops)
@@ -438,6 +440,12 @@ class StateController:
             if change['group'] != 'memory':
                 continue
             how, rec = out.memory[memory_index]
+            if how == "update" and "experience" in rec.content and rec.history:
+                history = rec.history
+                if history[-1]['version'] != rec.version:
+                    history = (*history, {'version': rec.version, 'change': p.transition.reason,
+                                         'previous_text': change['before']['content']['text']})
+                rec = replace(rec, history=(*history[:-1], {**history[-1], 'at_seq': self.store.last_seq() + 1}))
             if how == "add" and "experience" in rec.content:
                 rec = replace(rec, history=({'version': rec.version, 'at_seq': self.store.last_seq() + 1,
                                              'change': 'создана'},) + tuple(h for h in rec.history if h.get('change') != 'создана'))
@@ -639,6 +647,18 @@ class StateController:
             "intervention_id": iid, "kind": kind, "operator_channel": "panel", "reason": reason.strip(),
             "target": target, "visible_to_persona": True}, event_id=ev_id)
         return self._apply(Proposal(t, "operator", "panel", carrier), privileged=False, internal=True)
+
+    def restore_memory(self, record: MemoryRecord, *, reason: str) -> ApplyResult:
+        """Атомарно записать вмешательство и новую память с причиной вмешательства (S19)."""
+        iid, eid, tid = new_id('opr'), new_id('evt'), new_id('trn')
+        t = Transition(tid, self.persona_id, self._epoch, self._version,
+                       (Op('memory', record.memory_id, 'add', record.to_dict(), True),), reason.strip(), (eid,))
+        carrier = EventSpec('operator.intervention', f'opr:{iid}',
+                            {'intervention_id': iid, 'kind': 'restore_from_archive', 'operator_channel': 'panel',
+                             'reason': reason.strip(), 'target': record.memory_id, 'visible_to_persona': True}, event_id=eid)
+        companion = EventSpec('memory.recorded', f'mem:{tid}:0', {'memory_id': record.memory_id,
+                              'restored_by_operator': True}, causes=(eid,))
+        return self._apply(Proposal(t, 'operator', 'panel', carrier, (companion,)), privileged=False, internal=True)
 
     # --- запросы и ответы модели ---------------------------------------------------------------
 

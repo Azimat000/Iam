@@ -174,6 +174,16 @@ class Runtime:
         reason = fields.get("reason", "").strip()
         if not reason or len(reason) > 500:
             raise ValueError("Укажите причину действия длиной от 1 до 500 символов.")
+        if action == "memory_restore":
+            if self.ctl.session_state == 'running' or self.session.in_flight:
+                raise SessionConflict('Поставьте сеанс на паузу и дождитесь ответа модели.')
+            if fields.get('confirm') != 'memory':
+                raise ValueError('Отметьте возврат записи в личную память.')
+            _, result = self.cycle.memory.restore_from_archive(fields.get('memory_id', ''),
+                                    int(fields.get('memory_version', 0)), reason=reason)
+            if not result.applied:
+                raise ValueError('Запись не восстановлена. Проверьте идентификатор и версию в журнале событий.')
+            return result.status
         if action == "backup":
             return self.backup(reason)
         if action == "restore":

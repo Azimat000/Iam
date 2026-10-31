@@ -78,6 +78,7 @@ class MemoryTest(StateCase):
     def test_context_sensory_ttl(self):
         m = PersistentMemory(self.c, working_limit=2, sensory_limit=2, text_limit=500)
         r = self.record('чай длинный')
+        self.assertTrue(m.write(r).applied)
         for i in range(4):
             ctx = m.context(None, {'ref': str(i), 'text':'уведомление'}, [r]*5)
             self.assertEqual(len(ctx), 2)
