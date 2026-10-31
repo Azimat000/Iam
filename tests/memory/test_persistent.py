@@ -187,6 +187,7 @@ class MemoryBoundaryTest(StateCase):
         proposal = self.prop(self.c, *ops)
         result = self.c.apply(proposal)
         self.assertTrue(result.applied, result)
+        self.assertEqual(result.events[0].payload['proposed_transition'], proposal.transition.to_dict())
         actual_seq = result.events[0].seq
         for original in (one, two):
             stored = self.c.store.get_memory(original.memory_id)
@@ -219,3 +220,15 @@ class MemoryBoundaryTest(StateCase):
         self.assertEqual(self.c.apply(proposal).status, 'duplicate')
         altered = dataclasses.replace(proposal, transition=dataclasses.replace(proposal.transition, reason='иное'))
         self.assertEqual(self.c.apply(altered).status, 'conflict')
+
+    def test_ordinary_transition_does_not_duplicate_proposal(self):
+        from iam.state import verify
+        proposal = self.prop(self.c, Op('traits', 'ordinary', 'set', 1, True))
+        result = self.c.apply(proposal)
+        self.assertTrue(result.applied, result)
+        self.assertNotIn('proposed_transition', result.events[0].payload)
+        self.assertEqual(result.events[0].payload['transition'], proposal.transition.to_dict())
+        self.assertEqual(self.c.apply(proposal).status, 'duplicate')
+        altered = dataclasses.replace(proposal, transition=dataclasses.replace(proposal.transition, reason='иное'))
+        self.assertEqual(self.c.apply(altered).status, 'conflict')
+        self.assertEqual(verify(self.c.store), [])

@@ -1,7 +1,7 @@
 """Сверить проверочную копию с Git-базой и незакоммиченными файлами S18.
 
-Не читает dataless-файлы без изменений: для них используется объект Git,
-а git status фиксирует отсутствие изменений. Изменённые файлы читаются с диска.
+Исторические dataless-артефакты не обходятся. Неизменённый код сверяется с Git,
+а все 230 исходных файлов дополнительно читаются с диска и сравниваются с копией.
 """
 import hashlib
 import json
@@ -32,10 +32,11 @@ result = {}
 for rel in paths:
     data = (ROOT / rel).read_bytes() if rel in changed | new else git('show', 'HEAD:' + rel)
     actual = (TARGET / rel).read_bytes()
+    assert (ROOT / rel).read_bytes() == data, rel + ": unexpected working-tree change"
     assert actual == data, rel
     result[rel] = hashlib.sha256(data).hexdigest()
 report = {'base': git('rev-parse', 'HEAD').decode().strip(), 'verified_files': len(result),
-          'method': 'changed files from disk; unchanged files from Git objects + clean path status',
+          'method': 'Git baseline for unchanged code; every source/test/tool/config independently read from disk and matched to copy',
           'files': result}
 (ROOT / 'docs/evidence/S18-source-hashes.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
 print('Совпадают файлов:', len(result))

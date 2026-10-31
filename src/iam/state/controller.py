@@ -449,7 +449,8 @@ class StateController:
             ops[index] = replace(ops[index], value=change['after'])
         p = replace(p, transition=replace(p.transition, ops=tuple(ops)))
         # Для replay сохраняем применённые операции, для повтора — точное исходное предложение.
-        carrier = replace(carrier, payload={**carrier.payload, "proposed_transition": proposed})
+        if canonical_json(p.transition.to_dict()) != canonical_json(proposed):
+            carrier = replace(carrier, payload={**carrier.payload, "proposed_transition": proposed})
         for ev in self._events(p, carrier, version, stamp, out.changes):
             stored, created = self.store.append_event(ev)
             _require(created, f"ключ {ev.idempotency_key} занят после проверки: событие перехода не записано")
