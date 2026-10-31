@@ -11,15 +11,17 @@ from pathlib import Path
 from iam.backup import create_backup, default_backup_dir, list_backups, open_for_write, restore_backup
 from iam.backup.scan import SecretScanner
 from iam.cycle import Cycle, Runner
+from iam.cycle.cycle import DEFAULT_ALLOWED
 from iam.domain import new_id
 from iam.interfaces import Capability
+from iam.memory import PersistentMemory
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
 from iam.state import EventSpec, StateController
 from iam.state.session import panel_records
 from iam.state.telegram import TelegramMailbox
 from iam.storage import Store
-from iam.stubs import Reply, ScriptedProvider, StoreMemory, StubCapabilities, StubCreatorBridge, StubWorld, rest
+from iam.stubs import Reply, ScriptedProvider, StubCapabilities, StubCreatorBridge, StubWorld, rest
 from iam.telegram import Client, CreatorBridge, Receiver, Sender
 
 
@@ -115,7 +117,8 @@ class Runtime:
         else:
             provider = CodexProvider(self._model_run, CodexSandboxConfig(auth_file=self.auth_file))
         provider = self.session.provider(provider, charge=self.demo)
-        self.cycle = Cycle(self.ctl, provider, StoreMemory(self.store), world, self.caps, creator)
+        self.cycle = Cycle(self.ctl, provider, PersistentMemory(self.ctl), world, self.caps, creator,
+                           allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write'))
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
 
     def _serve(self):

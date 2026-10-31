@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Callable, Iterable
@@ -83,6 +84,7 @@ class StateController:
         self._validators: list[tuple[str, Validator]] = list(validators)
         self._kinds: dict[str, KindHandler] = {}
         self._pending: dict[str, int] = {}
+        self._memory_grants: set[str] = set()
         self._reload()
         if not store.readonly:
             if self.clock.now_ms() < LifeClock.recovered_ms(store):
@@ -133,6 +135,12 @@ class StateController:
 
     def find_event(self, *, event_id: str | None = None, key: str | None = None) -> Event | None:
         return self.store.find_event(event_id=event_id, key=key)
+
+    def readable_memories(self) -> list[MemoryRecord]:
+        """Только текущие записи личной памяти и интерпретаций; архив этим путём недоступен."""
+        rows = self.store.con.execute(
+            "SELECT record FROM memory_records WHERE layer IN ('personal','interpretation')")
+        return [MemoryRecord.from_dict(json.loads(row[0])) for row in rows]
 
     def events_after(self, seq: int) -> list[Event]:
         """События журнала с номером больше `seq`, по порядку."""
@@ -248,7 +256,7 @@ class StateController:
                 return self._reject(p, early, structural=True)
             have = self.store.find_event(key=carrier.idempotency_key)
             if have is not None:
-                if canonical_json(have.payload.get("transition")) == canonical_json(t.to_dict()):
+                if canonical_json(have.payload.get("proposed_transition", have.payload.get("transition"))) == canonical_json(t.to_dict()):
                     return ApplyResult("duplicate", self._epoch, self._version, events=(have,),
                                        changes=tuple(have.payload["changes"]))
                 self._fault("idempotency_conflict", _ident([carrier.idempotency_key, t.to_dict()]),
@@ -278,7 +286,7 @@ class StateController:
         found = []
         if t.persona_id != self.persona_id:
             found.append(Violation("wrong_persona", f"переход личности {t.persona_id}, а это {self.persona_id}"))
-        if {"transition", "changes"} & set(carrier.payload):
+        if {"transition", "changes", "proposed_transition"} & set(carrier.payload):
             found.append(Violation("payload_reserved", "поля transition и changes заполняет ядро"))
         return found
 
@@ -350,7 +358,7 @@ class StateController:
         for op in ops:
             try:
                 if op.group == "memory":
-                    if actor == "model":
+                    if actor == "model" and canonical_json(op.to_dict()) not in self._memory_grants:
                         raise OpError("memory_via_proposal", "память модель меняет предложением memory_write, а не операцией")
                     changes.append(self._memory_op(op, overlay, memory))
                 else:
@@ -423,6 +431,25 @@ class StateController:
     def _commit(self, p: Proposal, carrier: EventSpec, out: _Outcome, stamp: _Stamp) -> ApplyResult:
         version = self._version + 1
         written = []
+        proposed = p.transition.to_dict()
+        ops = list(p.transition.ops)
+        memory_index, prior = 0, {}
+        for index, change in enumerate(out.changes):
+            if change['group'] != 'memory':
+                continue
+            how, rec = out.memory[memory_index]
+            if how == "add" and "experience" in rec.content:
+                rec = replace(rec, history=({'version': rec.version, 'at_seq': self.store.last_seq() + 1,
+                                             'change': 'создана'},) + tuple(h for h in rec.history if h.get('change') != 'создана'))
+            change['before'] = prior.get(rec.memory_id, change['before'])
+            change['after'] = rec.to_dict()
+            prior[rec.memory_id] = change['after']
+            out.memory[memory_index] = (how, rec)
+            memory_index += 1
+            ops[index] = replace(ops[index], value=change['after'])
+        p = replace(p, transition=replace(p.transition, ops=tuple(ops)))
+        # Для replay сохраняем применённые операции, для повтора — точное исходное предложение.
+        carrier = replace(carrier, payload={**carrier.payload, "proposed_transition": proposed})
         for ev in self._events(p, carrier, version, stamp, out.changes):
             stored, created = self.store.append_event(ev)
             _require(created, f"ключ {ev.idempotency_key} занят после проверки: событие перехода не записано")
@@ -633,7 +660,10 @@ class StateController:
         → запись `proposal.received` → версия, сеанс, срок → каждое предложение проверяется ядром; принятые
         применяются одним переходом. Устаревший, повторный и неверный ответ состояние не меняют."""
         with self._atomic():
-            return self._receive(response)
+            try:
+                return self._receive(response)
+            finally:
+                self._memory_grants.clear()
 
     def _receive(self, response: dict) -> ResponseResult:
         errs = jsonschema.errors("response", response)
@@ -744,6 +774,8 @@ class StateController:
         """(нарушение | None, состояние после, операции) для одного предложения."""
         if pr["kind"] == "state_change":
             ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
+            if any(o.group == "memory" for o in ops):
+                return Violation("memory_via_proposal", "Память пишется отдельным предложением"), working, ()
             if any(overlaps(touched(o), r) for o in ops for r in rules.RESERVED_MODEL_PATHS):
                 return Violation("reserved_path", "исход действий и просьб ведёт цикл, а не state_change"), working, ()
         else:
@@ -764,6 +796,8 @@ class StateController:
         bad = self._protected(ops)
         if bad:
             return bad[0], working, ()
+        if pr["kind"] == "memory_write":
+            self._memory_grants.update(canonical_json(o.to_dict()) for o in ops if o.group == "memory")
         cites = tuple(c for c in pr["cites"] if c.startswith("evt_"))
         out = self._run_ops(ops, "model", "state.transition_applied", working, (*cites, received_id), None)
         return (out.violations[0] if out.violations else None), out.state, ops

@@ -33,7 +33,7 @@ class Memory(Protocol):
     def retrieve(self, query: str, *, limit: int = 5) -> list[MemoryRecord]: ...
 
     def describe(self, action: ActionRequest, outcome: ActionOutcome) -> str | None:
-        """Текст воспоминания о подтверждённом исходе или None («запоминать нечего»)."""
+        """Текст воспоминания об исходе (успех, неудача, неизвестность) или None («запоминать нечего»)."""
         ...
 
 

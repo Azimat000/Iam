@@ -1,6 +1,7 @@
 """Серверный HTML: всё содержимое базы экранируется, архив не читается."""
 import json
 from html import escape
+from .memory import render_memory
 
 NAV = {"": "Сеанс", "events": "События", "state": "Состояние", "memory": "Память",
        "requests": "Просьбы к вам", "capabilities": "Возможности", "experiments": "Эксперименты",
@@ -95,8 +96,7 @@ def render(page, data, token, *, error=None, notice=None, values=None):
                            for v in data["history"] if v["epoch"] == data["epoch"])
         content += '</div>' + dump({"view_version": data["view_version"] or data["version"], "state": data["state"]})
     elif page == "memory":
-        content = '<p>Личная память и интерпретации · только чтение. Технический архив сюда не включён.</p>'
-        content += ''.join(f'<article><h2>{e(m["kind"])}</h2>{dump(m)}</article>' for m in data["memories"]) or '<p>Записей памяти пока нет. Они появятся после подтверждённых событий.</p>'
+        content = render_memory(data["memories"])
     elif page == "requests":
         content = '<p>Просьбы личности и сохранённые статусы. Ответы через панель появятся на этапе S23.</p>'
         content += event_rows(data["requests"]) + dump(data["state"]["world_time"].get("world", {}).get("creator_requests", {}))
