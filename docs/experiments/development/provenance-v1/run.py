@@ -12,7 +12,7 @@ from pathlib import Path
 from iam.backup import open_for_write
 from iam.experiments import Persona
 from iam.experiments.development import DevelopmentRuntime
-from iam.experiments.provenance import ProvenanceArchitecture, REGISTRY, seed_history
+from iam.experiments.provenance import ProvenanceArchitecture, REGISTRY, VERSION as PROFILE_VERSION, seed_history
 from iam.experiments.report.development import DAY, SessionBudget, fork_checkpoint, save_trace
 from iam.experiments.transfer import TransferArchitecture
 from iam.providers.codex import CodexProvider, CodexSandboxConfig
@@ -98,7 +98,7 @@ def run(source,manifest,output,auth=None,provider_factory=None):
                'trace':code+'/trace.json','sha256':hashlib.sha256(result.trace_bytes).hexdigest()}
         runs.append(trial);(output/'progress.json').write_text(json.dumps(runs,ensure_ascii=False,indent=2)+'\n')
         print(code,'calls',trial['calls'],'outcomes',[d['report']['outcome'] for d in decisions],'errors',len(problems),flush=True)
-    summary={'protocol':'provenance-v1','live':live,'model':'gpt-6-luna' if live else 'scripted',
+    summary={'protocol':'provenance-v1','profile_version':PROFILE_VERSION,'live':live,'model':'gpt-6-luna' if live else 'scripted',
              'source':str(source.resolve()),'source_sha256':sha,'setup_seq':cutoff,'question':QUESTION,
              'provider_paused':pause[0],'runs':runs,'human_ratings':None,
              'limitation':'Диагностика понимания после вопроса и восемь свободных выборов, не проверка спонтанной цели или всей личности.'}
