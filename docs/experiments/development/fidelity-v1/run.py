@@ -59,7 +59,7 @@ def audit_source(directory,sha,natural=False):
             raise ValueError('требуется остановленное прошлое с разметкой и без готовой цели')
         from iam.experiments.commitment import INSTRUCTION as OLD_INSTRUCTION
         allowed={PERSONAL+CONTRACT+GUIDANCE,OLD_INSTRUCTION} if natural else {PERSONAL+CONTRACT+GUIDANCE}
-        if any(e.type in ('input.arrived','creator.reply') for e in events) or any(
+        if any(e.type in ('input.arrived','creator.reply','operator.intervention') for e in events) or any(
                 e.payload['request']['context'][0]['text'] not in allowed
                 for e in events if e.type=='proposal.requested'):
             raise ValueError('исходная история содержит внешнее сообщение или дополнительный вопрос/подсказку')
@@ -125,7 +125,7 @@ def run(source_root,output,auth=None,provider_factory=None,continuation_root=Non
         decisions,snapshots=[],[]
         for number in range(SESSION_COUNTS[history]):
             with open_for_write(directory/'persona.db') as store:
-                runtime=DevelopmentRuntime(store,persona,SWITCHES,calendar_ms=(100+number)*DAY)
+                runtime=DevelopmentRuntime(store,persona,SWITCHES,calendar_ms=(200+number)*DAY)
                 before=copy.deepcopy(runtime.controller.state)
                 if number==0:
                     assert digest(before)==sources[history]['state_sha256']
@@ -141,7 +141,7 @@ def run(source_root,output,auth=None,provider_factory=None,continuation_root=Non
                 assert restored, 'перезапуск изменил личный опыт'
                 for choice in range(CHOICES):
                     runtime.step({'kind':'wait','life_ms':60000});start=store.last_seq()
-                    report=cycle.run(runtime.trigger(f'autonomy_{100+number}_{choice}'))
+                    report=cycle.run(runtime.trigger(f'fidelity_{200+number}_{choice}'))
                     events=runtime.controller.events_after(start)
                     requests=[e.payload['request'] for e in events if e.type=='proposal.requested']
                     assert all(q['context'][0]['text']==instruction for q in requests), 'добавлена подсказка'

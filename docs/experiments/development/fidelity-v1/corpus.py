@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from iam.experiments.provenance import REGISTRY
 from iam.experiments.fidelity import REVIEW, parse_review, review_request
 from iam.providers.codex import CodexProvider, CodexSandboxConfig
 from iam.providers.run import subprocess_runner
@@ -41,13 +42,19 @@ def prepare(root,output):
                         if a and a['params']['operation']==final['operation'] and a['params']['target']==final['project']:
                             eligible.append((q0,ref0))
                 assert eligible,(key,'нет доступного позднего результата')
-                q,ref=eligible[-1]
+                q,ref=max(eligible,key=lambda item:ctl.find_event(event_id=item[1]).seq)
             state=store.get_snapshot(q['epoch'],q['state_version']).state;goal=state['intentions'][key]
             basis=ctl.find_event(event_id=ref);action=state['world_time']['world']['actions'][basis.payload['action_id']]
             shown=next(c['text'] for c in q['context'] if c['ref']==ref)
             assert action['outcome'] in shown
             meta=json.loads(q['context'][-2]['text'])['experience_sources'][ref]
-            kind=['received_text'] if action['params']['operation']=='read_material' else ['artifact','received_text']
+            operation=action['params']['operation']
+            if operation=='write_project':kind=['artifact']
+            elif operation=='read_material':kind=['received_text']
+            else:
+                assert operation=='open_project'
+                origin=state['world_time']['world'][REGISTRY]['outcomes'][ref]['content_origin']
+                kind=['received_text','artifact'] if origin in ('model_written_version','scripted_version') else ['received_text']
             packet={'goal':goal,'available_result':{'text':shown,'base':ref,'operation':meta['operation'],'social':meta['social'],
                     'self_quote':meta['self_quote'],'outcome':action['outcome'],'action_id':basis.payload['action_id'],'scopes':kind},
                     'visible_context':q['context'][1:]}

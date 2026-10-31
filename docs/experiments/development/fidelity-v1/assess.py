@@ -39,7 +39,7 @@ def assess(trace,prefix,initial_projects):
                 event=by_event[a['events'][0]];pr=proposals[event['payload']['proposal_id']]
                 later.append({'session':d['session'],'step':d['step'],'operation':params['operation'],
                     'event':event['event_id'],'proposal':pr['proposal_id'],'goal_creation_cited':creation['event_id'] in pr['cites'],
-                    'rationale':pr['rationale'],'result_text':params.get('text',stored.get('outcome')),'goal_was_visible_as_own_state':True})
+                    'rationale':pr['rationale'],'result_text':params.get('text',stored.get('outcome')),'goal_was_visible_as_own_state':True,'visible_status':visible['status']})
         result.append({'id':key,'text':body['text'],'target':body['target'],'operation':body['operation'],'criterion':body['criterion'],'evidence_kind':body.get('evidence_kind'),'inherited':creation['seq']<=prefix,'created_event':creation['event_id'],
                        'created_seq':creation['seq'],'creation_rationale':p['rationale'],'sources':final['intentions'][key]['sources'],
                        'final_status':final['intentions'][key]['status'],'later_session_opportunities':opportunities,
@@ -63,7 +63,7 @@ def assess(trace,prefix,initial_projects):
                                'status':a['status']})
             if a['status']=='confirmed' and op=='write_project':project_sessions[params['target']].add(d['session'])
     return {'counts':dict(counts),'proposed_goal_creations':proposed,'rejected_goal_proposals':rejected,
-            'intention_candidates':result,'accepted_intention_count':len(result),
+            'intention_candidates':result,'accepted_intention_count':sum(not g['inherited'] for g in result),'inherited_intention_count':sum(g['inherited'] for g in result),
             'projects_with_new_writes':[{'project':key,'sessions':sorted(sessions),'new_project':key not in initial_projects}
                                         for key,sessions in sorted(project_sessions.items())],
             'operations':operations,'human_ratings':None,

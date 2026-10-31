@@ -88,3 +88,31 @@ class RunnerTests(unittest.TestCase):
   (self.source/'summary.json').write_text(json.dumps(data))
   with self.assertRaises(ValueError):self.execute(lambda _:Broken(),'tampered')
   self.assertFalse((self.root/'tampered').exists())
+
+ def test_continuations_preserve_own_goal_without_reassignment(self):
+  old_run=runpy.run_path(str(HERE.parent/'commitment-v1/run.py'))['run']
+  def old_factory(runtime):
+   p=ScriptedProvider(name='codex',model='gpt-6-luna')
+   def create(q):
+    goal={'proposal_id':new_id('prop'),'kind':'intention','rationale':'Собственный выбор заглушки','cites':refs(q),
+      'body':{'op':'create','id':'later','text':'Написать продолжение.','operation':'write_project','target':'draft','criterion':'Есть следующий эпизод.'}}
+    return Reply(proposals=(goal,action(q,'rest')))
+   p.queue(create);return p
+  historical=self.root/'historical_fixture'
+  with patch.dict(old_run.__globals__,{'ORDER':(('F',1),('N',1)),'SESSIONS':1,'CHOICES':1}):
+   fixture=old_run(self.source,historical,provider_factory=old_factory)
+  # Только временная заглушечная fixture: проверяем контракт допуска исторических записей.
+  # Это НЕ настоящая live-серия и не попадает в публикуемые свидетельства.
+  fixture['live']=True
+  (historical/'summary.json').write_text(json.dumps(fixture))
+  factory=lambda _:ScriptedProvider([silence,silence])
+  with patch.dict(RUN.__globals__,{'SESSION_COUNTS':{'F':2,'N':2,'E':2,'CF':2,'CN':2},'CHOICES':2}):
+   summary=RUN(self.source,self.root/'continued',provider_factory=factory,continuation_root=historical)
+  verified=VERIFY(self.root/'continued')
+  self.assertEqual(verified['counts']['restored_sessions'],10)
+  self.assertEqual(summary['sources']['CF']['source_kind'],'natural_live_checkpoint')
+  self.assertEqual(summary['sources']['CF']['initial_intentions'],1)
+  self.assertTrue(verified['runs'][-1]['assessment']['intention_candidates'][0]['inherited'])
+  self.assertEqual(verified['runs'][-1]['assessment']['intention_candidates'][0]['final_status'],'active')
+  fixture['live']=False;(historical/'summary.json').write_text(json.dumps(fixture))
+  with self.assertRaises(AssertionError):RUN(self.source,self.root/'bad_fixture',provider_factory=factory,continuation_root=historical)

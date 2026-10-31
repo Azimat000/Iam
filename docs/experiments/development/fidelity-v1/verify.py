@@ -75,6 +75,12 @@ def check(root,require_final=True):
     assert summary['protocol']=='fidelity-v1' and summary['profile_version']==VERSION
     assert summary['planned_decisions']==sum(summary['session_counts'].values())*summary['choices_per_session']
     expected={(k,1) for k in summary['sources']};assert expected<=EXPECTED
+    if summary['live']:
+        assert expected==EXPECTED
+        assert summary['session_counts']=={'F':6,'N':6,'E':6,'CF':3,'CN':3}
+        assert summary['choices_per_session']==2 and summary['planned_decisions']==48
+        order=[('F',1),('N',1),('E',1),('CF',1),('CN',1)]
+        assert [(r['history'],r['repeat']) for r in summary['runs']]==(order if require_final else order[:len(summary['runs'])])
     assert all(summary['conditions'][k]==0 for k in ('goal_questions','reminders','incoming_messages','seeded_intentions'))
     assert summary['conditions']['instruction_sha256']=={k:hashlib.sha256(v.encode()).hexdigest() for k,v in {'fixed':FIXED_INSTRUCTION}.items()}
     keys=[(r['history'],r['repeat']) for r in summary['runs']];assert len(keys)==len(set(keys)) and set(keys)<=expected
@@ -97,7 +103,7 @@ def check(root,require_final=True):
                 assert source['source_kind']=='natural_live_checkpoint'
                 responses={p['proposal_id']:e['payload']['response'] for e in original if e['type']=='proposal.received' for p in e['payload']['response']['proposals']}
                 assert all(responses[g['proposal_id']]['provider']=={'name':'codex','model':'gpt-6-luna'} for g in initial.state['intentions'].values())
-            assert not any(e['type'] in ('input.arrived','creator.reply') for e in original)
+            assert not any(e['type'] in ('input.arrived','creator.reply','operator.intervention') for e in original)
             assert all(e['payload']['request']['context'][0]['text'] in {PERSONAL+CONTRACT+GUIDANCE, __import__('iam.experiments.commitment',fromlist=['INSTRUCTION']).INSTRUCTION}
                        for e in original if e['type']=='proposal.requested')
         assert row['initial']==source
