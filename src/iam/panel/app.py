@@ -14,9 +14,10 @@ from iam.storage import NotFound
 
 from .security import LocalOnly, read_form
 from .views import NAV, render
+from .experiments import SNAPSHOT, load_archive, render_archive
 
 
-def create_app(runtime, *, port=8765):
+def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
     if type(port) is not int or not 1 <= port <= 65535:
         raise ValueError("Порт должен быть от 1 до 65535.")
     token, scanner = secrets.token_urlsafe(32), SecretScanner(use_env=True)
@@ -38,8 +39,21 @@ def create_app(runtime, *, port=8765):
     async def call(name, *args, **kwargs):
         return await asyncio.wrap_future(runtime.submit(name, *args, **kwargs))
 
-    async def response(page, *, status=200, error=None, notice=None, values=None, **query):
+    async def response(page, *, status=200, error=None, notice=None, values=None, selection=None, **query):
         data = clean(await call("view", **query))
+        if page == 'experiments':
+            try:
+                archive = clean(load_archive(experiment_snapshot))
+            except (ValueError, OSError):
+                status = 503
+                error = 'Архив результатов недоступен. Восстановите опубликованный снимок и обновите страницу.'
+                data['experiment_content'] = '<p><a href="/experiments">Повторить открытие результатов</a></p>'
+            else:
+                try:
+                    data['experiment_content'] = render_archive(archive, **(selection or {}))
+                except ValueError as exc:
+                    status, error = 400, str(exc)
+                    data['experiment_content'] = '<p><a href="/experiments">К списку экспериментов</a></p>'
         return HTMLResponse(render(page, data, token, error=error, notice=notice, values=clean(values)), status_code=status)
 
     @app.get("/style.css")
@@ -68,9 +82,16 @@ def create_app(runtime, *, port=8765):
                     if value < 1:
                         raise ValueError()
                     query[name] = value
-            return await response(page, **query)
+            selection = None
+            if page == 'experiments':
+                selection = {name: request.query_params[name] for name in ('series', 'story') if name in request.query_params}
+                if 'moment' in request.query_params:
+                    selection['moment'] = int(request.query_params['moment'])
+            return await response(page, selection=selection, **query)
         except (ValueError, NotFound):
-            return await response(page, status=400, error="Версия или номер события не найдены. Обновите страницу.")
+            message = ('Номер эпизода должен быть целым числом из списка.' if page == 'experiments' else
+                       'Версия или номер события не найдены. Обновите страницу.')
+            return await response(page, status=400, error=message)
         except RuntimeError:
             return PlainTextResponse("Сервер остановлен после ошибки. Перезапустите панель; состояние сохранено в базе.", 503)
 

@@ -52,7 +52,8 @@ def render(page, data, token, *, error=None, notice=None, values=None):
     notice_html = f'<div class="notice" role="status">{e(notice)}</div>' if notice else ''
     if data["sending"]:
         notice_html += '<p class="notice" role="status">Telegram завершает отправку. Наблюдение доступно; команды появятся после записи исхода.</p>'
-    error_html = f'<div class="error" role="alert"><h2>Действие не выполнено</h2><p>{e(error)}</p></div>' if error else ''
+    error_title = 'Не удалось открыть результаты' if page == 'experiments' else 'Действие не выполнено'
+    error_html = f'<div class="error" role="alert"><h2>{error_title}</h2><p>{e(error)}</p></div>' if error else ''
     if page == "":
         remaining = max(0, u["max_ms"] - u["elapsed_ms"])
         content = (f'<div class="session-title"><h2>{STATUSES[state]}</h2></div>'
@@ -103,7 +104,7 @@ def render(page, data, token, *, error=None, notice=None, values=None):
         content = '<p>Доступные средства · только чтение. Изменение прав появится на этапе S23.</p>'
         content += dump(data["capabilities"]) if data["capabilities"] else '<p>Внешние действия не подключены.</p>'
     elif page == "experiments":
-        content = '<p class="empty">Стенд экспериментов появится на этапе S11. Сравнительные результаты — после S16.</p>'
+        content = data['experiment_content']
     elif page == "usage":
         content = (f'<p>Обращений в текущем сеансе: {u["calls"]} из {u["max_calls"]}. Время: {duration(u["elapsed_ms"])}.</p>'
                    '<p>Учитываются запуски исполнителя, включая ошибки и повторы формата. Денежные оценки для подписки не рассчитываются.</p>'
@@ -133,7 +134,7 @@ def render(page, data, token, *, error=None, notice=None, values=None):
             f'<meta name="robots" content="noindex,nofollow"><title>{NAV[page]} · Iam</title><link rel="stylesheet" href="/style.css"></head>'
             '<body><a class="skip" href="#main">К содержанию</a><div class="shell"><aside><a class="brand" href="/">Iam<span>Панель оператора</span></a>'
             f'<nav aria-label="Разделы панели">{nav}</nav><p class="local">Только этот компьютер<br>127.0.0.1</p></aside>'
-            f'<main id="main"><header><div><p class="context">{"Эксперимент · тестовая модель" if data["demo"] else "Claude Code · подписка"}</p>'
+            f'<main id="main"><header><div><p class="context">{"Эксперимент · тестовая модель" if data["demo"] else "Codex · GPT-6-Luna"}</p>'
             f'<h1>{NAV[page]}</h1></div><a class="button" href="/{page}">Обновить</a></header>'
             f'<p class="identity">{e(data["persona_id"])} · эпоха {data["epoch"]} · версия {data["version"]} · время жизни {duration(data["life_ms"])}</p>'
             f'{notice_html}{error_html}{content}<footer>Данные на момент открытия страницы. Обновление — по кнопке «Обновить».</footer></main></div></body></html>')
