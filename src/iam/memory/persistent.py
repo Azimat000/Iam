@@ -27,6 +27,8 @@ class PersistentMemory(MemoryLifecycle):
         controller.register_kind("memory_write", self._proposal)
         controller.add_validator("memory_provenance", self._validate_changes)
         controller.add_validator("memory_lifecycle", self._validate_lifecycle)
+        from iam.emotion.integration import Experience
+        self.experience = Experience(self)
 
     def _available(self, r):
         return (r.persona_id == self.ctl.persona_id and r.layer in LAYERS
@@ -96,7 +98,10 @@ class PersistentMemory(MemoryLifecycle):
                     text = json.dumps(metadata, ensure_ascii=False)
                     result.append({'ref': r.memory_id, 'origin': r.origin, 'layer': r.layer,
                                    'text': text[:self.text_limit]})
-        return result
+        interpreted = self.experience.context()
+        if not self.off and (len(result) > 1 or interpreted):
+            result[0]['text'] = (result[0]['text'] + self.experience.instructions)[:self.text_limit]
+        return [result[0], *interpreted, *result[1:]][:self.working_limit]
 
     @property
     def sensory(self):
