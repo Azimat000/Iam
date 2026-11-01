@@ -19,7 +19,9 @@ def input_id_for(channel: str, external_id: str) -> str:
 
 class Runner:
     def __init__(self, cycle: Cycle, controller: StateController, creator: CreatorBridge, *, max_cycles: int = 5, max_rounds: int = 3,
-                 triggers: tuple[str, ...] = TRIGGERS):
+                 triggers: tuple[str, ...] | None = None):
+        if triggers is None:
+            triggers = (*TRIGGERS, 'input.read') if cycle.perception is not None else TRIGGERS
         self.cycle, self.ctl, self.creator = cycle, controller, creator
         self.max_cycles, self.max_rounds, self.triggers = max_cycles, max_rounds, triggers
         self.cursor = 0                                 # последний просмотренный seq журнала

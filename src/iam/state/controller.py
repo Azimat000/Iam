@@ -85,6 +85,7 @@ class StateController:
         self._kinds: dict[str, KindHandler] = {}
         self._pending: dict[str, int] = {}
         self._memory_grants: set[str] = set()
+        self._perception_guard = None
         self._reload()
         if not store.readonly:
             if self.clock.now_ms() < LifeClock.recovered_ms(store):
@@ -314,6 +315,8 @@ class StateController:
     def _check(self, p: Proposal, carrier: EventSpec, privileged: bool, internal: bool, stamp: _Stamp) -> _Outcome:
         t = p.transition
         v: list[Violation] = []
+        if self._perception_guard is not None:
+            v += self._perception_guard(p, carrier)
         if p.actor not in rules.CARRIER_ACTORS.get(carrier.type, rules.DEFAULT_CARRIER_ACTORS):
             v.append(Violation("actor_forbidden", f"{p.actor} не вправе проводить событие {carrier.type}"))
         for spec in p.companions:

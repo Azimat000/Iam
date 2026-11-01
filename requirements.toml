@@ -142,8 +142,9 @@ kind = "functional"
 mechanism = "iam.attention (выбор «ничего/другое занятие»); iam.perception [spec: docs/spec/events.md#perception-stages]"
 check = "Сценарии «Непрочитанное сообщение», «Отсутствие новых сообщений»; тест: сообщение остаётся без ответа без ошибки; тест: смена приоритета (новое занятие вытесняет прежнее) фиксируется в трассе. Сценарии каталога: scenarios/required/unread_message.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-013"
@@ -418,8 +419,9 @@ kind = "constraint"
 mechanism = "iam.perception (стадии) + iam.clock [spec: docs/spec/events.md#perception-stages]"
 check = "Сценарии «Непрочитанное сообщение» и «Пауза и перезапуск». Сценарии каталога: scenarios/required/pause_restart.toml, scenarios/required/unread_message.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-036"
@@ -442,8 +444,9 @@ kind = "functional"
 mechanism = "iam.perception (стадии: поступило → замечено → прочитано) [spec: docs/spec/events.md#event-envelope] [spec: docs/spec/events.md#perception-stages]"
 check = "Тест: сообщение проходит три стадии как три события; без решения прочесть третьей не возникает. Сценарии каталога: scenarios/required/unread_message.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-038"
@@ -454,8 +457,9 @@ kind = "functional"
 mechanism = "iam.perception (уровни уведомления) + iam.telegram.Receiver [spec: docs/spec/events.md#perception-stages]"
 check = "Тест: на каждом уровне личность видит только разрешённые поля уведомления. Сценарии каталога: scenarios/required/unread_message.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-039"
@@ -467,7 +471,7 @@ mechanism = "iam.perception + построитель контекста (S12) [s
 check = "Сценарий «Непрочитанное сообщение»: контрольная фраза из непрочитанного сообщения отсутствует в запросе к модели (построитель контекста варианта A, S12) и в решении (S20); повторить на ядре в S25. Сценарии каталога: scenarios/experiments/exp_unread.toml, scenarios/required/unread_message.toml."
 slice = ["S12", "S20"]
 status = "implemented"
-evidence = "docs/experiments/variant-a.md (контекст A проверен на заглушке, полноценное восприятие и смысловая приёмка остаются S20/S25); tests/experiments/test_model_led.py::test_unread_never_reaches_request_or_outbound_prompt"
+evidence = "docs/experiments/variant-a.md (контекст A проверен на заглушке, полноценное восприятие и смысловая приёмка остаются S20/S25); tests/experiments/test_model_led.py::test_unread_never_reaches_request_or_outbound_prompt; docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25)"
 
 [[req]]
 id = "R-040"
@@ -478,8 +482,9 @@ kind = "functional"
 mechanism = "iam.attention"
 check = "Тест: для каждого из пяти исходов есть входной набор, при котором он выбирается. Сценарии каталога: scenarios/experiments/exp_no_messages.toml, scenarios/required/no_new_messages.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-041"
@@ -490,8 +495,9 @@ kind = "functional"
 mechanism = "iam.attention (входные признаки, трасса оснований)"
 check = "Тест: изменение каждого признака при прочих равных меняет выбор или его обоснование в трассе. Сценарии каталога: scenarios/motivation/mot_switching.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-042"
@@ -502,8 +508,9 @@ kind = "constraint"
 mechanism = "iam.attention (насыщение вклада уведомлений)"
 check = "Тест: поток из N однотипных уведомлений не вытесняет текущее занятие сверх заданного предела."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
 
 [[req]]
 id = "R-043"
@@ -2106,8 +2113,8 @@ kind = "functional"
 mechanism = "iam.perception, построитель контекста [spec: docs/spec/events.md#perception-stages]"
 check = "scenarios/required/unread_message.toml (создан в S03); прогон на ядре в S25. Сценарии каталога: scenarios/experiments/exp_unread.toml."
 slice = "S20"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25)"
 
 [[req]]
 id = "R-176"
