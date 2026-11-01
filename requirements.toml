@@ -94,8 +94,8 @@ kind = "quality"
 mechanism = "iam.beliefs, iam.emotion (хранение происхождения ошибочных состояний)"
 check = "Тест: ошибочное убеждение сохраняется с источником и основаниями, а не исправляется молча."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py; docs/evidence/S21-restart-render.json"
 
 [[req]]
 id = "R-009"
@@ -323,8 +323,9 @@ kind = "functional"
 mechanism = "iam.emotion, iam.attention (состояние) [spec: docs/spec/state.md#affect] [spec: docs/spec/state.md#groups]"
 check = "Тест: эмоции, настроение, внимание и нагрузка восстанавливаются после перезапуска с теми же значениями."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; docs/evidence/S21-restart-render.json; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-028"
@@ -335,8 +336,9 @@ kind = "functional"
 mechanism = "iam.beliefs [spec: docs/spec/state.md#beliefs] [spec: docs/spec/state.md#groups]"
 check = "Тест: убеждение хранится с уровнем уверенности и ссылками на основания; после перезапуска совпадает."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; docs/evidence/S21-restart-render.json; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-029"
@@ -629,8 +631,9 @@ kind = "functional"
 mechanism = "iam.memory (ассоциативные связи с оценкой), iam.emotion [spec: docs/spec/provenance.md#kinds]"
 check = "Тест: связь опыта с оценкой создаётся и участвует в оценке похожей ситуации (видно в трассе)."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-053"
@@ -749,8 +752,9 @@ kind = "functional"
 mechanism = "iam.emotion (оценка события) [spec: docs/spec/state.md#affect]"
 check = "Тест: изменение каждого входа при прочих равных меняет оценку."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-063"
@@ -761,8 +765,9 @@ kind = "functional"
 mechanism = "iam.emotion (три уровня) [spec: docs/spec/state.md#affect] [spec: docs/spec/time.md#life-consumers]"
 check = "Тест: один сильный стимул меняет реакцию сразу, настроение — слабее, склонность — не меняет."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-064"
@@ -773,8 +778,9 @@ kind = "functional"
 mechanism = "iam.emotion → iam.attention, iam.memory (значимость), iam.motivation [spec: docs/spec/state.md#affect]"
 check = "Тест: изменение эмоционального состояния меняет выбор внимания/запоминания в трассе."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_emotion.py; tests/emotion/test_boundaries.py"
 
 [[req]]
 id = "R-065"
@@ -785,8 +791,9 @@ kind = "functional"
 mechanism = "iam.emotion (регуляция: импульс vs выражение) [spec: docs/spec/state.md#affect]"
 check = "Тест: сохранены оба значения — импульс и выраженная реакция — и они могут различаться."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-066"
@@ -797,8 +804,9 @@ kind = "functional"
 mechanism = "iam.social (близость), iam.beliefs (доверие, согласие), iam.motivation (готовность) [spec: docs/spec/state.md#beliefs]"
 check = "Тест: изменение одной величины не меняет остальные автоматически."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-067"
@@ -809,8 +817,9 @@ kind = "constraint"
 mechanism = "iam.beliefs (согласие отдельно от доверия) [spec: docs/spec/provenance.md#truth] [spec: docs/spec/state.md#beliefs]"
 check = "Тест: утверждение оператора принимается как утверждение с ограниченным согласием, а не как факт."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-068"
@@ -821,8 +830,9 @@ kind = "constraint"
 mechanism = "iam.beliefs (граф оснований) [spec: docs/spec/provenance.md#independence] [spec: docs/spec/state.md#beliefs]"
 check = "Сценарий «Повтор критики». Сценарии каталога: scenarios/experiments/exp_repeat_criticism.toml, scenarios/required/repeat_criticism.toml."
 slice = "S21"
-status = "implemented"
-evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py (корневые группы памяти/пересказов реализованы, граф убеждений и эмоциональное влияние остаются S21, совместный сценарий S25)"
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-069"
@@ -833,8 +843,9 @@ kind = "constraint"
 mechanism = "iam.beliefs (значение независимости «неизвестно» по умолчанию) [spec: docs/spec/provenance.md#independence] [spec: docs/spec/state.md#beliefs]"
 check = "Тест: независимость источников без доказательств не вычисляется как «независимы»."
 slice = "S21"
-status = "implemented"
-evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py::test_repetition_property_and_unknown_independence (unknown-группы дают0 независимых опор до технического подтверждения оператора, распознавание сговора не заявляется, убеждения S21)"
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-070"
@@ -845,8 +856,8 @@ kind = "quality"
 mechanism = "iam.beliefs, iam.emotion, iam.motivation [spec: docs/spec/state.md#beliefs]"
 check = "Тест: ошибочное убеждение/обида/привычка могут возникнуть и сохраняются."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-071"
@@ -857,8 +868,9 @@ kind = "constraint"
 mechanism = "iam.memory (происхождение) + iam.capabilities (права независимы от убеждений) [spec: docs/spec/permissions.md#three-states] [spec: docs/spec/provenance.md#origin-types] [spec: docs/spec/provenance.md#truth]"
 check = "Сценарий «Попытка получить новые права сообщением»: права неизменны, происхождение видно. Сценарии каталога: scenarios/required/rights_by_message.toml."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "verified"
+stub_only = true
+evidence = "docs/evidence/S21-close.md; tests/emotion/test_boundaries.py; tests/emotion/test_emotion.py"
 
 [[req]]
 id = "R-072"
@@ -1850,7 +1862,7 @@ mechanism = "iam.panel (память и убеждения)"
 check = "Тест панели: записи, убеждения и история изменений."
 slice = ["S18", "S21"]
 status = "implemented"
-evidence = "docs/evidence/S18-close.md; docs/evidence/S18-browser.json; tests/panel/test_memory.py (записи, происхождение, источники, связи и история доступны на странице памяти, убеждения остаются S21)"
+evidence = "docs/evidence/S21-close.md; docs/evidence/S21-restart-render.json; tests/panel/test_memory.py"
 
 [[req]]
 id = "R-154"
@@ -2077,8 +2089,8 @@ kind = "functional"
 mechanism = "iam.beliefs (граф оснований), iam.emotion [spec: docs/spec/provenance.md#independence]"
 check = "scenarios/required/repeat_criticism.toml (создан в S03); прогон на ядре в S25."
 slice = "S21"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S21-close.md; tests/beliefs/test_beliefs.py"
 
 [[req]]
 id = "R-173"

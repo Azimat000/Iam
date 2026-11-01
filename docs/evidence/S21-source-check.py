@@ -1,4 +1,5 @@
-"""Сверка неизменного кода полного прогона S21; метаданные требований проверяются отдельно."""
+"""Сверка неизменного кода полного прогона S21; метаданные требований отдельно."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
@@ -8,14 +9,17 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 TARGET = Path(sys.argv[1] if len(sys.argv) > 1 else '/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace')
 expected = json.loads((ROOT / 'docs/evidence/S21-source-hashes.json').read_text())
-checked = {}
-for rel, wanted in expected['files'].items():
-    tested = hashlib.sha256((TARGET / rel).read_bytes()).hexdigest()
-    assert tested == wanted, 'Изменилась проверочная копия: ' + rel
+
+def check(item):
+    rel, wanted = item
+    assert hashlib.sha256((TARGET / rel).read_bytes()).hexdigest() == wanted, 'Изменилась проверочная копия: ' + rel
     if rel != 'requirements.toml':
-        actual = hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()
-        assert actual == wanted, 'Изменился код после полного прогона: ' + rel
-        checked[rel] = actual
+        assert hashlib.sha256((ROOT / rel).read_bytes()).hexdigest() == wanted, 'Изменился код после полного прогона: ' + rel
+        return rel, wanted
+    return None
+
+with ThreadPoolExecutor(max_workers=8) as pool:
+    checked = dict(result for result in pool.map(check, expected['files'].items()) if result is not None)
 base_state = json.loads(subprocess.check_output(['git', 'show', expected['base'] + ':docs/state.json'], cwd=ROOT))
 current_state = json.loads((ROOT / 'docs/state.json').read_text())
 assert base_state['gates'] == current_state['gates'], 'Изменены барьеры'
