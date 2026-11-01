@@ -19,7 +19,7 @@ def _e(value):
 
 
 def render_memory(records):
-    content = '<p>Личная память и интерпретации · только чтение. Технический архив сюда не включён.</p>'
+    content = '<p>Личная память и интерпретации. Технический архив в список не включён.</p>'
     visible = [m for m in records if m['layer'] in LAYERS]
     if not visible:
         return content + '<p class="empty">Записей памяти пока нет. Они появятся после отбора опыта в сеансе.</p>'
@@ -33,6 +33,10 @@ def render_memory(records):
                   ('Время записи', m['created_at']), ('Версия', m['version'])]
         content += ''.join(f'<div><dt>{_e(k)}</dt><dd>{_e(v)}</dd></div>' for k, v in fields)
         content += '</dl>'
+        if m.get('availability', 1) == 0 or m.get('detail', 1) < 1:
+            content += '<p class="help">Недоступна личности: запись забыта или её детали ослаблены.</p>'
+        if m.get('restored_by_operator'):
+            content += '<p class="notice">Восстановлена оператором из архива. Это отдельное вмешательство.</p>'
         if m.get('claim_kind') == 'statement_made' or m['origin'] == 'stated_by_other':
             content += '<p class="help">Записан факт сообщения. Истинность его содержания этим не подтверждается.</p>'
         content += ('<details><summary>Источники, связи и история</summary>'

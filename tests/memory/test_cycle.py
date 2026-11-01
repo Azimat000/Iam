@@ -81,3 +81,58 @@ class PersistentCycleTest(CycleCase):
         self.assertEqual(rejected[-1].payload['reason'], 'kind_not_allowed')
         self.assertEqual(len(m.records()), 1)
         self.assertEqual(self.c._memory_grants, set())
+
+    def test_forgotten_goal_and_old_snapshot_never_reach_provider(self):
+        from iam.domain import Op
+        from iam.cycle.attention import Focus
+        self.build(Reply(proposals=(rest(),)))
+        m = PersistentMemory(self.c)
+        self.cycle.memory = m
+        r = m.prepare(kind='episodic', origin='own_hypothesis', text='дочитать секрет Лидия', sources=(self.root(self.c),))
+        self.assertTrue(m.write(r).applied)
+        self.assertTrue(self.c.apply(self.prop(self.c, Op('intentions', 'int_hidden', 'set',
+                        {'text':'Лидия', 'sources':[r.memory_id]}, True))).applied)
+        cached = m.retrieve('Лидия')
+        self.assertTrue(m.fade(r.memory_id).applied)
+        from dataclasses import replace
+        trigger = replace(self.due(), payload={'owner_ref':'int_hidden'})
+        self.cycle.run(trigger)
+        import json
+        self.assertNotIn('Лидия', json.dumps(self.provider.calls[-1], ensure_ascii=False))
+        # Даже сохранённый объект до забывания вновь проверяется построителем контекста.
+        ctx = self.cycle._context(trigger, Focus('intention','int_hidden','дочитать секрет Лидия'), cached)
+        self.assertNotIn('Лидия', json.dumps(ctx, ensure_ascii=False))
+
+    def test_orphan_intention_cannot_reintroduce_forgotten_partial_text(self):
+        from iam.domain import Op
+        from dataclasses import replace
+        import json
+        self.build(Reply(proposals=(rest(),)))
+        m = PersistentMemory(self.c)
+        self.cycle.memory = m
+        r = m.prepare(kind='episodic', origin='own_hypothesis', text='имя героини Лидия', sources=(self.root(self.c),))
+        self.assertTrue(m.write(r).applied)
+        self.assertTrue(self.c.apply(self.prop(self.c, Op('intentions','int_orphan','set',{'text':'Лидия'},True))).applied)
+        self.assertTrue(m.fade(r.memory_id).applied)
+        self.cycle.run(replace(self.due(), payload={'owner_ref':'int_orphan'}))
+        self.assertNotIn('Лидия', json.dumps(self.provider.calls[-1], ensure_ascii=False))
+
+    def test_malformed_model_intentions_are_excluded_without_cycle_crash(self):
+        from iam.domain import Op
+        from dataclasses import replace
+        self.build(Reply(proposals=(rest(),)))
+        m = PersistentMemory(self.c)
+        self.cycle.memory = m
+        r = m.prepare(kind='episodic',origin='own_hypothesis',text='доступный опыт',sources=(self.root(self.c),))
+        self.assertTrue(m.write(r).applied)
+        for value in ({'text':'случай','sources':[123]},
+                      {'text':'случай','sources':[r.memory_id],'source_versions':'oops'},
+                      {'text':123,'sources':[r.memory_id]},
+                      {'text':'случай','sources':[]},
+                      {'text':'случай','sources':[r.memory_id],'source_versions':{r.memory_id:True}}):
+            with self.subTest(value=value):
+                self.assertTrue(self.c.apply(self.prop(self.c, Op('intentions','int_broken','set',value,True),actor='model')).applied)
+                self.assertEqual(m.decision_state()['intentions'], {})
+                self.provider.queue(Reply(proposals=(rest(),)))
+                result = self.cycle.run(replace(self.due(),payload={'owner_ref':'int_broken'}))
+                self.assertEqual(result.outcome, 'done')

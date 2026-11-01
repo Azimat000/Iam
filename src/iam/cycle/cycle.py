@@ -106,7 +106,8 @@ class Cycle:
         if self.ctl.find_event(key=f"att:{cid}") is not None:
             return self._end(rep, "skipped", "already_done")
         self._stage(rep, "event", "ok", (trigger.event_id,), {"type": trigger.type})
-        focus = self.attention.choose(trigger, self.ctl.state)
+        state = self.memory.decision_state() if hasattr(self.memory, 'decision_state') else self.ctl.state
+        focus = self.attention.choose(trigger, state)
         if not self._attend(rep, trigger, focus):
             return rep
         records = self._retrieve(rep, focus)

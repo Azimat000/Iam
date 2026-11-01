@@ -28,7 +28,7 @@ def form(action, label, token, data, *, body="", reason=None, primary=False, val
     if data["sending"]:
         return ''
     values = values or {}
-    reason = values.get("reason", reason or label)
+    reason = values.get("reason", label if reason is None else reason)
     return (f'<form method="post" action="/actions/{action}">'
             f'<input type="hidden" name="csrf" value="{e(token)}">'
             f'<input type="hidden" name="version" value="{data["version"]}">'
@@ -97,6 +97,17 @@ def render(page, data, token, *, error=None, notice=None, values=None):
         content += '</div>' + dump({"view_version": data["view_version"] or data["version"], "state": data["state"]})
     elif page == "memory":
         content = render_memory(data["memories"])
+        content += '<section><h2>Восстановить запись из архива</h2><p>Выберите одну запись и её прежнюю версию по журналу событий. Будет создана новая запись личной памяти с отметкой о вмешательстве оператора.</p>'
+        if state == 'running' or u['in_flight']:
+            content += '<p>Поставьте сеанс на паузу и дождитесь ответа модели, чтобы восстановить запись.</p>'
+        else:
+            body = ('<label for="memory-id">Идентификатор записи из журнала</label>'
+                    f'<input id="memory-id" name="memory_id" value="{e(values.get("memory_id", ""))}" pattern="mem_[A-Za-z0-9]{{8,40}}" maxlength="44" required>'
+                    '<label for="memory-version">Версия записи в архиве</label>'
+                    f'<input id="memory-version" name="memory_version" type="number" min="1" value="{e(values.get("memory_version", 1))}" required>'
+                    '<label class="check"><input type="checkbox" name="confirm" value="memory" required> Вернуть эту версию в личную память</label>')
+            content += form('memory_restore', 'Восстановить запись памяти', token, data, body=body, reason='', values=values)
+        content += '</section>'
     elif page == "requests":
         content = '<p>Просьбы личности и сохранённые статусы. Ответы через панель появятся на этапе S23.</p>'
         content += event_rows(data["requests"]) + dump(data["state"]["world_time"].get("world", {}).get("creator_requests", {}))

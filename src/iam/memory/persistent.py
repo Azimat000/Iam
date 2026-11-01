@@ -7,13 +7,14 @@ import math
 from iam.domain import MemoryRecord, Op, Source, Transition, new_id
 from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
+from .lifecycle import MemoryLifecycle
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
             "action.failed": "failed", "action.unknown_outcome": "unknown", "message.out_unknown": "unknown"}
 
 
-class PersistentMemory:
+class PersistentMemory(MemoryLifecycle):
     """Единственная биография из controller; off отключает чтение и запоминание опыта."""
     def __init__(self, controller, *, off=False, working_limit=8, sensory_limit=8,
                  sensory_ttl_ms=60000, text_limit=2000):
@@ -25,21 +26,36 @@ class PersistentMemory:
         self._sensory = []
         controller.register_kind("memory_write", self._proposal)
         controller.add_validator("memory_provenance", self._validate_changes)
+        controller.add_validator("memory_lifecycle", self._validate_lifecycle)
 
     def _available(self, r):
         return (r.persona_id == self.ctl.persona_id and r.layer in LAYERS
                 and r.origin != "simulation_event" and (r.availability is None or r.availability > 0)
+                and (r.detail is None or r.detail >= 1)
                 and not r.content.get("superseded_by") and not any(h.get("superseded_by") for h in r.history))
 
     def records(self):
         """Текущие записи без чтения журнала/архива; используется также страницей памяти."""
-        return [r for r in self.ctl.readable_memories() if self._available(r)]
+        rows = {r.memory_id: r for r in self.ctl.readable_memories() if self._available(r)}
+        # Удаление до неподвижной точки исключает всю цепочку зависимых кешей.
+        while True:
+            hidden = {mid for mid, r in rows.items()
+                      if any(ref.startswith('mem_') and (ref not in rows or
+                             r.content.get('source_versions', {}).get(ref, 1) != rows[ref].version)
+                             for ref in r.sources)
+                      or any(l.type == 'same_source' and l.target.startswith('mem_') and
+                             (l.target not in rows or r.content.get('source_versions', {}).get(l.target, 1)
+                              != rows[l.target].version) for l in r.links)}
+            if not hidden:
+                return list(rows.values())
+            rows = {mid: r for mid, r in rows.items() if mid not in hidden}
 
     def retrieve(self, query, *, limit=5):
         if type(limit) is not int or limit < 0:
             raise ValueError("Неверный предел извлечения")
         if self.off or limit == 0:
             return []
+        self.fade_due()
         available = {r.memory_id: r for r in self.records()}
         hits = self.ctl.store.search_memory(query, layers=LAYERS, limit=-1)
         direct = {r.memory_id for r in hits if r.memory_id in available}
@@ -58,13 +74,16 @@ class PersistentMemory:
     def context(self, trigger, first, records):
         """Буфер хранит только безопасное уведомление цикла, не payload входящего."""
         now = self.ctl.life_time_ms
-        self._sensory = [(at, item) for at, item in self._sensory if now - at < self.sensory_ttl_ms]
+        self._sensory = [(at, item) for at, item in self._sensory if now - at < self.sensory_ttl_ms and self._safe_item(item)]
+        first = first if self._safe_item(first) else {**first, 'text': 'Наступил плановый момент.'}
         self._sensory.append((now, dict(first, text=first['text'][:self.text_limit])))
         self._sensory = self._sensory[-self.sensory_limit:]
         result = [dict(first, text=first['text'][:self.text_limit])]
         if not self.off:
-            for r in records[:self.working_limit - 1]:
-                if self._available(r):
+            current = {r.memory_id: r for r in self.records()}
+            for saved in records[:self.working_limit - 1]:
+                r = current.get(saved.memory_id)
+                if r is not None:
                     metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
                                 'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
                                 'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
@@ -82,7 +101,7 @@ class PersistentMemory:
     @property
     def sensory(self):
         now = self.ctl.life_time_ms
-        return [copy.deepcopy(item) for at, item in self._sensory if now - at < self.sensory_ttl_ms]
+        return [copy.deepcopy(item) for at, item in self._sensory if now - at < self.sensory_ttl_ms and self._safe_item(item)]
 
     def _source(self, ref):
         if ref.startswith("mem_"):
@@ -90,9 +109,13 @@ class PersistentMemory:
                 rec = self.ctl.store.get_memory(ref)
             except NotFound:
                 return None
-            return rec if self._available(rec) else None
+            return rec if any(r.memory_id == ref for r in self.records()) else None
         event = self.ctl.find_event(event_id=ref)
         if event is None or event.persona_id != self.ctl.persona_id or event.type == "input.arrived":
+            return None
+        if event.type in (*OUTCOMES, 'input.read', 'activity.completed') and any(
+                (not self._available(r) and ref in r.sources) or any(ref in h.get('previous_sources', []) for h in r.history)
+                for r in self.ctl.readable_memories()):
             return None
         return event
 
@@ -102,6 +125,14 @@ class PersistentMemory:
             if change['group'] != 'memory':
                 continue
             r = MemoryRecord.from_dict(change['after'])
+            old = change['before']
+            if check.carrier_type == 'memory.faded' and old:
+                expected = dict(old, version=r.version, availability=r.availability, detail=r.detail, history=list(r.to_dict()['history']))
+                if (expected == r.to_dict() and r.availability is not None and r.detail is not None
+                        and r.availability <= old.get('availability', 1) and r.detail <= old.get('detail', 1)):
+                    continue
+            if r.restored_by_operator and self._valid_restore(r, check):
+                continue
             sources = [self._source(s) for s in r.sources]
             if any(s is None for s in sources) or any(self._source(l.target) is None for l in r.links):
                 errors.append("Источник или связь недоступны")
@@ -131,6 +162,7 @@ class PersistentMemory:
         """Заготовка ядра; источник и часы задаются ядром, происхождение явно указано вызывающим."""
         data = dict(content or {}, text=text)
         data.setdefault('experience', 'unknown')
+        data['source_versions'] = self._source_versions((*sources, *(l.target for l in links if l.type == 'same_source')))
         data['source_details'] = [s.source.to_dict() for ref in sources if (s := self._source(ref)) is not None]
         return MemoryRecord(new_id('mem'), self.ctl.persona_id, layer, kind, origin, data,
                             Source('core', 'memory'), self.ctl.clock.calendar_now(), self.ctl.life_time_ms,

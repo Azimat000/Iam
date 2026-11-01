@@ -97,14 +97,14 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
 
     @app.post("/actions/{action}")
     async def act(request: Request, action: str):
-        if action not in ("start", "pause", "resume", "stop", "backup", "restore"):
+        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore"):
             return PlainTextResponse("Неизвестная команда.", 404)
-        page = "backups" if action in ("backup", "restore") else ""
+        page = "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""
         fields = None
         try:
             fields = await read_form(request, token)
             result = await call("mutate", action, clean(fields))
-            message = "Действие сохранено в журнале."
+            message = "Запись восстановлена в личную память. Вмешательство оператора сохранено в журнале." if action == "memory_restore" else "Действие сохранено в журнале."
             if action == "restore":
                 message = "Копия восстановлена в отдельную базу: " + result + ". Для её открытия завершите сервер и укажите этот путь при запуске."
             return await response(page, notice=message)
