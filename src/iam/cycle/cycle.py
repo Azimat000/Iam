@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -95,6 +96,33 @@ class Cycle:
         self.allowed_proposals = tuple(allowed_proposals)
         for kind, handler in make_kind_handlers(capabilities, max_actions=max_actions).items():
             controller.register_kind(kind, handler)
+        # Постоянное ядро A; старые экспериментальные адаптеры сохраняют свой контракт.
+        from iam.memory import PersistentMemory
+        self.perception = None
+        if isinstance(memory, PersistentMemory):
+            from iam.perception import Perception
+            from iam.attention import AttentionPolicy as PersonalAttention
+            self.perception = Perception(controller, memory)
+            self.attention = attention or PersonalAttention()
+            for kind in ('attend', 'no_action'):
+                fallback = make_kind_handlers(capabilities, max_actions=max_actions)[kind]
+                controller.register_kind(kind, self._personal_handler(fallback))
+
+    def _personal_handler(self, fallback):
+        def handler(pr, ctx):
+            decision = self.perception.check_attend(pr, ctx, fallback) if pr['kind'] == 'attend' else fallback(pr, ctx)
+            if decision.violation is None:
+                from iam.state import KindDecision
+                from iam.attention import switch_history
+                old = ctx.state['affect'].get('attention', {})
+                old = old if isinstance(old, dict) else {}
+                history = switch_history(ctx.state)[-15:]
+                value = decision.ops[0].value
+                if (old.get('focus'), old.get('ref')) != (value['focus'], value['ref']):
+                    history = [*history, ctx.life_time_ms]
+                decision = KindDecision((Op('affect', 'attention', 'set', dict(value, switch_history=history), True),))
+            return decision
+        return handler
 
     # --- один цикл -----------------------------------------------------------------------------
 
@@ -135,8 +163,17 @@ class Cycle:
     # --- стадии 2–3: внимание и память ---------------------------------------------------------
 
     def _attend(self, rep: CycleReport, trigger: Event, focus: Focus) -> bool:
+        if self.perception is not None and trigger.type == 'input.arrived':
+            noticed = self.perception.notice(trigger.payload['input_id'])
+            if noticed is not None and not noticed.applied:
+                self._stage(rep, 'attention', 'failed', (), {'status': noticed.status})
+                self._end(rep, 'failed', 'perception_' + noticed.status)
+                return False
         value = {"focus": focus.focus, "ref": focus.ref, "since_life_ms": self.ctl.clock.now_ms(),
                  "cycle_id": rep.cycle_id}
+        if self.perception is not None:
+            from iam.attention import switch_history
+            value['switch_history'] = switch_history(self.ctl.state)
         spec = EventSpec("attention.chosen", f"att:{rep.cycle_id}", {
             "cycle_id": rep.cycle_id, "trigger": trigger.event_id, "focus": focus.focus, "ref": focus.ref})
         res = self._move([Op("affect", "attention", "set", value, True)], f"внимание: цикл {rep.cycle_id}", spec,
@@ -168,7 +205,14 @@ class Cycle:
         else:
             first = {"ref": trigger.event_id, "origin": "observation", "layer": "state", "text": f"Событие {trigger.type}."}
         if hasattr(self.memory, "context"):
-            return self.memory.context(trigger, first, records)
+            context = self.memory.context(trigger, first, records)
+            if self.perception is not None:
+                context += self.perception.context(trigger.payload.get('input_id'))
+                if hasattr(self.attention, 'signals'):
+                    signals = self.attention.signals(self.memory.decision_state(), self.perception.notices())
+                    context.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
+                                    'text': json.dumps(signals, ensure_ascii=False)})
+            return context
         return [first] + [{"ref": r.memory_id, "origin": r.origin, "layer": r.layer, "text": r.text} for r in records]
 
     def _request(self, cid: str, context: list[dict], attempt: int, retry_of: str | None) -> dict:
@@ -230,6 +274,14 @@ class Cycle:
             self._end(rep, outcome, result.reason or result.status)
             return
         accepted = [pr for pr in response["proposals"] if pr["proposal_id"] in accepted_events]
+        if self.perception is not None:
+            for pr in accepted:
+                changed = self.perception.finish(pr, accepted_events[pr['proposal_id']])
+                updates = changed if isinstance(changed, list) else ([] if changed is None else [changed])
+                if any(not update.applied for update in updates):
+                    self._stage(rep, 'action', 'failed', (), {'why': 'восприятие не подтверждено'})
+                    self._end(rep, 'failed', 'perception_rejected')
+                    return
         for pr in accepted:
             if pr["kind"] in EXECUTABLE:
                 self._act(rep, pr, accepted_events[pr["proposal_id"]])
