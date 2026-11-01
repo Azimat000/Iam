@@ -149,7 +149,7 @@ class MemoryLifecycle:
         # Единственный подключённый потребитель текста состояния — внимание к намерению.
         # Кеш без прослеживаемых оснований не имеет права возвращать забытые детали.
         state['intentions'] = {key: value for key, value in state['intentions'].items() if self._intention_available(value)}
-        return state
+        return self.experience.state(state)
 
     def _intention_available(self, value):
         if (not isinstance(value, dict) or not isinstance(value.get('text'), str)

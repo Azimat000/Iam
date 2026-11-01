@@ -9,7 +9,7 @@ NOTICE_CAP = 0.25
 
 def unit(value):
     """Недоверенные/будущие признаки не создают NaN или неограниченный вес."""
-    return min(1.0, max(0.0, value)) if type(value) in (int, float) and math.isfinite(value) else 0.0
+    return min(1.0, max(0.0, value)) if type(value) in (int, float) and (type(value) is int or math.isfinite(value)) else 0.0
 
 
 def switch_history(state):
@@ -41,6 +41,8 @@ class AttentionPolicy(ScaffoldPolicy):
                 'notice_cap': NOTICE_CAP, 'goal_signal': min(1.0, len(state['intentions']) / 4),
                 'load': unit(affect.get('load')), 'relationship_signal': closeness,
                 'switch_cost': min(1.0, len(history) / 4),
+                'emotion_signal': unit(abs(affect.get('emotion', {}).get('reaction', 0))),
+                'mood_signal': affect.get('emotion', {}).get('mood', 0),
                 'rule': 'Сигналы помогают выбору; максимальное число не назначает действие. '
                         'Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.'}
 
