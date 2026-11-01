@@ -111,3 +111,29 @@ class InterpretationBoundaryTest(ExperienceCase):
         legacy = self.m.decision_state()
         legacy['relations']['legacy'] = 'старое значение'
         self.assertEqual(self.m.experience.state(legacy)['relations']['legacy'], 'старое значение')
+
+    def test_fresh_read_survives_salient_history_and_four_beliefs(self):
+        source = self.source()
+        for n in range(4):
+            pr = self.draft('belief', dict(belief_id='belief'+str(n), agreement=0, confidence=0.3), (source,))
+            self.assertEqual(self.apply(pr).status, 'applied')
+        for n in range(5):
+            self.emotion(self.source('критика ' + str(n)), valence=-1)
+        iid = new_id('inp')
+        arrived = self.c.record_event(EventSpec('input.arrived', 'rx:telegram:saturated',
+                     {'input_id': iid, 'sender': 'creator', 'channel': 'telegram',
+                      'text': 'НОВОЕ_ПРОЧИТАННОЕ'})).event
+        self.cycle.allowed_proposals += ('attend',)
+        self.provider.queue(Reply((attend('dialogue', iid),)))
+        self.assertEqual(self.cycle.run(arrived).outcome, 'done')
+        read = next(e for e in self.c.events_after(0) if e.type == 'input.read')
+        r = next(r for r in self.m.records() if read.event_id in r.sources)
+        # Настоящий следующий цикл, без ручного приоритета источников в helper.apply.
+        self.provider.queue(Reply((rest(),)))
+        self.assertEqual(self.cycle.run(read).outcome, 'done')
+        context = self.provider.calls[-1]['context']
+        self.assertIn(r.memory_id, [item['ref'] for item in context])
+        self.assertTrue(any('НОВОЕ_ПРОЧИТАННОЕ' in item['text'] for item in context))
+        memory_context = context[:-1]  # отдельный ограниченный сигнал внимания
+        self.assertLessEqual(len(memory_context), self.m.working_limit)
+        self.assertEqual(len({item['ref'] for item in memory_context}), len(memory_context))

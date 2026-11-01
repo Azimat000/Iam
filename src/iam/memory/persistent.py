@@ -81,9 +81,14 @@ class PersistentMemory(MemoryLifecycle):
         self._sensory.append((now, dict(first, text=first['text'][:self.text_limit])))
         self._sensory = self._sensory[-self.sensory_limit:]
         result = [dict(first, text=first['text'][:self.text_limit])]
+        direct_ids = set()
         if not self.off:
             current = {r.memory_id: r for r in self.records()}
-            for saved in records[:self.working_limit - 1]:
+            direct = sorted((r for r in current.values() if getattr(trigger, 'event_id', None) in r.sources),
+                            key=lambda r: (-r.created_life_ms, r.memory_id))[:1]
+            direct_ids = {r.memory_id for r in direct}
+            selected = {r.memory_id: r for r in [*direct, *records]}
+            for saved in list(selected.values())[:self.working_limit - 1]:
                 r = current.get(saved.memory_id)
                 if r is not None:
                     metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
@@ -101,7 +106,12 @@ class PersistentMemory(MemoryLifecycle):
         interpreted = self.experience.context()
         if not self.off and (len(result) > 1 or interpreted):
             result[0]['text'] = (result[0]['text'] + self.experience.instructions)[:self.text_limit]
-        return [result[0], *interpreted, *result[1:]][:self.working_limit]
+        direct_context = [item for item in result[1:] if item['ref'] in direct_ids]
+        ordered = [result[0], *direct_context, *interpreted, *result[1:]]
+        unique = {}
+        for item in ordered:
+            unique.setdefault(item['ref'], item)
+        return list(unique.values())[:self.working_limit]
 
     @property
     def sensory(self):

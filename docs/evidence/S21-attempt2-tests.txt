@@ -1,0 +1,142 @@
+/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+..............................................................................................................................................................................................................................................................usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: agency-v1 требует --development, только A и режим stub/live
+usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: agency-v1 требует --development, только A и режим stub/live
+usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: agency-v1 требует --development, только A и режим stub/live
+usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: agency-v1 требует --development, только A и режим stub/live
+..................................................................................................................................................................................................................................................usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: нужен внешний --auth-file
+usage: S21-coverage-runner.py [-h] --output OUTPUT [--mode {stub,formal,live}]
+                              [--auth-file AUTH_FILE] [--persist-auth-updates]
+                              [--conversational] [--dialogues | --life |
+                              --development] [--repeats {1,2}]
+                              [--variants {A,B,C} [{A,B,C} ...]]
+                              [--development-profile {legacy,agency-v1}]
+S21-coverage-runner.py: error: сохранение входа доступно только в live
+.............................................................................................usage: S21-coverage-runner.py [-h] --db DB (--demo |
+                              --codex-auth-file CODEX_AUTH_FILE)
+                              [--telegram-user TELEGRAM_USER] [--port PORT]
+S21-coverage-runner.py: error: Демонстрация не подключается к Telegram.
+....................................................................................................................................................................................................EF...............................................................................................................................................................................................................................................................................................................................................................................................................................
+======================================================================
+ERROR: test_every_hole_is_caught_by_its_own_check (providers.test_scripts.ScriptFlowTest.test_every_hole_is_caught_by_its_own_check) (check='sandbox_internal')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/tests/providers/test_scripts.py", line 178, in test_every_hole_is_caught_by_its_own_check
+    done = self.run_script(bad=check)
+  File "/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/tests/providers/test_scripts.py", line 162, in run_script
+    return subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, env=e, timeout=120)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/docs/evidence/S21-coverage-runner.py", line 22, in measured_run
+    return original_run(args, *positional, **kwargs)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 556, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 1222, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 2155, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 1269, in _check_timeout
+    raise TimeoutExpired(
+    ...<2 lines>...
+            stderr=b''.join(stderr_seq) if stderr_seq else None)
+subprocess.TimeoutExpired: Command '['bash', '/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/scripts/claude/verify_isolation.sh']' timed out after 120 seconds
+
+======================================================================
+FAIL: test_ideal_container_passes_everything (providers.test_scripts.ScriptFlowTest.test_ideal_container_passes_everything)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/tests/providers/test_scripts.py", line 170, in test_ideal_container_passes_everything
+    self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : arch               PASS  aarch64
+non_root           FAIL  rc=0 10001
+Exception ignored in atexit callback <bound method Coverage._atexit of <coverage.control.Coverage object at 0x10aa1d7f0>>:
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 742, in _atexit
+    self.save()
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 842, in save
+    data = self.get_data()
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 922, in get_data
+    if self._collector.flush_data():
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/collector.py", line 490, in flush_data
+    self.covdata.add_arcs(self.mapped_file_dict(arc_data))
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 123, in _wrapped
+    return method(self, *args, **kwargs)
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 570, in add_arcs
+    self._choose_lines_or_arcs(arcs=True)
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 603, in _choose_lines_or_arcs
+    with self._connect() as con:
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 373, in _connect
+    self._open_db()
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 312, in _open_db
+    self._read_db()
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 316, in _read_db
+    with self._dbs[threading.get_ident()] as db:
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqlitedb.py", line 96, in __enter__
+    self._connect()
+  File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqlitedb.py", line 60, in _connect
+    raise DataError(f"Couldn't use data file {self.filename!r}: {exc}") from exc
+coverage.exceptions.DataError: Couldn't use data file '/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/main-checks-2/main.MacBook-Air-Azamat-3.local.49058.XEwWwuEx': unable to open database file
+no_mounts          FAIL  rc=0 Exception ignored in atexit callback <bound method Coverage._atexit of <coverage.control.Coverage object at 0x1066a17f0>>: Traceback (most recent call last):   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 742, in _atexit     self.save()   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 842, in save     data = self.get_data()   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/control.py", line 922, in get_data     if self._collector.flush_data():   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/collector.py", line 490, in flush_data     self.covdata.add_arcs(self.mapped_file_dict(arc_data))   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 123, in _wrapped     return method(self, *args, **kwargs)   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 570, in add_arcs     self._choose_lines_or_arcs(arcs=True)   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 603, in _choose_lines_or_arcs     with self._connect() as con:   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 373, in _connect     self._open_db()   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 312, in _open_db     self._read_db()   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqldata.py", line 316, in _read_db     with self._dbs[threading.get_ident()] as db:   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqlitedb.py", line 96, in __enter__     self._connect()   File "/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/sqlitedb.py", line 60, in _connect     raise DataError(f"Couldn't use data file {self.filename!r}: {exc}") from exc coverage.exceptions.DataError: Couldn't use data file '/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/main-checks-2/main.MacBook-Air-Azamat-3.local.49062.XRTsKbsx': unable to open database file 
+canary_file        PASS  не виден
+canary_env         PASS  не видны
+no_docker_socket   PASS  сокета нет
+read_only_root     PASS  корень только для чтения, /tmp без исполнения
+no_capabilities    PASS  CapEff=0, CapBnd=0, NoNewPrivs=1
+limits             PASS  pids.max=128, memory.max=1 ГиБ
+sandbox_internal   PASS  iam-sandbox: internal=true
+net_allowed        PASS  api.anthropic.com → HTTP 404
+net_denied         PASS  example.com отказано
+net_direct_denied  PASS  прямого выхода нет
+auth               PASS  вход по подписке работает: {'is_error': False, 'api_error_status': None, 'terminal_reason': None, 'num_turns': 1}
+format             PASS  proposals есть
+no_tools           PASS  init: инструментов нет
+---
+НЕ ПРОЙДЕНА: non_root: нет результата; no_mounts: FAIL
+сырые результаты и ответы claude (для калибровки классификатора): /var/folders/7q/6f7d54ks3zz8mx9n9rtc30zc0000gn/T/iam-s08-giaatwa1/out
+/Users/azamatsibgatullin/.iam-evidence/s21-emotion-20261101/workspace/scripts/claude/verify_isolation.sh: line 23: cannot create temp file for here document: No space left on device
+
+
+----------------------------------------------------------------------
+Ran 1202 tests in 490.121s
+
+FAILED (failures=1, errors=1)
+Биографий: 2; исполнено: 2; допущено к оценке: 0
+Разговоров: 12; исполнено: 12; в пакете: 12
+Биографий: 6; исполнено: 2; допущено к оценке: 0
+Биографий: 18; исполнено: 6; в пакете: 2
+Ячеек: 48; исполнено: 0; вложенных прогонов: 0
+Ячеек: 48; исполнено: 0; вложенных прогонов: 0
+CLI calls explicitly measured: 132
