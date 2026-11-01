@@ -164,7 +164,7 @@ class Cycle:
 
     def _attend(self, rep: CycleReport, trigger: Event, focus: Focus) -> bool:
         if self.perception is not None and trigger.type == 'input.arrived':
-            noticed = self.perception.notice(trigger.payload['input_id'])
+            noticed = self.perception.notice(self.perception.input_id(trigger))
             if noticed is not None and not noticed.applied:
                 self._stage(rep, 'attention', 'failed', (), {'status': noticed.status})
                 self._end(rep, 'failed', 'perception_' + noticed.status)

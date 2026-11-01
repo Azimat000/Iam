@@ -331,3 +331,30 @@ class PerceptionTest(PerceptionCase):
         with self.assertRaises(ValueError):
             self.p.finish(pr, accepted.event_id)
         self.assertEqual(self.p._states()[iid]['stage'], 'noticed')
+
+    def test_notice_upgrade_keeps_existing_ignore_without_duplicate(self):
+        self.p.level = 'N1'
+        iid, trigger = self.arrive()
+        self.run_reply(trigger, rest())
+        self.p.level = 'N2'
+        self.provider.queue(Reply((rest(),)))
+        self.assertEqual(self.cycle.run(trigger, round_=1).outcome, 'done')
+        self.assertEqual(self.p._states()[iid], {'stage':'ignored','level':'N2'})
+        self.assertEqual(self.types(self.c).count('input.ignored'), 1)
+        self.provider.queue(Reply((attend('dialogue', iid),)))
+        self.assertEqual(self.cycle.run(trigger, round_=2).outcome, 'done')
+        self.assertEqual(self.p._states()[iid]['stage'], 'read')
+
+    def test_legacy_arrival_without_id_is_not_a_crash_or_content_leak(self):
+        for n, ref in enumerate((None, 123, 'invalid.path')):
+            marker = 'СТАРЫЙ_СКРЫТЫЙ_ТЕКСТ_' + str(n)
+            event = self.c.record_event(EventSpec('input.arrived', 'rx:legacy:' + str(n),
+                {'text':marker, **({'input_id':ref} if ref is not None else {})})).event
+            iid = self.p.input_id(event)
+            self.assertTrue(iid.startswith('inp_'))
+            self.assertNotIn('.', iid)
+            self.run_reply(event, rest())
+            self.assertNotIn(marker, json.dumps(self.provider.calls[-1],ensure_ascii=False))
+            self.provider.queue(Reply((attend('event', iid),)))
+            self.assertEqual(self.cycle.run(event,round_=1).outcome, 'done')
+            self.assertEqual(self.memory.records()[-1].text, marker)

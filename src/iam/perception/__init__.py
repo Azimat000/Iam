@@ -1,5 +1,6 @@
 """Поступление → замечание → подтверждённое чтение; текст закрыт до чтения."""
 import json
+import re
 
 from iam.domain import Op, Transition, new_id
 from iam.state import EventSpec, KindDecision, Proposal, Violation
@@ -34,8 +35,13 @@ class Perception:
 
     def _arrivals(self):
         # Архив транспорта читается здесь только для стадии восприятия, не как память.
-        return {e.payload['input_id']: e for e in self.ctl.events_after(0)
-                if e.type == 'input.arrived' and isinstance(e.payload.get('input_id'), str)}
+        return {self.input_id(e): e for e in self.ctl.events_after(0) if e.type == 'input.arrived'}
+
+    @staticmethod
+    def input_id(event):
+        ref = event.payload.get('input_id')
+        # Старый каркас допускал входящее без input_id; ссылка выводится из его события.
+        return ref if isinstance(ref, str) and re.fullmatch(r'inp_[A-Za-z0-9]{8,40}', ref) else 'inp_' + event.event_id[4:]
 
     def notices(self, level=None):
         level = self.level if level is None else level
@@ -58,6 +64,8 @@ class Perception:
 
     def _move(self, iid, stage, level, cause):
         value = {'stage': stage, 'level': level}
+        if stage == 'noticed' and self._states().get(iid, {}).get('stage') == 'ignored':
+            value['stage'] = 'ignored'
         tid = new_id('trn')
         key = {'noticed': f'ntc:{iid}:{level}', 'read': f'rd:{iid}', 'ignored': f'ign:{iid}'}[stage]
         t = Transition(tid, self.ctl.persona_id, self.ctl.epoch, self.ctl.state_version,
