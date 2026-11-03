@@ -1,0 +1,18 @@
+--- a/src/iam/providers/codex/provider.py
++++ b/src/iam/providers/codex/provider.py
+@@ -49,0 +50,7 @@
++_FORMAT_CODES = {
++    "Codex emitted malformed JSONL": "stream_jsonl",
++    "Codex final message is invalid": "final_metadata",
++    "Codex must emit exactly one final message": "final_count",
++    "Codex final message is not JSON": "final_json",
++    "Codex final message must be an object": "final_object",
++}
+@@ -79,0 +87 @@
++        format_code = "unclassified_format"
+@@ -101,0 +110 @@
++                    format_code = "proposal_schema"
+@@ -106 +115,2 @@
+-        raise ProviderFormatError("Codex response did not match the required format")
++            format_code = _FORMAT_CODES.get(result.message, "unclassified_format")
++        raise ProviderFormatError("Codex response did not match the required format; code=" + format_code)

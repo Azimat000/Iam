@@ -1,79 +1,79 @@
 {
-  "status": "BLOCKED: attempt3 coverage failed; live2 not started",
+  "status": "BLOCKED: full4 accepted; sole live2 stopped on ProviderFormatError",
   "rows": [
     {
       "criterion": "Мир и работы сохраняются; чтение/перестановка/время честны",
       "evidence": "tests/world/test_world.py::test_real_read_write_move_and_restart; test_real_duration_and_external_delivery_and_failed_initialization",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Нет половины чтения при сбое/паузе; воображаемое не действие",
       "evidence": "tests/world/test_world.py::test_crash_and_pause_mid_action_leave_no_half_read; test_prepared_or_imagined_result_does_not_change_world",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Проекты active/done/abandoned и последняя работа",
       "evidence": "tests/world/test_world.py::test_project_lifecycle_requires_semantic_done_and_closed_projects_are_immutable; test_new_project_version_cannot_finish_using_old_goal_result",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Пять статусов намерения, immutable цель/критерий, отдельный слот",
       "evidence": "tests/intentions/test_intentions.py::test_five_statuses_history_and_closed_states; test_criterion_cannot_change_and_direct_state_changes_are_rejected; test_goal_and_action_are_independent_slots_in_both_orders",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Знание/желание/право раздельны; будущее по собственному времени",
       "evidence": "tests/intentions/test_intentions.py::test_knowing_wanting_and_permission_are_separate; test_future_intention_survives_pause_and_fires_once_in_own_time",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Done требует позднего совпадающего результата и двух оценок",
       "evidence": "tests/intentions/test_intentions.py::test_done_requires_late_matching_result_and_two_reviews; test_failed_or_wrong_project_or_early_or_unchanged_result_never_done; test_own_calculation_is_not_independent_observation",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Полный прочитанный результат и исходная доступная версия",
       "evidence": "tests/intentions/test_intentions.py::test_long_material_is_fully_visible_before_complete_read_is_accepted; test_revised_result_and_incomplete_display_do_not_reveal_original",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Ошибка оценщика сохраняется; лишние ссылки не обрезаются; цель открыта",
       "evidence": "tests/intentions/test_completion.py; tests/intentions/test_intentions.py::test_invalid_or_failed_reviewer_keeps_goal_and_raw_diagnostics; original live-1",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Забытое/пересмотренное/off не возвращается через цели/умения/приёмы",
       "evidence": "tests/motivation/test_motivation.py::test_hidden_goal_cannot_be_completed_or_sent_to_reviewer_in_off; test_revised_assessment_cannot_return_forgotten_quote_or_teach_procedure; test_dependent_motivation_cache_is_hidden_in_off_and_methods_need_distinct_evidence",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Интерес/неудача/неизвестность/повтор и шесть семейств механизмов",
       "evidence": "tests/motivation/test_motivation.py::test_six_scenario_mechanisms_without_forcing_free_behavior; test_interest_from_experience_and_no_reward_for_writing; test_failed_unknown_feedback_and_off",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Умение/приём требуют содержательных отдельных результатов",
       "evidence": "tests/motivation/test_motivation.py::test_skill_uses_content_criteria_and_procedure_needs_distinct_assessed_results; test_learning_rejects_unassessed_methods_and_off_hides_skill",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Панель материала: пауза/версия/CSRF/размер/XSS/кириллица",
       "evidence": "tests/panel/test_world.py; docs/evidence/S22-browser.json; world-final-desktop.jpg; world-final-mobile.jpg",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete"
+      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
     },
     {
       "criterion": "Серия неизменна, все расходы учтены, одна коррекция",
-      "evidence": "tests/world/test_series.py; docs/evidence/S22-repair-preflight.json; docs/evidence/S22-live-1/manifest.json",
-      "acceptance": "tests passed; whole-slice acceptance blocked by critical coverage; live evidence incomplete",
-      "pending": "Full live-2 evidence does not exist; live correction not started."
+      "evidence": "tests/world/test_series.py; docs/evidence/S22-live2-preflight.json; docs/evidence/S22-live2-provenance.json; docs/evidence/S22-live-1/manifest.json; docs/evidence/S22-live-2/manifest.json; docs/evidence/S22-live-2/summary.json",
+      "acceptance": "FAIL to complete bounded live plan: sole live2 stopped",
+      "pending": "No third live series authorized. Diagnostic-only proposal awaits user decision."
     }
   ],
   "limits": {
-    "ordinary_attempt": 3,
-    "max_ordinary_attempts": 3,
+    "ordinary_attempt": 4,
+    "max_ordinary_attempts": 4,
     "max_corrections": 1,
-    "live_corrections_used": 0,
-    "live_corrections_reserved": 1
+    "live_corrections_used": 1,
+    "live_corrections_reserved": 0
   },
   "unverified": [
     "Самостоятельное возникновение/удержание целей и причинность: S25",
@@ -82,19 +82,29 @@
   ],
   "full_tests": {
     "tests": 1268,
-    "seconds": 408.811,
+    "seconds": 408.18,
     "result": "OK",
-    "skipped": 0
+    "skipped": 0,
+    "attempt": 4
   },
   "coverage": {
-    "passed_modules": 139,
+    "passed_modules": 140,
     "total_modules": 140,
-    "failed_module": "src/iam/motivation/learning.py",
-    "missing_line": 76,
-    "missing_branch": [
-      74,
-      76
-    ]
+    "failed_module": null,
+    "missing_line": null,
+    "missing_branch": null
   },
-  "live_correction_started": false
+  "live_correction_started": true,
+  "live": {
+    "status": "partial",
+    "stop": "provider_or_cycle_failure",
+    "new_decisions": 4,
+    "new_calls": 4,
+    "physical_decisions": 22,
+    "physical_calls": 23,
+    "selected_logical_decisions": 20,
+    "new_saved_intentions": 0,
+    "new_appraisal_requests": 0,
+    "exact_format_cause": "unknown"
+  }
 }

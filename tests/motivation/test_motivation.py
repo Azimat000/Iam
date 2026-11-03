@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 
 from iam.domain import Op, new_id
 from iam.stubs import Reply, rest, act
@@ -55,6 +56,15 @@ class MotivationTest(LivingCase):
                   'content':{'text':'Метод','procedure':{'skill_id':'poem','method':'Повтор'}}}}}
         self.run_reply(pr)
         self.assertFalse(self.cycle.motivation.learning.procedures())
+        # Оба оценённых дубликата явно доступны: проверяем отказ именно по результату,
+        # независимо от ранжирования ограниченного рабочего контекста цикла.
+        learning = self.cycle.motivation.learning
+        self.assertTrue(set(pr['cites']) <= learning.assessments().keys())
+        context = SimpleNamespace(request={'context': [{'ref': ref} for ref in pr['cites']]})
+        decision = learning.proposal(pr, context)
+        self.assertIsNotNone(decision.violation)
+        self.assertEqual(decision.violation.code, 'procedure_invalid')
+        self.assertFalse(decision.ops)
         fake=self.m.prepare(kind='semantic',origin='model_explanation',text='Непривязанный навык',sources=(child.memory_id,),
                             content={'skill_assessment':assessment.content['skill_assessment']})
         self.assertTrue(self.m.write(fake).applied)
