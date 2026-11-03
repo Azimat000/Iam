@@ -12,7 +12,7 @@ def e(value):
 def render_world(data, token, form, dump, *, values=None):
     values = values or {}
     world = data['state']['world_time'].get('world', {})
-    content = '<p>Личное пространство, библиотека, собственные работы и намерения. Здесь можно наблюдать за занятиями и добавить текст для чтения.</p>'
+    content = '<div class="world-content"><p>Личное пространство, библиотека, собственные работы и намерения. Здесь можно наблюдать за занятиями и добавить текст для чтения.</p>'
     content += '<section><h2>Библиотека</h2>'
     library = world.get('library', {})
     if not library:
@@ -44,7 +44,7 @@ def render_world(data, token, form, dump, *, values=None):
     if not projects:
         content += '<p class="empty">Работ пока нет. Они появятся, когда личность решит что-нибудь написать и мир подтвердит сохранение.</p>'
     for key, project in projects.items():
-        content += f'<article><h3>{e(project["title"])}</h3><p class="help">Проект {e(key)}</p>'
+        content += f'<article><h3>{e(project["title"])}</h3><p>{e(STATUSES.get(project.get("status"),"В работе"))}</p><p class="help">Проект {e(key)}</p>'
         works = [(aid, work) for aid, work in world.get('works', {}).items()
                  if world['actions'][aid]['params']['project_id'] == key]
         for aid, work in reversed(works):
@@ -61,4 +61,4 @@ def render_world(data, token, form, dump, *, values=None):
                     f'<p class="help">Знает о действии: {"да" if goal.get("knows") else "не указано"}. '
                     f'Хочет: {"да" if goal.get("wants") else "не указано"}. Право на действие проверяется отдельно при каждой попытке.</p>'
                     '<details><summary>Основания и история</summary>' + dump(goal) + '</details></article>')
-    return content + '</section>'
+    return content + '</section></div>'

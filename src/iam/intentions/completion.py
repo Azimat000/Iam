@@ -104,7 +104,10 @@ class CompletionProvider:
             passed = bool(match and review is not None and review['verdict'] == 'pass')
             summary = {'passed': passed, 'requirement': needed, 'evaluation': review,
                        'scope_match': match, 'binding': key, 'kind': 'model_assessed',
-                       'semantic_verified': False, 'result': result}
+                       'semantic_verified': False, 'result': result,
+                       'goal_sources':goal['sources'], 'goal_text':goal['text'], 'criterion':goal['criterion'],
+                       'project_id':goal['project_id'], 'operation':goal['operation'],
+                       'result_fingerprint':self.intentions.world.state['actions'][result['action_id']]['receipt']['fingerprint']}
             saved = self.record(new_id('req'), dict(summary, phase='completion', proposal_id=pr['proposal_id']))
             if saved.event is not None:
                 self.intentions.reviews[key] = dict(summary, event_id=saved.event.event_id)

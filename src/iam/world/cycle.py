@@ -19,9 +19,12 @@ GUIDANCE = (
     'Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; '
     'no_action отдельно от них. До двух memory_write за ответ. '
     'action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; '
+    'Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done '
+    'после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. '
     'cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. '
     'intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,'
     'project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. '
+    'Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. '
     'intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}.'
     ' Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id '
     'из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. '
@@ -29,13 +32,31 @@ GUIDANCE = (
     'Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,'
     'content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, '
     'cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом.'
+    ' После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём '
+    'memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; '
+    'cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи.'
 )
 
 
 class WorldMemory(PersistentMemory):
+    motivation_off = False
+
+    def records(self):
+        rows=super().records()
+        if not self.motivation_off:
+            return rows
+        current={r.memory_id:r for r in rows if r.kind!='prospective'
+                 and not any(key in r.content for key in ('motivation','procedure','skill_assessment'))}
+        while True:
+            hidden={mid for mid,row in current.items() if any(ref.startswith('mem_') and ref not in current for ref in row.sources)
+                    or any(link.type=='same_source' and link.target.startswith('mem_') and link.target not in current for link in row.links)}
+            if not hidden:
+                return list(current.values())
+            current={mid:row for mid,row in current.items() if mid not in hidden}
+
     def decision_state(self):
         state = super().decision_state()
-        if self.off:
+        if self.off or self.motivation_off:
             state['intentions'] = {}
         return state
 
@@ -45,6 +66,7 @@ class LivingCycle(Cycle):
         super().__init__(controller, provider, memory, world, capabilities, creator,
                          allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write', 'intention'), **kwargs)
         self.intentions = Intentions(memory, world)
+        world.intentions = self.intentions
         self.motivation = Motivation(memory, self.intentions, off=motivation_off)
         self.provider = CompletionProvider(provider, self.intentions)
         self.fallback = make_kind_handlers(capabilities)['action']
@@ -85,6 +107,21 @@ class LivingCycle(Cycle):
             self.intentions.grants.clear()
             self.intentions.reviews.clear()
 
+    def _schedule_intentions(self):
+        from iam.clock import life_moment
+        if self.ctl.session_state!='running':
+            return
+        for key,goal in self.intentions.visible().items():
+            mid=goal.get('moment_id')
+            if (mid and goal['status'] not in ('done','abandoned')
+                    and mid not in self.ctl.state['world_time']['moments']
+                    and self.ctl.find_event(key='due:'+mid+':1') is None):
+                self.ctl.schedule_moment(life_moment(mid,max(goal['not_before_life_ms'],self.ctl.life_time_ms),key))
+
+    def run(self,*args,**kwargs):
+        self._schedule_intentions()
+        return super().run(*args,**kwargs)
+
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
         state = self.world.state
@@ -99,7 +136,7 @@ class LivingCycle(Cycle):
             if 'receipt' in action:
                 results.append({'memory_id': row.memory_id, **action['receipt'],
                                 'text': action['outcome']})
-        goals = self.intentions.visible()
+        goals = {} if self.motivation.off else self.intentions.visible()
         catalog = {'library': {key: {'title': value['title']} for key, value in list(state.get('library', {}).items())[:30]},
                    'space': state.get('space', {}),
                    'projects': {key: value for key, value in state.get('projects', {}).items()
@@ -110,6 +147,13 @@ class LivingCycle(Cycle):
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
         return context
+
+    def _verified(self, rep, response, result):
+        super()._verified(rep,response,result)
+        self._schedule_intentions()
+        if self.ctl.session_state == 'running' and not self.memory.off and result.status in ('applied','partial','rejected'):
+            for assessment in self.intentions.reviews.values():
+                self.motivation.learning.remember(assessment)
 
     def _settle(self, aid, kind, outcome, attempted_id, common):
         event_id = new_id('evt')

@@ -9,6 +9,95 @@ from .helpers import LivingCase
 
 
 class WorldTest(LivingCase):
+    def test_crash_and_pause_mid_action_leave_no_half_read(self):
+        original=self.world.execute
+        def crash(request):
+            original(request)
+            raise RuntimeError('Обрыв после подготовки')
+        self.world.execute=crash
+        report=self.run_reply(act(READ,{'material_id':self.material}))
+        self.assertEqual(report.actions[0].status,'unknown_outcome')
+        self.assertFalse(self.world.state['library'][self.material]['read'])
+        def pause(request):
+            outcome=original(request)
+            self.c.pause_session('operator')
+            return outcome
+        self.world.execute=pause
+        report=self.run_reply(act(READ,{'material_id':self.material}))
+        self.assertEqual(report.actions[0].status,'attempted')
+        self.assertFalse(self.world.state['library'][self.material]['read'])
+        self.c.resume_session()
+        self.cycle.settle_unfinished()
+        self.assertFalse(self.world.state['library'][self.material]['read'])
+
+    def test_real_duration_and_external_delivery_and_failed_initialization(self):
+        from iam.stubs import StubWorld
+        self.world.external=StubWorld()
+        outcome=self.world.execute(ActionRequest('act_External01','action','cap_External01'))
+        self.assertEqual(outcome.status,'confirmed')
+        original=self.world.execute
+        def elapsed(request):
+            value=original(request)
+            self.time.advance(350)
+            return value
+        self.world.execute=elapsed
+        result=self.read()
+        self.assertEqual(self.world.state['actions'][result.content['action_id']]['receipt']['duration_ms'],350)
+        self.assertEqual(self.world.view(),self.world.state)
+        # Отказ привратника не скрывается при первичной подготовке пустого пространства.
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        with patch.object(PersistentWorld,'state',new_callable=__import__('unittest').mock.PropertyMock,return_value={}):
+            with patch.object(self.c,'intervene',return_value=SimpleNamespace(applied=False)):
+                with self.assertRaises(ValueError):self.world.initialize()
+        self.c.pause_session('operator')
+        with patch.object(self.c,'intervene',return_value=SimpleNamespace(applied=False)):
+            with self.assertRaises(ValueError):self.world.add_material('Название','Текст','Причина')
+
+    def test_rest_action_message_and_memory_limits(self):
+        from iam.stubs import say
+        report=self.run_reply(rest(),act(WRITE,{'project_id':'poem','title':'Работа','text':'Свет'}))
+        self.assertFalse(report.actions)
+        declined=rest()
+        report=self.run_reply(act(WRITE,{'project_id':'poem','title':'Работа','text':'Свет'}),declined)
+        self.assertEqual(report.actions[0].status,'confirmed')
+        self.assertTrue(any(e.type=='proposal.rejected' and e.payload.get('proposal_id')==declined['proposal_id']
+                            for e in self.c.store.events()))
+        report=self.run_reply(rest(),say(WRITE,'someone','Текст'))
+        self.assertFalse(report.actions)
+        source=self.read()
+        def draft():
+            from iam.domain import new_id
+            return {'proposal_id':new_id('prop'),'kind':'memory_write','rationale':'Осмысление','cites':[source.memory_id],
+                    'body':{'draft':{'kind':'semantic','origin':'own_hypothesis','content':{'text':'Мысль'}}}}
+        before=len(self.m.records())
+        self.run_reply(draft(),draft(),draft())
+        self.assertEqual(len(self.m.records())-before,2)
+
+    def test_project_lifecycle_requires_semantic_done_and_closed_projects_are_immutable(self):
+        source=self.read()
+        self.run_reply(self.goal(source))
+        result=self.write('Две строки света.\nНа стол пришла весна.')
+        report=self.run_reply(act(WRITE,{'project_id':'poem','to_status':'done'}))
+        self.assertFalse(report.actions)
+        self.run_reply(self.transition('done',result=result),replies=(self.assessment(),self.assessment('evaluation')))
+        self.run_reply(act(WRITE,{'project_id':'poem','to_status':'done'}))
+        self.assertEqual(self.world.state['projects']['poem']['status'],'done')
+        report=self.run_reply(act(WRITE,{'project_id':'poem','title':'Новая версия','text':'Нельзя'}))
+        self.assertFalse(report.actions)
+        self.write('Отложенный текст','other')
+        self.run_reply(act(WRITE,{'project_id':'other','to_status':'abandoned'}))
+        self.assertEqual(self.world.state['projects']['other']['status'],'abandoned')
+        self.assertEqual(len(self.world.state['space']['places']),3)
+
+    def test_new_project_version_cannot_finish_using_old_goal_result(self):
+        source=self.read();self.run_reply(self.goal(source));result=self.write('Свет у окна.\nВесна.')
+        self.run_reply(self.transition('done',result=result),replies=(self.assessment(),self.assessment('evaluation')))
+        self.write('ПРОЕКТ ПУСТ И НЕ ГОТОВ')
+        report=self.run_reply(act(WRITE,{'project_id':'poem','to_status':'done'}))
+        self.assertFalse(report.actions)
+        self.assertEqual(self.world.state['projects']['poem']['status'],'active')
+
     def test_real_read_write_move_and_restart(self):
         source = self.read()
         self.assertIn('Снег тает', source.text)

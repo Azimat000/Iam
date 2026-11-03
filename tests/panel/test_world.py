@@ -70,3 +70,25 @@ class WorldHTTPTest(unittest.TestCase):
         self.runtime._test_flight=flight
         self.runtime.submit('_test_flight').result(5)
         self.assertNotIn('/actions/material_add',self.client.get('/world').text)
+
+
+class WorldPageRenderTest(unittest.TestCase):
+    def test_populated_world_and_legacy_missing_fields_are_safely_visible(self):
+        from iam.panel.world import render_world
+        from iam.panel.views import form,dump
+        work='act_RenderWork01'
+        data={'state':{'world_time':{'world':{
+            'space':{'places':{},'objects':{}},
+            'library':{'book':{'title':'<script>Название</script>','read':False,'text':'<img src=x>'}},
+            'projects':{'poem':{'title':'Своя работа','latest_work':work,'status':'done'},'old':{'title':'Старый проект','latest_work':'none'}},
+            'actions':{work:{'params':{'project_id':'poem'}}},
+            'works':{work:{'text':'Строка света.\nВесенний вечер.','event_id':'evt_ResultView01'}}}},
+            'intentions':{'goal':{'text':'Завершить две строки','status':'done','criterion':'Описать свет','knows':True,'wants':False},
+                          'legacy':{'status':'deferred'}}},'session_state':'paused','usage':{'in_flight':False},
+            'sending':False,'epoch':1,'version':5}
+        html=render_world(data,'csrf',form,dump,values={'title':'Длинное название','content':'<текст>'})
+        for visible in ('В пространстве пока нет предметов','Старый проект','Своя работа','Строка света','Выполнено',
+                        'Отложено','Не задан в старом формате','не указано','&lt;script&gt;','&lt;img','&lt;текст&gt;'):
+            self.assertIn(visible,html)
+        self.assertNotIn('<script>',html)
+        self.assertNotIn('<img',html)

@@ -7,6 +7,75 @@ from world.helpers import LivingCase
 
 
 class IntentionTest(LivingCase):
+    def test_future_moment_invalid_values_and_recovery_do_not_reset_or_duplicate(self):
+        source=self.read()
+        for value in (-1,True,'1000'):
+            pr=self.goal(source);pr['body']['not_before_life_ms']=value
+            self.run_reply(pr)
+            self.assertFalse(self.c.state['intentions'])
+        pr=self.goal(source);pr['body']['not_before_life_ms']=1000
+        self.run_reply(pr)
+        mid=self.c.state['intentions']['my_goal']['moment_id']
+        self.assertTrue(self.c.cancel_moment(mid).applied)
+        self.cycle._schedule_intentions()
+        self.assertIn(mid,self.c.state['world_time']['moments'])
+        self.time.advance(1000)
+        self.c.fire_due_moments()
+        self.cycle._schedule_intentions()
+        self.assertNotIn(mid,self.c.state['world_time']['moments'])
+
+    def test_knowing_wanting_and_permission_are_separate(self):
+        source=self.read();self.run_reply(self.goal(source))
+        self.caps.set_status(WRITE,'revoked')
+        report=self.run_reply(act(WRITE,{'project_id':'poem','title':'Работа','text':'Свет'}))
+        self.assertFalse(report.actions)
+        goal=self.c.state['intentions']['my_goal']
+        self.assertTrue(goal['knows']);self.assertTrue(goal['wants'])
+        self.run_reply(self.transition('abandoned'))
+        self.assertFalse(self.c.state['intentions']['my_goal']['wants'])
+        self.caps.set_status(WRITE,'available')
+        self.write('Закрываемая работа','closed')
+        self.run_reply(act(WRITE,{'project_id':'closed','to_status':'abandoned'}))
+        self.run_reply(self.goal(source,iid='closed_goal',project='closed'))
+        self.assertNotIn('closed_goal',self.c.state['intentions'])
+
+    def test_future_intention_survives_pause_and_fires_once_in_own_time(self):
+        source=self.read()
+        pr=self.goal(source);pr['body']['not_before_life_ms']=1000
+        self.run_reply(pr)
+        goal=self.c.state['intentions']['my_goal'];mid=goal['moment_id']
+        self.assertIn(mid,self.c.state['world_time']['moments'])
+        result=self.write()
+        before=len(self.p.calls)
+        self.run_reply(self.transition('done',result=result))
+        self.assertEqual(len(self.p.calls),before+1)
+        self.c.pause_session('operator');self.time.advance(5000)
+        self.assertEqual(self.c.life_time_ms,0)
+        self.cycle._schedule_intentions()
+        self.c=self.reopen(self.c)
+        self.assertIn(mid,self.c.state['world_time']['moments'])
+        self.c.resume_session();self.time.advance(1000)
+        events=self.c.fire_due_moments()
+        self.assertEqual(len(events),1)
+        self.assertEqual(events[0].events[0].payload['owner_ref'],'my_goal')
+        self.assertFalse(self.c.fire_due_moments())
+
+    def test_long_material_is_fully_visible_before_complete_read_is_accepted(self):
+        self.c.pause_session('operator')
+        value='Первый абзац. '*550+'КОНЕЦ_НУЖНО_УВИДЕТЬ'
+        long_id=self.world.add_material('Длинный текст',value,'Проверить полное чтение')
+        self.c.resume_session()
+        source=self.read()
+        self.run_reply(self.goal(source,project=long_id,text='Прочитать длинный текст полностью',criterion='Весь текст до конца',operation='read'))
+        from iam.world import READ
+        report=self.run_reply(act(READ,{'material_id':long_id}))
+        result=self.c.store.get_memory(report.actions[0].memory_id)
+        self.run_reply(self.transition('done',result=result), replies=(self.assessment(kind='received_text'),self.assessment('evaluation')))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'],'done')
+        packet=json.loads(self.p.calls[-1]['context'][1]['text'])
+        self.assertEqual(packet['available_result']['text'],value)
+        self.assertIn('КОНЕЦ_НУЖНО_УВИДЕТЬ',packet['available_result']['text'])
+
     def test_goal_and_action_are_independent_slots_in_both_orders(self):
         source = self.read()
         for reverse in (False,True):
@@ -26,6 +95,14 @@ class IntentionTest(LivingCase):
         report=self.run_reply(self.transition('active'))
         self.assertEqual(report.outcome,'rejected')
         self.assertEqual(len(self.c.state['intentions']['my_goal']['history']),6)
+
+    def test_inactive_goal_does_not_start_completion_reviews(self):
+        source=self.read();self.run_reply(self.goal(source));result=self.write()
+        self.run_reply(self.transition('deferred'))
+        before=len(self.p.calls)
+        self.run_reply(self.transition('done',result=result))
+        self.assertEqual(len(self.p.calls),before+1)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'],'deferred')
 
     def test_done_requires_late_matching_result_and_two_reviews(self):
         source = self.read()
@@ -108,3 +185,49 @@ class IntentionTest(LivingCase):
             self.assertNotIn('my_goal',self.c.state['intentions'])
         self.run_reply(rest(),self.goal(source))
         self.assertNotIn('my_goal',self.c.state['intentions'])
+
+    def test_unavailable_target_origin_duplicate_and_transition_extra_fields(self):
+        source=self.read()
+        for operation,target in (('read','missing'),('move','missing')):
+            self.run_reply(self.goal(source,operation=operation,project=target))
+            self.assertFalse(self.c.state['intentions'])
+        prepared=self.m.prepare(kind='episodic',origin='own_hypothesis',text='Не наблюдение',sources=(source.memory_id,))
+        self.m.write(prepared)
+        self.run_reply(self.goal(prepared))
+        self.assertFalse(self.c.state['intentions'])
+        self.run_reply(self.goal(source))
+        self.run_reply(self.goal(source))
+        self.assertEqual(len(self.c.state['intentions']),1)
+        pr=self.transition('deferred'); pr['body']['result_ref']=source.memory_id
+        self.run_reply(pr)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'],'active')
+        self.cycle.intentions.grants.clear()
+        direct=self.c.apply(self.prop(self.c,Op('intentions','my_goal.history','set',[],True)))
+        self.assertFalse(direct.applied)
+        bad=self.goal(source);bad['body']['intention_id']='bad.key'
+        self.run_reply(bad)
+        self.assertNotIn('bad.key',self.c.state['intentions'])
+        incomplete=self.goal(source);incomplete['body']={'op':'create','intention_id':'incomplete'}
+        self.run_reply(incomplete)
+        self.assertNotIn('incomplete',self.c.state['intentions'])
+
+    def test_revised_result_and_incomplete_display_do_not_reveal_original(self):
+        from iam.cycle.attention import Focus
+        source=self.read(); self.run_reply(self.goal(source)); result=self.write('Исходный секретный результат')
+        pr=self.transition('done',result=result)
+        trigger=self.due()
+        context=self.cycle._context(trigger,Focus('activity',None),self.m.records())
+        request=self.cycle._request('cyc_TestResult01',context,0,None)
+        _,shown=self.cycle.intentions.result(pr,request)
+        self.assertEqual(shown['text'],'Исходный секретный результат')
+        request['context']=[i for i in context if 'world_results' not in i['text']]
+        with self.assertRaises(ValueError):self.cycle.intentions.result(pr,request)
+        request['context']=context+[{'ref':trigger.event_id,'origin':'observation','layer':'state','text':'[]'}]
+        self.cycle.intentions.result(pr,request)
+        pr['cites']=[]
+        with self.assertRaises(ValueError):self.cycle.intentions.result(pr,request)
+        self.m.revise(result.memory_id,'Исправленный текст',sources=result.sources,reason='Исправить источник')
+        self.run_reply(rest())
+        self.assertNotIn('Исходный секретный результат',json.dumps(self.p.calls[-1],ensure_ascii=False))
+        self.run_reply(self.transition('done',result=self.m._source(result.memory_id)))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'],'active')

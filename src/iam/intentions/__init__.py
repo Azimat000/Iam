@@ -2,7 +2,7 @@
 import copy
 import json
 
-from iam.domain import Op
+from iam.domain import Op, new_id
 from iam.state import KindDecision, Violation
 from iam.world import READ, WRITE, MOVE, identifier, text
 
@@ -18,7 +18,7 @@ class Intentions:
         self.ctl.add_validator('intentions_contract', self.validate)
 
     def visible(self, state=None):
-        if self.memory.off:
+        if self.memory.off or getattr(self.memory,'motivation_off',False):
             return {}
         state = self.ctl.state if state is None else state
         return {key: copy.deepcopy(value) for key, value in state['intentions'].items()
@@ -41,7 +41,8 @@ class Intentions:
         visible = {item['ref'] for item in ctx.request['context']}
         rows = {r.memory_id: r for r in self.memory.records()} if not self.memory.off else {}
         if op == 'create':
-            if set(body) != {'op', 'intention_id', 'text', 'criterion', 'project_id', 'operation'}:
+            required={'op', 'intention_id', 'text', 'criterion', 'project_id', 'operation'}
+            if not required <= set(body) or set(body)-required-{'not_before_life_ms'}:
                 raise ValueError('Поля замысла')
             if iid in ctx.state['intentions'] or not text(body['text'], 500) or not text(body['criterion'], 500):
                 raise ValueError('Нужна новая конкретная цель')
@@ -57,6 +58,8 @@ class Intentions:
                 raise ValueError('Нет материала')
             if body['operation'] == 'move' and target not in self.world.state.get('space', {}).get('objects', {}):
                 raise ValueError('Нет предмета')
+            if body['operation'] == 'write' and self.world.state.get('projects',{}).get(target,{}).get('status','active') != 'active':
+                raise ValueError('Проект уже закрыт')
             work = self.world.state.get('projects', {}).get(target, {}).get('latest_work')
             initial = self.world.state.get('works', {}).get(work, {}).get('fingerprint')
             value = {key: body[key] for key in ('text', 'criterion', 'project_id', 'operation')}
@@ -65,6 +68,11 @@ class Intentions:
                          created_seq=self.ctl.store.last_seq(), created_life_ms=ctx.life_time_ms,
                          initial_fingerprint=initial, knows=True, wants=True,
                          history=[{'status': 'active', 'reason': pr['rationale'], 'life_ms': ctx.life_time_ms}])
+            if 'not_before_life_ms' in body:
+                when=body['not_before_life_ms']
+                if type(when) is not int or when<ctx.life_time_ms:
+                    raise ValueError('Нужен будущий момент собственного времени')
+                value.update(not_before_life_ms=when,moment_id=new_id('mom'))
             return [Op('intentions', iid, 'set', value, True)]
         if op != 'transition' or set(body) - {'op', 'intention_id', 'to_status', 'result_ref'}:
             raise ValueError('Критерий/текст не переписываются')
@@ -73,6 +81,7 @@ class Intentions:
         if status != 'done' and 'result_ref' in body:
             raise ValueError('Не нужен результат')
         ops = [Op('intentions', iid + '.status', 'transition', status, True),
+               Op('intentions', iid + '.wants', 'set', status not in ('done', 'abandoned'), True),
                Op('intentions', iid + '.history', 'add', {'status': status, 'reason': pr['rationale'],
                                                         'life_ms': ctx.life_time_ms}, True)]
         if status == 'done':
@@ -88,6 +97,8 @@ class Intentions:
     def result(self, pr, request):
         """Результат берётся из доступной версии памяти, а не из архива событий/работ."""
         goal = self.visible()[pr['body']['intention_id']]
+        if goal['status']!='active':
+            raise ValueError('Завершить можно только активное намерение')
         ref = pr['body']['result_ref']
         visible = {item['ref'] for item in request['context']}
         if ref not in visible or ref not in pr['cites']:
@@ -103,7 +114,8 @@ class Intentions:
         if (action['status'] != 'confirmed' or receipt['target'] != goal['project_id']
                 or action['capability_id'] != OPERATIONS[goal['operation']]
                 or receipt['event_id'] not in row.sources or event.type != 'action.confirmed'
-                or event.seq <= goal['created_seq'] or event.event_id not in pr['cites']):
+                or event.seq <= goal['created_seq'] or event.event_id not in pr['cites']
+                or event.life_time_ms<goal.get('not_before_life_ms',0)):
             raise ValueError('Нужен поздний исход того же проекта и его событие в cites')
         if goal['operation'] == 'write' and receipt['fingerprint'] == goal['initial_fingerprint']:
             raise ValueError('Повтор исходного текста не является новой работой')

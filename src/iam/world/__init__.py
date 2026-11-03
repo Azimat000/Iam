@@ -11,7 +11,7 @@ WRITE = 'cap_Project01'
 MOVE = 'cap_RoomEdit01'
 CAPABILITIES = (
     Capability(READ, 'Чтение библиотеки', 'params: material_id'),
-    Capability(WRITE, 'Собственные работы', 'params: project_id, title, text'),
+    Capability(WRITE, 'Собственные работы', 'params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned'),
     Capability(MOVE, 'Личное пространство', 'params: object_id, place_id'),
 )
 
@@ -43,7 +43,7 @@ class PersistentWorld:
             return
         result = self.ctl.intervene('technical_fix', 'Создано пустое личное пространство S22', (
             Op('world_time', 'world.space', 'set', {
-                'places': {'desk': 'Рабочий стол', 'shelf': 'Полка'},
+                'places': {'desk': 'Рабочий стол', 'shelf': 'Библиотека', 'room': 'Личное пространство'},
                 'objects': {'notebook': {'title': 'Блокнот', 'place_id': 'desk'}}}, True),))
         if not result.applied:
             raise ValueError('Не удалось создать пространство')
@@ -72,9 +72,21 @@ class PersistentWorld:
             if set(p) != {'material_id'} or not identifier(p['material_id']) or p['material_id'] not in state.get('library', {}):
                 raise ValueError('Материал отсутствует')
         elif request.capability_id == WRITE:
-            if (set(p) != {'project_id', 'title', 'text'} or not identifier(p['project_id'])
+            if 'to_status' in p:
+                goal_statuses = getattr(self, 'intentions', None)
+                completed = goal_statuses.visible() if goal_statuses is not None else {}
+                if (set(p) != {'project_id','to_status'} or not identifier(p['project_id'])
+                        or p['to_status'] not in ('done','abandoned')
+                        or state.get('projects',{}).get(p['project_id'],{}).get('status') != 'active'
+                        or p['to_status'] == 'done' and not any(g['project_id'] == p['project_id'] and g['status'] == 'done'
+                            and g.get('completion',{}).get('result',{}).get('action_id') == state['projects'][p['project_id']]['latest_work']
+                            for g in completed.values())):
+                    raise ValueError('Проект не активен или завершение не подтверждено целью')
+            elif (set(p) != {'project_id', 'title', 'text'} or not identifier(p['project_id'])
                     or not text(p['title'], 160) or not text(p['text'])):
                 raise ValueError('Неверные параметры работы')
+            elif state.get('projects',{}).get(p['project_id'],{}).get('status', 'active') != 'active':
+                raise ValueError('Закрытый проект нельзя переписать')
         elif request.capability_id == MOVE:
             space = state.get('space', {})
             if (set(p) != {'object_id', 'place_id'} or not identifier(p['object_id']) or not identifier(p['place_id'])
@@ -96,7 +108,10 @@ class PersistentWorld:
             material = state['library'][p['material_id']]
             summary, target, scope = material['text'], p['material_id'], 'received_text'
         elif request.capability_id == WRITE:
-            summary, target, scope = p['text'], p['project_id'], 'artifact'
+            if 'to_status' in p:
+                summary, target, scope = 'Проект: ' + p['to_status'], p['project_id'], 'world_state'
+            else:
+                summary, target, scope = p['text'], p['project_id'], 'artifact'
         else:
             summary, target, scope = 'Предмет помещён: ' + p['place_id'], p['object_id'], 'world_state'
         outcome = ActionOutcome('confirmed', summary)
@@ -118,10 +133,13 @@ class PersistentWorld:
             ops += [Op('world_time', f'world.library.{target}.read', 'set', True, True),
                     Op('world_time', f'world.library.{target}.read_event', 'set', event_id, True)]
         elif request.capability_id == WRITE:
-            work = {'title': p['title'], 'text': p['text'], 'fingerprint': receipt['fingerprint'],
-                    'event_id': event_id, 'action_id': aid}
-            ops += [Op('world_time', 'world.works.' + aid, 'set', work, True),
-                    Op('world_time', 'world.projects.' + target, 'set', {'title': p['title'], 'latest_work': aid}, True)]
+            if 'to_status' in p:
+                ops.append(Op('world_time', 'world.projects.' + target + '.status', 'set', p['to_status'], True))
+            else:
+                work = {'title': p['title'], 'text': p['text'], 'fingerprint': receipt['fingerprint'],
+                        'event_id': event_id, 'action_id': aid}
+                ops += [Op('world_time', 'world.works.' + aid, 'set', work, True),
+                        Op('world_time', 'world.projects.' + target, 'set', {'title': p['title'], 'latest_work': aid, 'status':'active'}, True)]
         else:
             ops.append(Op('world_time', f'world.space.objects.{target}.place_id', 'set', p['place_id'], True))
         return tuple(ops)

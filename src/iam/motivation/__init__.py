@@ -5,14 +5,28 @@ from iam.world import identifier, text, fingerprint
 
 
 class Motivation:
+    @property
+    def off(self):
+        return self._off
+
+    @off.setter
+    def off(self,value):
+        self._off=value
+        self.memory.motivation_off=value
+
     def __init__(self, memory, intentions, *, off=False):
-        self.memory, self.ctl, self.intentions, self.off = memory, memory.ctl, intentions, off
+        self.memory, self.ctl, self.intentions = memory, memory.ctl, intentions
+        self.off=off
         self.ctl.register_kind('memory_write', self.proposal)
         self.ctl.add_validator('motivation_sources', self.validate)
+        from .learning import Learning
+        self.learning = Learning(self)
 
     def proposal(self, pr, ctx):
         draft = pr['body']['draft']
         content = draft['content']
+        if 'procedure' in content:
+            return self.learning.proposal(pr,ctx)
         if 'motivation' not in content:
             return self.memory.experience.proposal(pr, ctx)
         try:
@@ -41,8 +55,8 @@ class Motivation:
         allowed = [change['after']['content'].get('motivation_pointer') for change in check.changes
                    if change['group'] == 'memory']
         return ['Мотивация требует атомарной записи опыта' for change in check.changes
-                if change['group'] == 'preferences' and change['path'].split('.')[0] == 's22'
-                and not any(item and change['path'] == 's22.' + item['topic']
+                if change['group'] == 'preferences' and change['path'].split('.')[0] in ('s22','s22_procedures')
+                and not any(item and change['path'] == item.get('collection','s22') + '.' + item['topic']
                             and change['after'] == {k: item[k] for k in ('memory_id', 'version')} for item in allowed)]
 
     def signals(self, records):
@@ -73,6 +87,7 @@ class Motivation:
                 event = self.ctl.find_event(event_id=row.sources[0])
                 history.setdefault(target, []).append((event.seq, aid, row.memory_id, action))
         items = []
+        skills = self.learning.measurements()
         for target, values in sorted(history.items()):
             values.sort()
             latest = values[-1][3]
@@ -92,13 +107,16 @@ class Motivation:
             items.append({'target': target, 'sources': [v[2] for v in values], 'last_outcome': latest['status'],
                           'exact_repeats': repeats, 'consecutive_failures': failures, 'interest': adjusted,
                           'text_novelty': None if not confirmed else (0 if repeats else 1),
-                          'meaningful_progress': None, 'skill': None})
+                          'meaningful_progress': skills.get(target), 'skill': skills.get(target)})
         goals = self.intentions.visible()
         assessed = [g for g in goals.values() if g.get('completion', {}).get('kind') == 'model_assessed']
         return {'enabled': True, 'mechanism': 'voluntary_goals', 'selects_action': False,
                 'interests': interests, 'items': items,
                 'unfinished': [key for key, g in goals.items() if g['status'] in ('active', 'deferred', 'waiting_opportunity')],
                 'needs': {key: value['need'] for key, value in interests.items()},
+                'goal_tension': {'open_goals':sum(g['status']=='active' for g in goals.values()),
+                                 'source':'принятые собственные намерения; не фиксированная потребность'},
+                'skills':skills, 'procedures':self.learning.procedures(),
                 'skill_measurement': {'rubric': 'подтверждённое достижение исходного критерия по отдельной модельной оценке',
                                       'completed': len(assessed), 'total_goals': len(goals),
                                       'verified_human_skill': False},
