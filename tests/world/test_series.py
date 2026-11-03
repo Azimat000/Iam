@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from iam.backup.scan import SecretScanner
-from iam.providers.errors import ProviderUnavailable
+from iam.providers.errors import ProviderFormatError, ProviderUnavailable
 from iam.providers.run import RunResult
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/world/series.py"
@@ -91,12 +91,71 @@ class SeriesTests(unittest.TestCase):
                     return inner.propose(request)
             return Counted()
 
-        with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run:
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run, \
+                patch.object(series, "VERSION", "s22-series-1"), patch.object(series, "NATIVE_FORMAT_RETRIES", 0):
             result = series.run_series(output, mode="live", auth_file="/external/not-read", provider_factory=counted_factory)
         self.assertEqual((result["status"], result["stop"], result["decisions_started"], result["actual_model_calls"]),
                          ("partial", "assessment_error", 18, 19), result)
         self.assertEqual(run.call_count, 19)
         return result
+
+    def synthetic_second(self, original, output):
+        self.synthetic_original(original)
+
+        def factory(cell, transport):
+            scripted = series.ScriptedProvider()
+
+            class Legacy:
+                name = "scripted"
+
+                def __init__(self):
+                    self.requests, self.last_calls = 0, 0
+
+                def propose(self, request):
+                    self.last_calls = 0
+                    self.requests += 1
+                    transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    self.last_calls += 1
+                    if cell["cell"] == "return_unfinished-main-2" and self.requests == 2:
+                        raise ProviderFormatError("Codex response did not match the required format")
+                    scripted.queue(series.Reply((series.rest(),)))
+                    return scripted.propose(request)
+            return Legacy()
+
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)), \
+                patch.object(series, "VERSION", "s22-series-2"), patch.object(series, "NATIVE_FORMAT_RETRIES", 0):
+            result = series.run_series(output, mode="live", auth_file="/external/not-read", repair_from=original, provider_factory=factory)
+        self.assertEqual((result["status"], result["stop"], result["decisions_started"], result["actual_model_calls"]),
+                         ("partial", "provider_or_cycle_failure", 22, 23), result)
+        return result
+
+    def neutral_factory(self, *, constructed=None, requested=None, fail_cell=None, fail_at=2,
+                        codes=("final_json",), error_type=ProviderFormatError):
+        def factory(cell, transport):
+            if constructed is not None:
+                constructed.append(cell["cell"])
+            scripted = series.ScriptedProvider()
+
+            class Neutral:
+                name = "scripted"
+
+                def __init__(self):
+                    self.count, self.last_calls, self.last_format_codes = 0, 0, []
+
+                def propose(self, request):
+                    self.last_calls, self.last_format_codes = 0, []
+                    self.count += 1
+                    if requested is not None:
+                        requested.append(cell["cell"])
+                    transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    self.last_calls += 1
+                    if cell["cell"] == fail_cell and self.count == fail_at:
+                        self.last_format_codes = list(codes)
+                        raise error_type("Safe fixed format failure")
+                    scripted.queue(series.Reply((series.rest(),)))
+                    return scripted.propose(request)
+            return Neutral()
+        return factory
 
     @staticmethod
     def snapshot_files(root):
@@ -146,7 +205,7 @@ class SeriesTests(unittest.TestCase):
         manifest = self.read("manifest.json")
         self.assertTrue(manifest["scripted_past"])
         self.assertEqual(manifest["model"], "gpt-6-luna")
-        self.assertEqual(manifest["budgets"]["provider_format_retries"], 0)
+        self.assertEqual(manifest["budgets"]["provider_format_retries"], 1)
         self.assertEqual(manifest["budgets"]["cycle_stale_retries"], 0)
         self.assertEqual(result["manifest_sha256"], series.sha(self.root / "run/manifest.json"))
         for cell in result["cells"]:
@@ -485,6 +544,471 @@ class SeriesTests(unittest.TestCase):
         with self.assertRaisesRegex(series.BudgetStop, "cell_call_forecast"):
             ledger.forecast(session, live=True)
 
+    def test_final_chain_reuses_five_cells_and_keeps_two_histories(self):
+        original, second, output = self.root / "live1", self.root / "live2", self.root / "final"
+        previous = self.synthetic_second(original, second)
+        old1, old2 = self.snapshot_files(original), self.snapshot_files(second)
+        constructed, requested = [], []
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run:
+            result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                       provider_factory=self.neutral_factory(constructed=constructed, requested=requested))
+        self.assertEqual(result["status"], "completed", result)
+        self.assertEqual((result["inherited_decisions_started"], result["new_decisions_started"], result["decisions_started"]), (22, 38, 60))
+        self.assertEqual((result["inherited_model_calls"], result["new_actual_model_calls"], result["actual_model_calls"]), (23, 38, 61))
+        self.assertEqual((result["inherited_failed_decisions"], result["selected_logical_decisions"]), (4, 56))
+        self.assertEqual((run.call_count, len(constructed), len(result["cells"])), (38, 13, 18))
+        self.assertFalse(set(constructed) & {row["cell"] for row in previous["cells"][:5]})
+        self.assertEqual(requested.count("return_unfinished-main-2"), 2)
+        self.assertEqual(result["cells"][5]["session_usage"]["max_calls"], 8)
+        self.assertEqual(result["cells"][5]["session_usage"]["max_ms"], series.CELL_MS - previous["cells"][5]["session_usage"]["elapsed_ms"])
+        self.assertEqual([[d["outcome"] for d in h["decisions"]] for h in result["inherited_failed_histories"]], [["done", "rejected"], ["done", "no_decision"]])
+        self.assertEqual(result["cells"][0]["reused_from"], previous["cells"][0]["reused_from"])
+        self.assertIn("reused_in_final_from", result["cells"][0])
+        self.assertEqual([row["source_version"] for row in result["cells"][:5]], ["s22-series-1"] * 4 + ["s22-series-2"])
+        manifest = self.read("manifest.json", output)
+        self.assertEqual(manifest["repair_count"], 2)
+        self.assertEqual(manifest["new_decisions_max"], 38)
+        self.assertEqual(manifest["selected_logical_decisions_max"], 56)
+        self.assertEqual([v["version"] for v in manifest["repair_of"]["source_versions"]], ["s22-series-1", "s22-series-2"])
+        self.assertEqual(self.read("calls.json", output)["attempts"][:23], self.read("calls.json", second)["attempts"])
+        self.assertEqual(old1, self.snapshot_files(original))
+        self.assertEqual(old2, self.snapshot_files(second))
+        for relative, digest in manifest["repair_of"]["artifact_sha256"].items():
+            self.assertEqual(series.sha(output / "original" / relative), digest)
+        with self.assertRaises(ValueError):
+            series.run_series(self.root / "another-final", mode="live", auth_file="/external/not-read", final_repair_from=output)
+        with self.assertRaises(ValueError):
+            series.run_series(self.root / "legacy-on-repair", mode="live", auth_file="/external/not-read", repair_from=second)
+
+    def test_final_repair_rejects_broken_lineage_and_unsafe_paths(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        before1, before2 = self.snapshot_files(original), self.snapshot_files(second)
+
+        def change(root, relative, transform):
+            value = self.read(relative, root)
+            transform(value)
+            (root / relative).write_text(json.dumps(value, ensure_ascii=False))
+
+        def refresh(root):
+            change(root, "summary.json", lambda value: value.update(manifest_sha256=series.sha(root / "manifest.json")))
+
+        for label in ("count", "counters", "inherited_ledger", "transitive", "null_response", "prefix", "inventory", "symlink"):
+            with self.subTest(label=label):
+                source = self.root / ("bad-" + label)
+                shutil.copytree(second, source)
+                if label == "count":
+                    change(source, "manifest.json", lambda v: v.update(repair_count=2))
+                    refresh(source)
+                elif label == "counters":
+                    change(source, "summary.json", lambda v: v.update(typed_requests=24))
+                elif label == "inherited_ledger":
+                    change(source, "calls.json", lambda v: v["attempts"][0].update(request_id="req_wrongInherited01"))
+                elif label == "transitive":
+                    change(source, "manifest.json", lambda v: v["repair_of"]["artifact_sha256"].update({"manifest.json": "0" * 64}))
+                    refresh(source)
+                elif label == "null_response":
+                    change(source, "cells/return_unfinished-main-2/requests/002.json", lambda v: v.update(response={}))
+                elif label == "prefix":
+                    change(source, "cells/interest_emergence-main-1/requests/001.json", lambda v: v["request"].update(purpose="appraise"))
+                elif label == "inventory":
+                    change(source, "manifest.json", lambda v: v["sources"].update({"runtime/unknown.py": "0" * 64}))
+                    refresh(source)
+                else:
+                    target = source / "original/manifest.json"
+                    target.unlink()
+                    target.symlink_to(original / "manifest.json")
+                with patch.object(series, "subprocess_runner", side_effect=AssertionError("No live calls")) as run:
+                    with self.assertRaises(ValueError):
+                        series.run_series(self.root / ("out-" + label), mode="live", auth_file="/external/not-read", final_repair_from=source)
+                run.assert_not_called()
+        for kwargs in (dict(repair_from=original, final_repair_from=second),
+                       dict(final_repair_from=second, auth_file=original / "iam-managed.json"),
+                       dict(final_repair_from=second, auth_file=second / "iam-managed.json")):
+            with self.assertRaises(ValueError):
+                series.run_series(self.root / "unsafe-output", mode="live", **dict(dict(auth_file="/external/not-read"), **kwargs))
+        with self.assertRaises(ValueError):
+            series.run_series(second / "nested", mode="live", auth_file="/external/not-read", final_repair_from=second)
+        frozen = series.source_hashes()
+        frozen["runtime/intentions/completion.py"] = "0" * 64
+        with patch.object(series, "source_hashes", return_value=frozen), patch.object(series, "subprocess_runner", side_effect=AssertionError("No calls")):
+            result = series.run_series(self.root / "changed-core", mode="live", auth_file="/external/not-read", final_repair_from=second)
+        self.assertEqual((result["status"], result["new_decisions_started"]), ("partial", 0))
+        self.assertEqual(before1, self.snapshot_files(original))
+        self.assertEqual(before2, self.snapshot_files(second))
+
+    def test_official_native_repair_counts_two_calls_for_one_typed_request(self):
+        from iam.providers.codex import fake
+        calls = 0
+        valid = fake.reply([dict(kind="no_action", rationale="Отдых", cites=[], body=dict(reason="Достаточно"))])
+
+        def transport(*args):
+            nonlocal calls
+            calls += 1
+            return fake.garbage() if calls == 1 else valid
+
+        def provider(cell, runner):
+            return series.CodexProvider(runner, series.CodexSandboxConfig(), model=series.MODEL, max_format_retries=1)
+
+        with patch.object(series, "subprocess_runner", side_effect=transport):
+            result = series.run_series(self.root / "run", mode="live", auth_file="/external/not-read", provider_factory=provider)
+        self.assertEqual(result["status"], "completed", result)
+        self.assertEqual((result["decisions_started"], result["typed_requests"], result["actual_model_calls"]), (60, 60, 61))
+        attempts = self.read("calls.json")["attempts"]
+        self.assertEqual(attempts[0]["request_id"], attempts[1]["request_id"])
+        entry = self.read("cells/interest_emergence-main-1/decisions/01.json")
+        self.assertEqual(entry["shared_format_budget"]["repairs"], ["native"])
+        self.assertEqual(entry["shared_format_budget"]["physical_invocations"], 2)
+
+    def test_native_and_cycle_share_one_repair_and_hard_cap_rejects_fifth(self):
+        for ordering in ("native_cycle", "cycle_native", "cap"):
+            with self.subTest(ordering=ordering):
+                def factory(cell, transport):
+                    scripted = series.ScriptedProvider()
+
+                    class Mixed:
+                        name = "codex"
+
+                        def __init__(self):
+                            self.count, self.last_calls, self.last_format_codes = 0, 0, []
+
+                        def propose(self, request):
+                            self.count += 1
+                            self.last_calls, self.last_format_codes = 0, []
+                            repetitions = 5 if ordering == "cap" else 2 if ordering == "native_cycle" or self.count > 1 else 1
+                            for _ in range(repetitions):
+                                transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                                if ordering != "cap":
+                                    self.last_calls += 1
+                                    self.last_format_codes = ["proposal_schema"]
+                            scripted.queue(series.Reply((series.rest(),)))
+                            response = scripted.propose(request)
+                            response["invalid_extra"] = True
+                            return response
+                    return Mixed()
+
+                output = self.root / ordering
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run:
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", provider_factory=factory)
+                expected = 4 if ordering == "cap" else 2
+                self.assertEqual((result["status"], result["actual_model_calls"], result["decisions_started"]), ("partial", expected, 1), result)
+                self.assertEqual(run.call_count, expected)
+                self.assertEqual(result["cells"][0]["error"]["error_class"], "BudgetStop")
+                if ordering != "cap":
+                    trace = self.read("cells/interest_emergence-main-1/requests/002.json", output)
+                    self.assertEqual(trace["format_codes"], ["proposal_schema"])
+
+    def test_final_local_rejections_require_coverage_and_infra_stops_all(self):
+        from iam.providers.errors import ProviderTimeout
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        cases = (("local", "interest_loss-main-1", 2, ("final_json",), ProviderFormatError, "completed_with_rejections"),
+                 ("empty", "return_unfinished-main-2", 1, ("proposal_schema",), ProviderFormatError, "partial"),
+                 ("unknown", "return_unfinished-main-2", 2, ("not-a-fixed-code",), ProviderFormatError, "partial"),
+                 ("stream", "return_unfinished-main-2", 2, ("stream_jsonl",), ProviderFormatError, "partial"),
+                 ("infra", "return_unfinished-main-2", 2, ("final_json",), ProviderTimeout, "partial"))
+        for label, cell, at, codes, error_type, status in cases:
+            with self.subTest(label=label):
+                output = self.root / label
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)):
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                               provider_factory=self.neutral_factory(fail_cell=cell, fail_at=at, codes=codes, error_type=error_type))
+                self.assertEqual(result["status"], status, result)
+                self.assertIsNone(result["behavioral_success"])
+                if label in ("local", "empty"):
+                    self.assertEqual(len(result["cells"]), 18)
+                    self.assertEqual(len(result["local_rejections"]), 1)
+                    self.assertEqual(result["stop"], "no_valid_decision" if label == "empty" else None)
+                else:
+                    self.assertLess(len(result["cells"]), 18)
+                    self.assertEqual(result["local_rejections"], [])
+                if label == "unknown":
+                    trace = self.read("cells/return_unfinished-main-2/requests/002.json", output)
+                    self.assertEqual(trace["format_codes"], ["unsupported_format_code"])
+
+    def test_final_malformed_assessment_is_cell_local_after_valid_choice(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        underlying = self.appraisal_factory("malformed", target="interest_loss-main-1")
+
+        def factory(cell, transport):
+            inner = underlying(cell, transport)
+
+            class Counted:
+                name = inner.name
+
+                def propose(self, request):
+                    transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    return inner.propose(request)
+            return Counted()
+
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)):
+            result = series.run_series(self.root / "final", mode="live", auth_file="/external/not-read", final_repair_from=second, provider_factory=factory)
+        self.assertEqual(result["status"], "completed_with_rejections", result)
+        self.assertEqual(len(result["cells"]), 18)
+        self.assertEqual(result["local_rejections"][0]["stop"], "assessment_error")
+        self.assertEqual(result["local_rejections"][0]["error"]["assessments"][0]["error"], "assessment_format_or_cites")
+
+    def test_final_flag_only_tool_response_stops_before_next_cell(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        for detected in (True, False):
+            with self.subTest(tool_use_detected=detected):
+                constructed = []
+
+                def factory(cell, transport):
+                    constructed.append(cell["cell"])
+                    scripted = series.ScriptedProvider()
+
+                    class FlagOnly:
+                        name = "codex"
+                        count = 0
+
+                        def propose(self, request):
+                            self.count += 1
+                            transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                            if cell["cell"] == "return_unfinished-main-2" and self.count == 2:
+                                scripted.queue(series.Reply((), tool_use=detected))
+                            else:
+                                scripted.queue(series.Reply((series.rest(),)))
+                            return scripted.propose(request)
+                    return FlagOnly()
+
+                output = self.root / ("tool" if detected else "ordinary-rejection")
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)):
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second, provider_factory=factory)
+                if detected:
+                    self.assertEqual((result["status"], result["stop"]), ("partial", "tool_use"), result)
+                    self.assertEqual(constructed, ["return_unfinished-main-2"])
+                    self.assertEqual((len(result["cells"]), result["new_decisions_started"]), (6, 2))
+                    self.assertEqual(result["local_rejections"], [])
+                    trace = self.read("cells/return_unfinished-main-2/requests/002.json", output)
+                    self.assertTrue(trace["response"]["tool_use_detected"])
+                    self.assertEqual(trace["response"]["proposals"], [])
+                else:
+                    self.assertEqual(result["status"], "completed", result)
+                    self.assertEqual(len(result["cells"]), 18)
+                    self.assertEqual(result["local_rejections"], [])
+
+    def test_empty_response_is_not_a_choice_and_empty_only_cell_cannot_complete(self):
+        request = dict(request_id="req_EmptyChoiceTest01", epoch=1, state_version=1, purpose="choose_action")
+        scripted = series.ScriptedProvider([series.Reply(()), series.Reply((series.rest("Явно выбираю отдых"),))])
+        empty = scripted.propose(request)
+        self.assertEqual(series.jsonschema.errors("response", empty), [])
+        self.assertFalse(series.valid_choice_trace(dict(request=request, response=empty, error=None)))
+        rest = scripted.propose(request)
+        self.assertTrue(series.valid_choice_trace(dict(request=request, response=rest, error=None)))
+
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+
+        def factory(cell, transport):
+            replies = series.ScriptedProvider()
+
+            class EmptyCell:
+                name = "scripted"
+
+                def propose(self, query):
+                    transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    proposals = () if cell["cell"] == "return_unfinished-main-2" else (series.rest(),)
+                    replies.queue(series.Reply(proposals))
+                    return replies.propose(query)
+            return EmptyCell()
+
+        output = self.root / "final"
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)):
+            result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second, provider_factory=factory)
+        self.assertEqual((result["status"], result["stop"], len(result["cells"])), ("partial", "no_valid_decision", 18), result)
+        self.assertEqual(result["local_rejections"], [])
+        empty_cell = result["cells"][5]
+        self.assertEqual(empty_cell["cell"], "return_unfinished-main-2")
+        self.assertEqual(empty_cell["valid_typed_choice_decisions"], 0)
+        self.assertEqual([item["outcome"] for item in empty_cell["decisions"]], ["rejected", "rejected"])
+        for number in (1, 2):
+            trace = self.read(f"cells/return_unfinished-main-2/requests/{number:03d}.json", output)
+            self.assertEqual(trace["response"]["proposals"], [])
+            self.assertIsNone(trace["error"])
+        self.assertIsNone(result["behavioral_success"])
+
+    def first_action_factory(self, constructed):
+        def factory(cell, transport):
+            constructed.append(cell["cell"])
+            replies = series.ScriptedProvider()
+
+            class FirstAction:
+                name = "scripted"
+                count = 0
+
+                def propose(self, query):
+                    self.count += 1
+                    transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    proposal = (series.act(series.WRITE, dict(project_id="technical_probe", title="Проба", text="Текст локальной пробы."))
+                                if cell["cell"] == "return_unfinished-main-2" and self.count == 1 else series.rest())
+                    replies.queue(series.Reply((proposal,)))
+                    return replies.propose(query)
+            return FirstAction()
+        return factory
+
+    def test_final_action_crash_stops_despite_done_and_unknown_outcome(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        constructed = []
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)), \
+                patch.object(series.PersistentWorld, "execute", side_effect=OSError("Local execution unavailable")):
+            result = series.run_series(self.root / "final", mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                       provider_factory=self.first_action_factory(constructed))
+        self.assertEqual((result["status"], result["stop"]), ("partial", "technical_fault"), result)
+        self.assertEqual(constructed, ["return_unfinished-main-2"])
+        self.assertEqual(result["local_rejections"], [])
+        entry = self.read("cells/return_unfinished-main-2/decisions/01.json", self.root / "final")
+        self.assertEqual(entry["report"]["outcome"], "done")
+        self.assertEqual(entry["report"]["actions"][0]["status"], "unknown_outcome")
+        self.assertTrue(any(f.get("event", {}).get("payload", {}).get("fault") == "action_crash" for f in entry["technical_faults"]))
+        self.assertNotIn("technical_probe", entry["state"]["world_time"]["world"]["projects"])
+        self.assertFalse(result["cells"][-1].get("planned_budget_stop", False))
+
+    def test_final_critical_failed_stages_cannot_be_masked_by_limit_or_local(self):
+        from iam.cycle.cycle import StageRecord
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        original_run = series.LivingCycle.run
+        target = "return_unfinished-main-2"
+        for stage, local in (("action", False), ("confirmation", False), ("memory_update", False), ("memory_update", True)):
+            with self.subTest(stage=stage, local=local):
+                calls = 0
+
+                def run(owner, *args, **kwargs):
+                    nonlocal calls
+                    report = original_run(owner, *args, **kwargs)
+                    calls += 1
+                    if calls == 2:
+                        report.stages.append(StageRecord(stage, "failed", (), owner.ctl.epoch, owner.ctl.state_version, {"status": "rejected"}))
+                    return report
+
+                output = self.root / (stage + ("-local" if local else "-limit"))
+                provider = self.neutral_factory(fail_cell=target) if local else self.budget_boundary_factory(target)
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)), patch.object(series.LivingCycle, "run", run):
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second, provider_factory=provider)
+                self.assertEqual((result["status"], result["stop"], len(result["cells"])), ("partial", "technical_fault", 6), result)
+                self.assertEqual(result["local_rejections"], [])
+                self.assertFalse(result["cells"][-1].get("planned_budget_stop", False))
+                entry = self.read(f"cells/{target}/decisions/02.json", output)
+                self.assertTrue(any(f.get("stage", {}).get("stage") == stage for f in entry["technical_faults"]))
+                if not local:
+                    self.assertEqual(entry["report"]["outcome"], "done")
+                    self.assertFalse(any(e["type"] == "system.error" for e in entry["events"]))
+                    self.assertEqual(result["cells"][-1]["session_usage"]["calls"], 8)
+
+    def test_final_recorded_domain_failure_or_unknown_remains_negative(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        for outcome in ("failed", "unknown"):
+            with self.subTest(outcome=outcome):
+                output = self.root / outcome
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)), \
+                        patch.object(series.PersistentWorld, "execute", return_value=series.ActionOutcome(outcome, "Обычный исход действия")):
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                               provider_factory=self.first_action_factory([]))
+                self.assertEqual(result["status"], "completed", result)
+                self.assertEqual(len(result["cells"]), 18)
+                entry = self.read("cells/return_unfinished-main-2/decisions/01.json", output)
+                self.assertEqual(entry["report"]["actions"][0]["status"], "failed" if outcome == "failed" else "unknown_outcome")
+                self.assertEqual(entry["technical_faults"], [])
+                self.assertTrue(all(s["status"] == "ok" for s in entry["report"]["stages"] if s["stage"] in ("action", "confirmation", "memory_update")))
+                self.assertNotIn("technical_probe", entry["state"]["world_time"]["world"]["projects"])
+
+    def budget_boundary_factory(self, target, *, extra=False, quota=False):
+        """Model the four-invocation decision envelope without real CLI traffic."""
+        def factory(cell, transport):
+            scripted = series.ScriptedProvider()
+
+            class Costed:
+                name = "scripted"
+                count = 0
+
+                def propose(self, request):
+                    self.count += 1
+                    cost = 4 if cell["cell"] == target else 1
+                    if extra and cell["cell"] == target and self.count == 2:
+                        cost = 5
+                    for _ in range(cost):
+                        transport(("docker", "fake-model"), "not-auth", 5, ("docker", "kill", "fake"))
+                    if quota and cell["cell"] == target and self.count == 2:
+                        from iam.providers.errors import ProviderLimitError
+                        raise ProviderLimitError("External subscription limit")
+                    scripted.queue(series.Reply((series.rest(),)))
+                    response = scripted.propose(request)
+                    response["usage"]["calls"] = cost
+                    return response
+            return Costed()
+        return factory
+
+    def test_final_planned_cell_forecast_and_exact_call_limit_continue(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        for target, stop, cap in (("interest_loss-main-1", "cell_call_forecast", 10),
+                                  ("return_unfinished-main-2", "cell_calls_exhausted", 8)):
+            with self.subTest(stop=stop):
+                output = self.root / stop
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)):
+                    result = series.run_series(output, mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                               provider_factory=self.budget_boundary_factory(target))
+                self.assertEqual((result["status"], result["stop"], len(result["cells"])), ("completed", None, 18), result)
+                cell = next(c for c in result["cells"] if c["cell"] == target)
+                self.assertEqual(cell["stop"], stop)
+                self.assertTrue(cell["planned_budget_stop"])
+                self.assertEqual(cell["session_usage"]["max_calls"], cap)
+                self.assertEqual(cell["session_usage"]["calls"], 8)
+                self.assertGreaterEqual(cell["valid_typed_choice_decisions"], 1)
+                self.assertEqual(len(cell["decisions"]), 2)
+                self.assertEqual(result["local_rejections"], [])
+                self.assertLessEqual(result["decisions_started"], 60)
+                self.assertLessEqual(result["actual_model_calls"], 240)
+                if stop == "cell_calls_exhausted":
+                    decision = self.read(f"cells/{target}/decisions/02.json", output)
+                    self.assertEqual(decision["planned_budget_stop"], stop)
+                    self.assertEqual(decision["session_usage_after_limits"]["calls"], 8)
+                    self.assertTrue(any(e["type"] == "session.paused" and e["payload"]["reason"] == "session_limit" for e in decision["limit_events"]))
+
+    def test_final_attempted_extra_call_time_manual_pause_and_quota_stay_fatal(self):
+        original, second = self.root / "live1", self.root / "live2"
+        self.synthetic_second(original, second)
+        original_usage, original_check = series.SessionRunner.usage, series.SessionRunner.check_limits
+        target = "return_unfinished-main-2"
+        for kind in ("extra", "time", "operator", "quota"):
+            with self.subTest(kind=kind):
+                def usage(owner):
+                    value = original_usage(owner)
+                    if getattr(owner, "_expired_for_test", False):
+                        value["elapsed_ms"] = value["max_ms"]
+                    return value
+
+                def check(owner):
+                    value = original_usage(owner)
+                    if owner.ctl.session_state == "running" and value["calls"] == value["max_calls"]:
+                        if kind == "time":
+                            owner._expired_for_test = True
+                        elif kind == "operator":
+                            owner.ctl.pause_session("operator")
+                    return original_check(owner)
+
+                with patch.object(series, "subprocess_runner", return_value=RunResult(0)), \
+                        patch.object(series.SessionRunner, "usage", usage), patch.object(series.SessionRunner, "check_limits", check):
+                    result = series.run_series(self.root / kind, mode="live", auth_file="/external/not-read", final_repair_from=second,
+                                               provider_factory=self.budget_boundary_factory(target, extra=kind == "extra", quota=kind == "quota"))
+                self.assertEqual(result["status"], "partial", result)
+                self.assertEqual(len(result["cells"]), 6)
+                self.assertEqual(result["local_rejections"], [])
+                cell = result["cells"][-1]
+                self.assertFalse(cell.get("planned_budget_stop", False))
+                self.assertLessEqual(cell["session_usage"]["calls"], 8)
+                if kind == "extra":
+                    self.assertEqual(cell["error"]["error_class"], "BudgetStop")
+                elif kind == "quota":
+                    self.assertEqual(cell["error"]["error_class"], "ProviderLimitError")
+                else:
+                    self.assertEqual(cell["stop"], "session_paused")
+
     def test_timeout_keeps_cleanup_and_stops_without_retry(self):
         def factory(cell, transport):
             class TimedOut:
@@ -538,11 +1062,20 @@ class SeriesTests(unittest.TestCase):
         for sandbox, settings in configurations:
             self.assertTrue(sandbox.persist_auth_updates)
             self.assertEqual(settings["model"], "gpt-6-luna")
-            self.assertEqual(settings["max_format_retries"], 0)
+            self.assertEqual(settings["max_format_retries"], 1)
         first = self.read("cells/interest_emergence-main-1/requests/001.json")["request"]
         repair = self.read("cells/interest_emergence-main-1/requests/002.json")["request"]
         self.assertEqual(repair["retry_of"], first["request_id"])
         self.assertEqual(repair["limits"]["attempt"], 1)
+        entry = self.read("cells/interest_emergence-main-1/decisions/01.json")
+        self.assertEqual(entry["technical_faults"], [])
+        self.assertEqual(entry["resolved_format_events"][0]["repair"]["failed_request_id"], first["request_id"])
+        self.assertEqual(entry["resolved_format_events"][0]["repair"]["repair_request_id"], repair["request_id"])
+        unmatched = dict(entry["resolved_format_events"][0]["event"], idempotency_key="err:bad_response:unmatched")
+        traces = [self.read(f"cells/interest_emergence-main-1/requests/{n:03d}.json") for n in (1, 2)]
+        faults, resolved, _, _ = series.decision_technical_faults(entry["report"], [unmatched], traces)
+        self.assertEqual(resolved, [])
+        self.assertEqual(faults[0]["event"], unmatched)
         self.assertNotIn(str(credentials), (self.root / "run/manifest.json").read_text())
         self.assertEqual(credentials.read_text(), "not-real-credentials-and-never-read")
 
