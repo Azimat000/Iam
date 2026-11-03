@@ -1,0 +1,97 @@
+{
+  "status": "completed",
+  "old_artifacts_unchanged": 145,
+  "old_call_prefix_unchanged": 23,
+  "baseline_families": 6,
+  "preserved_cells": 5,
+  "preserved_decisions": 18,
+  "physical_decisions": 60,
+  "physical_calls": 62,
+  "new_decisions": 38,
+  "new_calls": 39,
+  "selected_logical_decisions": 56,
+  "typed_requests": 61,
+  "native_repairs": 1,
+  "native_safe_codes": [
+    "proposal_schema"
+  ],
+  "new_appraisals": 0,
+  "new_saved_intentions": 0,
+  "rejected_proposals": {
+    "world_precondition": 1,
+    "intention_invalid": 1,
+    "motivation_invalid": 4
+  },
+  "rejected_proposal_details": [
+    {
+      "cell": "return_unfinished-main-2",
+      "index": 2,
+      "kind": "action",
+      "reason": "world_precondition"
+    },
+    {
+      "cell": "return_unfinished-main-2",
+      "index": 2,
+      "kind": "intention",
+      "reason": "intention_invalid"
+    },
+    {
+      "cell": "return_unfinished-off-2",
+      "index": 2,
+      "kind": "memory_write",
+      "reason": "motivation_invalid"
+    },
+    {
+      "cell": "interest_loss-off-1",
+      "index": 2,
+      "kind": "memory_write",
+      "reason": "motivation_invalid"
+    },
+    {
+      "cell": "failure_reaction-off-2",
+      "index": 2,
+      "kind": "memory_write",
+      "reason": "motivation_invalid"
+    },
+    {
+      "cell": "switching-main-1",
+      "index": 1,
+      "kind": "memory_write",
+      "reason": "motivation_invalid"
+    }
+  ],
+  "new_confirmed_actions_by_capability": {
+    "cap_Project01": 10,
+    "cap_Library01": 15
+  },
+  "unexpected_technical_faults": 0,
+  "all18visited": true,
+  "each_has_valid_choice": true,
+  "each_decision_calls_at_most4": true,
+  "each_decision_repairs_at_most1": true,
+  "each_logical_cell_calls_at_most10": true,
+  "rejection_audit": [
+    {
+      "cell": "return_unfinished-main-2",
+      "decision": 2,
+      "result": "Correct rejection: intention remained deferred, requires active before done; project has no completed intention for latest work. Goal and project remain open; no appraisal requested."
+    },
+    {
+      "cells": [
+        "return_unfinished-off-2",
+        "interest_loss-off-1",
+        "failure_reaction-off-2"
+      ],
+      "decision": 2,
+      "result": "Correct off rejection: motivation records unavailable/disabled; proposed motivational writes do not restore them."
+    },
+    {
+      "cell": "switching-main-1",
+      "decision": 1,
+      "result": "Correct rejection: motivation.topic is free text with spaces rather than required identifier. No partial motivation write."
+    }
+  ],
+  "published_json_files": 139,
+  "published_json_byte_identical": true,
+  "published_json_secret_scan": "strict assignments + environment + private path PASS"
+}

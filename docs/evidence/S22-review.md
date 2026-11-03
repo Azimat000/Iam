@@ -57,3 +57,15 @@ last_format_codes сбрасывается перед каждымpropose, со�
 Независимое read-only ревью provider diagnostics и итоговой runner revision4: PASS в проверенных границах. Проверены фактические code/test diff, строгая двухступенчатая lineage, прежние базы/версии, shared1/cap4 и предел60/240. Два найденных P1 исправлены до приёмки: proposals=[] не считается выбором; unresolved system.error либо failed action/confirmation/memory_update останавливают всю серию даже при report.done. Только точно сопоставленный успешный Cycle-ремонт bad_response отмечается resolved; LOCAL и плановый лимит не маскируют технический сбой. Обычные failed/unknown остаются отрицательными результатами.
 
 Main независимо: provider27/27 PASS0.020с; runner revision2 24/24 PASS94.398с; на окончательной revision4 пять существенных регрессий PASS37.668с (empty choice, crash, critical stages, domain negatives, exact Cycle repair). Worker итоговый scoped28/28 PASS162.035с — отдельное свидетельство, не замена main/full. Полная5/5 и live3 на момент этого ревью ещё не исполнялись.
+
+## D-064: независимый фактический аудит после live-3
+
+PASS по контракту COMPLETION S22. Проверены фактические full5 logs/coverage:1285 OK и140порогов; live3:18ветвей,60/62физическийрасход,61typed,38/39новых,56selected/4superseded. Независимо пересчитаны145SHAисходныхартефактов,ledgerprefix23 и6баз; все совпали. Просмотрены38новыхтипизированныхзапросов,0новыхцелей/0appraise/0technicalfaults и один успешный native proposal_schema ремонт с2physical/shared1. В12offконтекстах intentions={} иmotivation.enabled=false. Все5отклонённыхциклов/6предложений сопоставлены с actual state и guards; ложного done или сломанного обязательного механизма не обнаружено. Добровольная цель и живое успешное done не заявляются.
+
+Независимое повторное чтение public139JSON зависло из-заiCloud; reviewer не подтвердил эту копию своим обходом. Main при публикации каждого файла независимо сверил source/target SHA и выполнил строгий SecretScanner/private-path check:139/139 PASS, S22-live3-published-sha256.json. Финальные документы проходят отдельную проверку ниже.
+
+## Итоговое документное ревью и закрытие
+
+Независимое PASS после двух узких исправлений: сохранены все21прежние цепочки evidence (старыйS22-close ведёт в архивS22-attempt4-close), R010 включён вдве подходящие строки матрицы. Ровно15implemented→verified,6широкихстатусовпрежние; остальныеполя требованийнеизменны. Другихблокеровнет. Main: memorycheckPASS,reqsvalidate226/350PASSпослеправкиразделителя,scenarios33PASS,22относительныессылкиPASS. tools/memory.py finishS22 завершилсяexit0: revision86,S22done,S23todo. Код/модель/серии послеfull5/live3не менялись/неповторялись.
+
+Main послеfinish: memorycheckPASS. Все139JSON отдельно проверены уже вGitindex: байтыкаждогоstagedblobсовпадают сSHA256исходногоопубликованногоартефакта. Gates/assumptions ивседругиесрезы неизменны,толькоS22done/currentS23/revision86. Финальные11статусныхфайлов повторно прошли проверкусекретов.

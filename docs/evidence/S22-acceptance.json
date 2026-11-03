@@ -1,79 +1,156 @@
 {
-  "status": "BLOCKED: full4 accepted; sole live2 stopped on ProviderFormatError",
+  "status": "ACCEPTED; S22 finished by memory.py, revision86; S23 todo",
   "rows": [
     {
-      "criterion": "Мир и работы сохраняются; чтение/перестановка/время честны",
+      "criterion": "Мир, занятия и работы сохраняются; чтение, запись, проекты, перестановка и время честны",
       "evidence": "tests/world/test_world.py::test_real_read_write_move_and_restart; test_real_duration_and_external_delivery_and_failed_initialization",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-009",
+        "R-033",
+        "R-072",
+        "R-073",
+        "R-074",
+        "R-075",
+        "R-077",
+        "R-010"
+      ]
     },
     {
       "criterion": "Нет половины чтения при сбое/паузе; воображаемое не действие",
       "evidence": "tests/world/test_world.py::test_crash_and_pause_mid_action_leave_no_half_read; test_prepared_or_imagined_result_does_not_change_world",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-078"
+      ]
     },
     {
       "criterion": "Проекты active/done/abandoned и последняя работа",
       "evidence": "tests/world/test_world.py::test_project_lifecycle_requires_semantic_done_and_closed_projects_are_immutable; test_new_project_version_cannot_finish_using_old_goal_result",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-076",
+        "R-010"
+      ]
     },
     {
       "criterion": "Пять статусов намерения, immutable цель/критерий, отдельный слот",
       "evidence": "tests/intentions/test_intentions.py::test_five_statuses_history_and_closed_states; test_criterion_cannot_change_and_direct_state_changes_are_rejected; test_goal_and_action_are_independent_slots_in_both_orders",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-030",
+        "R-081"
+      ]
     },
     {
       "criterion": "Знание/желание/право раздельны; будущее по собственному времени",
       "evidence": "tests/intentions/test_intentions.py::test_knowing_wanting_and_permission_are_separate; test_future_intention_survives_pause_and_fires_once_in_own_time",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-055",
+        "R-082"
+      ]
     },
     {
       "criterion": "Done требует позднего совпадающего результата и двух оценок",
       "evidence": "tests/intentions/test_intentions.py::test_done_requires_late_matching_result_and_two_reviews; test_failed_or_wrong_project_or_early_or_unchanged_result_never_done; test_own_calculation_is_not_independent_observation",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-081",
+        "R-105"
+      ]
     },
     {
       "criterion": "Полный прочитанный результат и исходная доступная версия",
       "evidence": "tests/intentions/test_intentions.py::test_long_material_is_fully_visible_before_complete_read_is_accepted; test_revised_result_and_incomplete_display_do_not_reveal_original",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-074"
+      ]
     },
     {
       "criterion": "Ошибка оценщика сохраняется; лишние ссылки не обрезаются; цель открыта",
       "evidence": "tests/intentions/test_completion.py; tests/intentions/test_intentions.py::test_invalid_or_failed_reviewer_keeps_goal_and_raw_diagnostics; original live-1",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-105",
+        "R-107",
+        "R-108"
+      ]
     },
     {
       "criterion": "Забытое/пересмотренное/off не возвращается через цели/умения/приёмы",
       "evidence": "tests/motivation/test_motivation.py::test_hidden_goal_cannot_be_completed_or_sent_to_reviewer_in_off; test_revised_assessment_cannot_return_forgotten_quote_or_teach_procedure; test_dependent_motivation_cache_is_hidden_in_off_and_methods_need_distinct_evidence",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-031",
+        "R-053",
+        "R-080"
+      ]
     },
     {
       "criterion": "Интерес/неудача/неизвестность/повтор и шесть семейств механизмов",
       "evidence": "tests/motivation/test_motivation.py::test_six_scenario_mechanisms_without_forcing_free_behavior; test_interest_from_experience_and_no_reward_for_writing; test_failed_unknown_feedback_and_off",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-079",
+        "R-080",
+        "R-176",
+        "R-177"
+      ]
     },
     {
       "criterion": "Умение/приём требуют содержательных отдельных результатов",
       "evidence": "tests/motivation/test_motivation.py::test_skill_uses_content_criteria_and_procedure_needs_distinct_assessed_results; test_learning_rejects_unassessed_methods_and_off_hides_skill",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-031",
+        "R-053"
+      ]
     },
     {
       "criterion": "Панель материала: пауза/версия/CSRF/размер/XSS/кириллица",
-      "evidence": "tests/panel/test_world.py; docs/evidence/S22-browser.json; world-final-desktop.jpg; world-final-mobile.jpg",
-      "acceptance": "mechanism checks passed in full4; whole-slice live requirement incomplete"
+      "evidence": "tests/panel/test_world.py; docs/evidence/S22-browser.json; docs/evidence/S22-world-desktop.jpg; docs/evidence/S22-world-mobile.jpg",
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "R-152"
+      ]
     },
     {
-      "criterion": "Серия неизменна, все расходы учтены, одна коррекция",
-      "evidence": "tests/world/test_series.py; docs/evidence/S22-live2-preflight.json; docs/evidence/S22-live2-provenance.json; docs/evidence/S22-live-1/manifest.json; docs/evidence/S22-live-2/manifest.json; docs/evidence/S22-live-2/summary.json",
-      "acceptance": "FAIL to complete bounded live plan: sole live2 stopped",
-      "pending": "No third live series authorized. Diagnostic-only proposal awaits user decision."
+      "criterion": "Заключительная D064 серия: происхождение, 18 ветвей, все расходы и строгие отказы",
+      "evidence": "tests/world/test_series.py; S22-live3-preflight.json; S22-live3-provenance.json; S22-live3-analysis.json; S22-live-3/{manifest,summary,calls}.json",
+      "acceptance": "PASS in full5; live3 completes bounded matrix; no broader behavioral success inferred",
+      "requirement_ids": [
+        "D-064"
+      ]
+    },
+    {
+      "criterion": "Пустой ответ не выбор; технический сбой нельзя скрыть report.done/LOCAL/лимитом",
+      "evidence": "S22-attempt5-targeted.txt; test_series.py empty/crash/critical stages/domain negatives/exact repair; S22-review.md",
+      "acceptance": "PASS",
+      "requirement_ids": [
+        "R-078",
+        "D-064"
+      ]
+    },
+    {
+      "criterion": "Ограниченная диагностика, native/Cycle shared1 и cap4 до каждого вызова",
+      "evidence": "tests/providers/test_codex.py; tests/world/test_series.py; S22-live-3/cells/failure_reaction-main-1/requests/002.json; S22-live3-provenance.json",
+      "acceptance": "PASS; live native proposal_schema repair used once",
+      "requirement_ids": [
+        "D-064"
+      ]
     }
   ],
   "limits": {
-    "ordinary_attempt": 4,
-    "max_ordinary_attempts": 4,
-    "max_corrections": 1,
-    "live_corrections_used": 1,
-    "live_corrections_reserved": 0
+    "ordinary_attempt": 5,
+    "max_ordinary_attempts": 5,
+    "authorization": "D064 explicit user fix and finish",
+    "max_corrections": 2,
+    "live_corrections_used": 2,
+    "live_corrections_reserved": 0,
+    "global_physical_decisions": 60,
+    "global_actual_calls": 240
   },
   "unverified": [
     "Самостоятельное возникновение/удержание целей и причинность: S25",
@@ -81,11 +158,11 @@
     "Пилот и постоянная отдельная история: S26–S28"
   ],
   "full_tests": {
-    "tests": 1268,
-    "seconds": 408.18,
+    "tests": 1285,
+    "seconds": 690.487,
     "result": "OK",
     "skipped": 0,
-    "attempt": 4
+    "attempt": 5
   },
   "coverage": {
     "passed_modules": 140,
@@ -96,15 +173,36 @@
   },
   "live_correction_started": true,
   "live": {
-    "status": "partial",
-    "stop": "provider_or_cycle_failure",
-    "new_decisions": 4,
-    "new_calls": 4,
-    "physical_decisions": 22,
-    "physical_calls": 23,
-    "selected_logical_decisions": 20,
+    "status": "completed",
+    "stop": null,
+    "new_decisions": 38,
+    "new_calls": 39,
+    "physical_decisions": 60,
+    "physical_calls": 62,
+    "selected_logical_decisions": 56,
+    "typed_requests": 61,
+    "native_repairs": 1,
     "new_saved_intentions": 0,
     "new_appraisal_requests": 0,
-    "exact_format_cause": "unknown"
+    "exact_old_format_cause": "unknown",
+    "all18visited": true,
+    "each_has_valid_choice": true,
+    "technical_errors": 0,
+    "rejected_cycles": 5,
+    "rejected_proposals": 6
+  },
+  "final_checks": {
+    "memory": "PASS",
+    "requirements": "226/350 PASS",
+    "scenarios": "33 PASS",
+    "relative_links": "22 PASS",
+    "independent_review": "PASS",
+    "source_secret_scan": "PASS",
+    "live_json_strict_scan": "139 PASS",
+    "slice_status": "done",
+    "next_slice": "S23",
+    "next_slice_status": "todo",
+    "memory_revision": 86,
+    "staged_live_json_sha256": "139 PASS"
   }
 }
