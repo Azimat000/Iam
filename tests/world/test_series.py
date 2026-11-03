@@ -3,6 +3,7 @@ import importlib.util
 import json
 from contextlib import nullcontext
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -28,7 +29,7 @@ class SeriesTests(unittest.TestCase):
     def read(self, relative, root=None):
         return json.loads(((root or self.root / "run") / relative).read_text())
 
-    def appraisal_factory(self, verdict):
+    def appraisal_factory(self, verdict, target="interest_emergence-main-1"):
         def factory(cell, transport):
             class CreatesWritesThenCompletes:
                 name = "scripted"
@@ -39,7 +40,7 @@ class SeriesTests(unittest.TestCase):
 
                 def propose(self, request):
                     if request["purpose"] == "appraise":
-                        packet = json.loads(request["context"][1]["text"])
+                        packet = json.loads(request["context"][0]["text"])["packet"]
                         if verdict == "malformed":
                             proposals = (series.rest(),)  # valid envelope, wrong appraisal fields/cites
                         else:
@@ -50,10 +51,10 @@ class SeriesTests(unittest.TestCase):
                                 body = dict(verdict=verdict, goal_met=False, criterion_met=False, evidence_sufficient=False,
                                             support_quote=packet["available_result"]["text"], reason="Критерий не подтверждён")
                             proposals = (dict(proposal_id=series.new_id("prop"), kind="no_action", rationale="Отдельная оценка",
-                                              cites=[request["context"][1]["ref"]], body=body),)
+                                              cites=[request["context"][0]["ref"]], body=body),)
                     else:
                         self.choices += 1
-                        if cell["cell"] != "interest_emergence-main-1":
+                        if cell["cell"] != target:
                             proposals = (series.rest(),)
                         elif self.choices == 1:
                             source = next(item["ref"] for item in request["context"]
@@ -76,6 +77,31 @@ class SeriesTests(unittest.TestCase):
             return CreatesWritesThenCompletes()
         return factory
 
+    def synthetic_original(self, output):
+        factory = self.appraisal_factory("malformed", target="return_unfinished-main-1")
+
+        def counted_factory(cell, transport):
+            inner = factory(cell, transport)
+
+            class Counted:
+                name = inner.name
+
+                def propose(self, request):
+                    transport(("docker", "fake-model"), "never-auth", 5, ("docker", "kill", "fake"))
+                    return inner.propose(request)
+            return Counted()
+
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run:
+            result = series.run_series(output, mode="live", auth_file="/external/not-read", provider_factory=counted_factory)
+        self.assertEqual((result["status"], result["stop"], result["decisions_started"], result["actual_model_calls"]),
+                         ("partial", "assessment_error", 18, 19), result)
+        self.assertEqual(run.call_count, 19)
+        return result
+
+    @staticmethod
+    def snapshot_files(root):
+        return {str(path.relative_to(root)): series.sha(path) for path in root.rglob("*") if path.is_file()}
+
     def test_plan_is_18_cells_and_60_decisions(self):
         cells = series.plan()
         self.assertEqual(len(cells), 18)
@@ -86,6 +112,30 @@ class SeriesTests(unittest.TestCase):
         for family in series.FAMILIES:
             branch = [c for c in cells if c["family"] == family]
             self.assertEqual({c["repeat"] for c in branch}, {1, 2})
+
+    def test_appraisal_has_one_reference_and_neutral_experiment_metadata(self):
+        scripted = series.ScriptedProvider()
+        audit = series.AuditedProvider(scripted, series.Artifacts(self.root), "test")
+        packet = dict(goal=dict(text="Написать заметку", criterion="Есть абзац"))
+        envelope = dict(instructions="Определи необходимый вид свидетельства.", packet=packet)
+        query = dict(request_id="req_ReferenceTest01", epoch=1, state_version=1, purpose="appraise",
+                     context=[dict(ref="evt_OnlyReference01", origin="observation", layer="state", text=json.dumps(envelope))])
+        scripted.queue(series.Reply((series.rest(),)))
+        audit.propose(query)
+        actual = scripted.calls[0]
+        self.assertEqual(len(actual["context"]), 1)
+        self.assertEqual(actual["context"][0]["ref"], "evt_OnlyReference01")
+        payload = json.loads(actual["context"][0]["text"])
+        self.assertEqual(payload["instructions"], envelope["instructions"])
+        self.assertEqual(payload["packet"], packet)
+        self.assertEqual(payload["experiment_metadata"], dict(scripted_past=True, prior_choices_not_autonomous=True))
+        self.assertNotIn(series.DISCLOSURE, json.dumps(actual, ensure_ascii=False))
+        free = dict(query, purpose="choose_action", request_id="req_ReferenceTest02")
+        scripted.queue(series.Reply((series.rest(),)))
+        audit.propose(free)
+        expected = [*free["context"], dict(ref=free["context"][0]["ref"], origin="observation", layer="state", text=series.DISCLOSURE)]
+        self.assertEqual(scripted.calls[1]["context"], expected)
+        self.assertEqual(json.loads(query["context"][0]["text"]), envelope)
 
     def test_full_stub_is_neutral_and_uses_identical_baselines(self):
         with patch.object(series, "subprocess_runner", side_effect=AssertionError("No live traffic")) as run:
@@ -278,6 +328,162 @@ class SeriesTests(unittest.TestCase):
                     self.assertEqual(stages[-1]["assessment"]["verdict"], verdict)
                 self.assertEqual(decision["state"]["intentions"]["assessed_notes"]["status"], "active")
                 self.assertEqual(result["actual_model_calls"], 0)
+
+    def test_one_repair_reuses_prefix_and_baselines_with_physical_budget(self):
+        original = self.root / "original-run"
+        old = self.synthetic_original(original)
+        before = self.snapshot_files(original)
+        output = self.root / "repair"
+        constructed, requested = [], []
+
+        def neutral(cell, transport):
+            constructed.append(cell["cell"])
+            scripted = series.ScriptedProvider()
+
+            class Neutral:
+                name = "scripted"
+
+                def propose(self, request):
+                    requested.append(cell["cell"])
+                    transport(("docker", "fake-model"), "never-auth", 5, ("docker", "kill", "fake"))
+                    scripted.queue(series.Reply((series.rest(),)))
+                    return scripted.propose(request)
+            return Neutral()
+
+        with patch.object(series, "subprocess_runner", return_value=RunResult(0)) as run:
+            result = series.run_series(output, mode="live", auth_file="/external/not-read", repair_from=original, provider_factory=neutral)
+        self.assertEqual(result["status"], "completed", result)
+        self.assertEqual((result["inherited_decisions_started"], result["new_decisions_started"], result["decisions_started"]), (18, 42, 60))
+        self.assertEqual((result["inherited_failed_decisions"], result["selected_logical_decisions"]), (2, 58))
+        self.assertEqual((result["inherited_model_calls"], result["new_actual_model_calls"], result["actual_model_calls"]), (19, 42, 61))
+        self.assertEqual((result["typed_requests"], run.call_count), (61, 42))
+        self.assertEqual((len(result["cells"]), len(constructed), len(requested)), (18, 14, 42))
+        self.assertFalse(set(constructed) & {cell["cell"] for cell in old["cells"][:4]})
+        self.assertEqual(requested.count("return_unfinished-main-1"), 2)
+        self.assertEqual(before, self.snapshot_files(original))
+        manifest = self.read("manifest.json", output)
+        self.assertEqual(manifest["repair_count"], 1)
+        self.assertEqual(manifest["new_decisions_max"], 42)
+        self.assertEqual(manifest["selected_logical_decisions_max"], 58)
+        self.assertEqual(manifest["repair_of"]["manifest_sha256"], before["manifest.json"])
+        self.assertTrue(manifest["repair_of"]["prefix_had_no_appraisals"])
+        self.assertTrue(manifest["repair_of"]["world_guidance_source_unchanged"])
+        self.assertTrue(manifest["repair_of"]["free_choice_disclosure_unchanged"])
+        self.assertIn("runtime/world/cycle.py", manifest["repair_of"]["unchanged_source_sha256"])
+        self.assertEqual([row["new_max_decisions"] for row in manifest["plan"][:5]], [0, 0, 0, 0, 2])
+        repaired_cell = result["cells"][4]
+        self.assertEqual(repaired_cell["session_usage"]["max_calls"], 7)
+        self.assertEqual(repaired_cell["session_usage"]["max_ms"], series.CELL_MS - old["cells"][4]["session_usage"]["elapsed_ms"])
+        self.assertEqual([row["outcome"] for row in result["inherited_failed_history"]["decisions"]], ["done", "rejected"])
+        for family in series.FAMILIES:
+            for name in ("baseline.db", "fixture.json"):
+                relative = f"baselines/{family}/{name}"
+                self.assertEqual(series.sha(output / relative), before[relative])
+        for relative, digest in manifest["repair_of"]["artifact_sha256"].items():
+            self.assertEqual(series.sha(output / "original" / relative), digest)
+        for cell in result["cells"][:4]:
+            name = cell["cell"]
+            self.assertIn("reused_from", cell)
+            self.assertEqual(series.sha(output / f"cells/{name}/persona.db"), before[f"cells/{name}/persona.db"])
+        calls = self.read("calls.json", output)
+        self.assertEqual(calls["attempts"][:19], self.read("calls.json", original)["attempts"])
+        self.assertEqual(calls["attempts"][-1]["index"], 61)
+        with self.assertRaises(ValueError):
+            series.run_series(self.root / "second", mode="live", auth_file="/external/not-read", repair_from=output, provider_factory=neutral)
+        self.assertFalse((self.root / "second").exists())
+
+    def test_repair_refuses_invalid_history_unsafe_paths_and_changed_core(self):
+        original = self.root / "original-run"
+        self.synthetic_original(original)
+        before = self.snapshot_files(original)
+
+        def write_json(root, relative, transform):
+            value = self.read(relative, root)
+            transform(value)
+            (root / relative).write_text(json.dumps(value, ensure_ascii=False))
+
+        def refresh_manifest(root):
+            write_json(root, "summary.json", lambda value: value.update(manifest_sha256=series.sha(root / "manifest.json")))
+
+        cases = ("second", "status", "counter", "baseline_path", "prefix_appraise", "symlink", "core")
+        for label in cases:
+            with self.subTest(label=label):
+                source = self.root / ("invalid-" + label)
+                shutil.copytree(original, source)
+                if label == "second":
+                    write_json(source, "manifest.json", lambda value: value.update(repair_count=1))
+                    refresh_manifest(source)
+                elif label == "status":
+                    write_json(source, "summary.json", lambda value: value.update(status="completed"))
+                elif label == "counter":
+                    write_json(source, "calls.json", lambda value: value.update(decisions_started=17))
+                elif label == "baseline_path":
+                    write_json(source, "manifest.json", lambda value: value["baselines"]["interest_emergence"].update(db="../../outside.db"))
+                    refresh_manifest(source)
+                elif label == "prefix_appraise":
+                    write_json(source, "cells/interest_emergence-main-1/requests/001.json", lambda value: value["request"].update(purpose="appraise"))
+                elif label == "symlink":
+                    target = source / "cells/interest_emergence-main-1/requests/001.json"
+                    target.unlink()
+                    target.symlink_to(original / "cells/interest_emergence-main-1/requests/001.json")
+                else:
+                    write_json(source, "manifest.json", lambda value: value["sources"].update({"runtime/world/cycle.py": "0" * 64}))
+                    refresh_manifest(source)
+                output = self.root / ("out-" + label)
+                with patch.object(series, "subprocess_runner", side_effect=AssertionError("No live traffic")) as run:
+                    if label == "core":
+                        result = series.run_series(output, mode="live", auth_file="/external/not-read", repair_from=source)
+                        self.assertEqual(result["status"], "partial")
+                        self.assertEqual(result["new_decisions_started"], 0)
+                    else:
+                        with self.assertRaises(ValueError):
+                            series.run_series(output, mode="live", auth_file="/external/not-read", repair_from=source)
+                        self.assertFalse(output.exists())
+                run.assert_not_called()
+        link = self.root / "source-link"
+        link.symlink_to(original, target_is_directory=True)
+        for source, output in ((link, self.root / "out-link"), (original, original / "nested-output")):
+            with self.assertRaises(ValueError):
+                series.run_series(output, mode="live", auth_file="/external/not-read", repair_from=source)
+            self.assertFalse(output.exists())
+        with self.assertRaises(ValueError):
+            series.run_series(self.root / "auth-in-original", mode="live", auth_file=original / "iam-managed.json", repair_from=original)
+        self.assertFalse((self.root / "auth-in-original").exists())
+        self.assertEqual(before, self.snapshot_files(original))
+
+    def test_inherited_call_cap_and_reduced_session_forecast_are_enforced(self):
+        class Controller:
+            session_state = "running"
+
+        class Session:
+            ctl = Controller()
+            request_id = "req_InheritedTest01"
+            calls = 0
+
+            def usage(self):
+                return dict(calls=self.calls, elapsed_ms=20, max_calls=7, max_ms=100)
+
+            def check_limits(self):
+                pass
+
+            def charge(self):
+                self.calls += 1
+
+        artifacts = series.Artifacts(self.root)
+        ledger = series.CallLedger(artifacts, attempts=[dict(index=n) for n in range(1, 240)], decisions=18)
+        session = Session()
+        with self.assertRaisesRegex(series.BudgetStop, "global_call_forecast"):
+            ledger.forecast(session, live=True)
+        ledger.charge(session, "repaired")
+        with self.assertRaisesRegex(series.BudgetStop, "global_calls"):
+            ledger.charge(session, "repaired")
+        self.assertEqual((len(ledger.attempts), session.calls), (240, 1))
+        with self.assertRaises(ValueError):
+            series.CallLedger(artifacts, attempts=[{}] * 241)
+        ledger = series.CallLedger(artifacts, decisions=18)
+        session.calls = 4
+        with self.assertRaisesRegex(series.BudgetStop, "cell_call_forecast"):
+            ledger.forecast(session, live=True)
 
     def test_timeout_keeps_cleanup_and_stops_without_retry(self):
         def factory(cell, transport):

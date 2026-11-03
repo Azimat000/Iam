@@ -1,0 +1,14 @@
+--- a/tests/motivation/test_motivation.py
++++ b/tests/motivation/test_motivation.py
+@@ -1,0 +2 @@
++from types import SimpleNamespace
+@@ -57,0 +59,9 @@
++        # Оба оценённых дубликата явно доступны: проверяем отказ именно по результату,
++        # независимо от ранжирования ограниченного рабочего контекста цикла.
++        learning = self.cycle.motivation.learning
++        self.assertTrue(set(pr['cites']) <= learning.assessments().keys())
++        context = SimpleNamespace(request={'context': [{'ref': ref} for ref in pr['cites']]})
++        decision = learning.proposal(pr, context)
++        self.assertIsNotNone(decision.violation)
++        self.assertEqual(decision.violation.code, 'procedure_invalid')
++        self.assertFalse(decision.ops)
