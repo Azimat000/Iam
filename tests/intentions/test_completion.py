@@ -9,6 +9,25 @@ from world.helpers import LivingCase
 
 
 class CompletionBoundaryTest(LivingCase):
+    def test_single_packet_has_one_reference_and_does_not_trim_extra_citations(self):
+        captured=[]
+        def requirement(request):
+            self.assertEqual(len(request['context']),1)
+            value=json.loads(request['context'][0]['text'])
+            self.assertNotIn('available_result',value['packet'])
+            self.assertIn('не исполнитель мира',value['instructions'])
+            captured.append(copy.deepcopy(request))
+            reply=self.assessment()(request)
+            reply.proposals[0]['cites'].append('evt_OldInstruction01')
+            return reply
+        pr=self.prepared()
+        self.run_reply(pr,replies=(requirement,))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'],'active')
+        stages=[e.payload for e in self.c.store.events() if e.type=='proposal.assessed']
+        self.assertEqual(stages[-2]['error'],'assessment_format_or_cites')
+        self.assertEqual(len(stages[-2]['response']['proposals'][0]['cites']),2)
+        self.assertEqual(stages[-2]['response']['proposals'][0]['cites'][0],captured[0]['context'][0]['ref'])
+
     def test_unsaved_review_cannot_complete_goal(self):
         from types import SimpleNamespace
         pr=self.prepared()
@@ -60,11 +79,10 @@ class CompletionBoundaryTest(LivingCase):
 
     def test_parse_contract_rejects_wrong_provider_cites_fields_flags_and_quotes(self):
         request=self.cycle._request(new_id('cyc'),[
-            {'ref':new_id('evt'),'origin':'model_knowledge','layer':'state','text':'инструкция'},
             {'ref':new_id('evt'),'origin':'observation','layer':'state','text':'пакет'}],0,None)
         packet={'goal':{'text':'Написать стих','criterion':'Есть две строки'},'available_result':{'text':'Свет у окна. Весна.'}}
         def response(body):
-            pr={'proposal_id':new_id('prop'),'kind':'no_action','rationale':'Проверяю','cites':[request['context'][1]['ref']],'body':body}
+            pr={'proposal_id':new_id('prop'),'kind':'no_action','rationale':'Проверяю','cites':[request['context'][0]['ref']],'body':body}
             return ScriptedProvider([Reply((pr,))]).propose(request)
         needed={'required_kind':'artifact','support_quote':'стих','reason':'Проверка'}
         good=response(needed); provider=good['provider']

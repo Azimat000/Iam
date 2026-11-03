@@ -55,12 +55,12 @@ class LivingCase(StateCase):
     @staticmethod
     def assessment(phase='requirement', kind='artifact', verdict='pass', quote=None):
         def reply(request):
-            packet = json.loads(request['context'][1]['text'])
+            packet = json.loads(request['context'][0]['text'])['packet']
             if phase == 'requirement':
                 body = {'required_kind':kind,'support_quote':quote if quote is not None else packet['goal']['text'],'reason':'Проверка вида результата'}
             else:
                 body = {'verdict':verdict,'goal_met':True,'criterion_met':True,'evidence_sufficient':True,
                         'support_quote':quote if quote is not None else packet['available_result']['text'][:100], 'reason':'Проверка исходной цели'}
             return Reply(({'proposal_id':new_id('prop'),'kind':'no_action','rationale':'Отдельная оценка',
-                           'cites':[request['context'][1]['ref']], 'body':body},))
+                           'cites':[request['context'][0]['ref']], 'body':body},))
         return reply

@@ -72,7 +72,7 @@ class IntentionTest(LivingCase):
         result=self.c.store.get_memory(report.actions[0].memory_id)
         self.run_reply(self.transition('done',result=result), replies=(self.assessment(kind='received_text'),self.assessment('evaluation')))
         self.assertEqual(self.c.state['intentions']['my_goal']['status'],'done')
-        packet=json.loads(self.p.calls[-1]['context'][1]['text'])
+        packet=json.loads(self.p.calls[-1]['context'][0]['text'])['packet']
         self.assertEqual(packet['available_result']['text'],value)
         self.assertIn('КОНЕЦ_НУЖНО_УВИДЕТЬ',packet['available_result']['text'])
 
@@ -118,7 +118,9 @@ class IntentionTest(LivingCase):
         stages = [e.payload for e in self.c.store.events() if e.type=='proposal.assessed']
         self.assertEqual(len(stages),3)
         self.assertIn('response',stages[0])
-        self.assertNotIn('available_result',json.loads(stages[0]['request']['context'][1]['text']))
+        self.assertNotIn('available_result',json.loads(stages[0]['request']['context'][0]['text'])['packet'])
+        self.assertEqual(len(stages[0]['request']['context']),1)
+        self.assertEqual(stages[0]['protocol'],'single_packet_v2')
 
     def test_failed_or_wrong_project_or_early_or_unchanged_result_never_done(self):
         source = self.read()
