@@ -47,6 +47,13 @@ def _proposals(data: dict) -> list[dict]:
 
 
 _ERRORS = {Kind.AUTH: ProviderAuthError, Kind.LIMIT: ProviderLimitError, Kind.TIMEOUT: ProviderTimeout}
+_FORMAT_CODES = {
+    "Codex emitted malformed JSONL": "stream_jsonl",
+    "Codex final message is invalid": "final_metadata",
+    "Codex must emit exactly one final message": "final_count",
+    "Codex final message is not JSON": "final_json",
+    "Codex final message must be an object": "final_object",
+}
 
 
 class CodexProvider:
@@ -62,9 +69,11 @@ class CodexProvider:
         self._run, self.sandbox, self.model = runner, sandbox, model
         self.timeout_s, self.max_format_retries = timeout_s, max_format_retries
         self.last_calls = 0
+        self.last_format_codes = []
 
     def propose(self, request: dict) -> dict:
         self.last_calls = 0
+        self.last_format_codes = []
         if self.sandbox.persist_auth_updates:
             with auth_session(self.sandbox.auth_file, REPO_ROOT) as session:
                 return self._propose(request, session)
@@ -77,6 +86,7 @@ class CodexProvider:
         prompt = SYSTEM_PROMPT + "\n\n" + build_prompt(request)
         if self.sandbox.auth_file is None and self._run is subprocess_runner:
             raise ProviderAuthError("Codex requires subscription credentials")
+        format_code = "unclassified_format"
         for attempt in range(self.max_format_retries + 1):
             auth = session.auth if session is not None else read_auth(self.sandbox.auth_file, REPO_ROOT)
             remaining = deadline - time.monotonic()
@@ -99,11 +109,15 @@ class CodexProvider:
                 try:
                     proposals = _proposals(result.data)
                 except (ValueError, RecursionError):
+                    format_code = "proposal_schema"
+                    self.last_format_codes.append(format_code)
                     continue
                 return self._response(request, proposals, result, started, False)
             if result.kind is not Kind.FORMAT:
                 raise _ERRORS.get(result.kind, ProviderUnavailable)(result.message)
-        raise ProviderFormatError("Codex response did not match the required format")
+            format_code = _FORMAT_CODES.get(result.message, "unclassified_format")
+            self.last_format_codes.append(format_code)
+        raise ProviderFormatError("Codex response did not match the required format; code=" + format_code)
 
     def _response(self, request: dict, proposals: list[dict], result: Classified, started: float, tool_use: bool) -> dict:
         return {"request_id": request["request_id"], "epoch": request["epoch"], "state_version": request["state_version"],

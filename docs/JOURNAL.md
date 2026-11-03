@@ -1034,3 +1034,15 @@ S22/D-063: единственнаяlive2завершиласьpartialProviderFor
 
 S22/D-063 контрольнаяточка: full4PASS1268/408.180с/140порогов;live2partial22decisions/23calls,diagunknown. Mainpostfreeze267code+6scenariosPASS,providerunchanged,reqevidenceonly/newverified0,PLAN/COMPLETION/gatesunchanged. CanonicalmemorycheckPASS,reqs226/PLAN350PASS,scenarios33(19/8/6)PASS,diffcheckPASS. Финальныйread-onlyreviewdocs/неприменённогоfixed-codediagpatchPASS. S22blocked/rev84,S23todo;полной5/живой3нет. ГотовимсохранениеветкибезPR/merge,ждёмотдельноерешениеобофлайндиагностикепровайдера.
 
+## 2026-11-03T20:25Z — S22 — разблокирован
+
+возобновлён
+
+## 2026-11-03T20:27Z — заметка
+
+S22/D-064: новое явное поручение пользователя исправить и завершить S22 принято как ограниченный ремонт с полной5/5 и заключительнойlive3. Диагностикаfixedcodes+last_format_codes, общий1форматныйповторнарешение(native/Cycle),forecast4сохранён. Завершённые5ветвей/18selectedнеповторять, наследовать22/23расхода и4superseded, новых≤38,итог≤60/240 иselected≤56. Командыlive/fullтолькоmainпослеhandoff/review/freeze. Дваimplementationworkerразделеныпо2providerи3runnerфайлам, baselineчистый16a8170/ledgerd064-ownership. Срезразблокирован, прежниеотказысохранены.
+
+## 2026-11-03T20:44Z — заметка
+
+S22/D-064 контрольнаяточкапровереннойчасти: providerdiagnostics2files COMPLETE/SCOPEPASS, mainactualdiff+27testsPASS0.020s+read-onlyreviewPASS. Fixedcodes/last_format_codes, raw/authнет, схемы/defaultnativeповторынеизменны. Runnerworkerещёпишетсвои3файла; ихнельзяstaging/checkpointсейчас. Сохраняемтолькоroot/provider/docпути. SharedmirrorпокаpreD064, full5/live3не запускались. УточнённыйfinalLOCAL-policy записанДОданных иусловияfinishНЕослаблены:каждыйотказпроверяетсяиобязательныйнеисправныймеханизмблокирует.
+
