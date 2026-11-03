@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from iam.domain import jsonschema
 from iam.interfaces import CognitiveProvider
-from iam.providers.classify import Kind
+from iam.providers.classify import Classified, Kind
 from iam.providers.codex import (CodexProvider, CodexSandboxConfig, DEFAULT_MODEL, FakeCodex,
                                  RESPONSE_JSON_SCHEMA, build_prompt, classify, docker_run, fake)
 from iam.providers.codex.auth import read_auth, validate_auth_path
@@ -113,6 +113,76 @@ class ProviderTests(unittest.TestCase):
                 p, runner = provider(fake.reply_text(json.dumps(data)), fake.reply([]))
                 self.assertEqual(p.propose(request())["proposals"], [])
                 self.assertEqual(len(runner.calls), 2)
+
+    def test_format_diagnostics_use_fixed_codes_without_model_contents(self):
+        canary = "private-model-content-90437"
+        cases = [
+            (RunResult(0, canary), "stream_jsonl"),
+            (sequence(item(phase="commentary")), "final_metadata"),
+            (sequence(), "final_count"),
+            (fake.reply_text(canary), "final_json"),
+            (fake.reply_text("[]"), "final_object"),
+            (fake.reply_text(json.dumps({**WIRE, "proposals": [{**WIRE["proposals"][0],
+                                                                "body_json": canary}]})), "proposal_schema"),
+        ]
+        for result, code in cases:
+            with self.subTest(code=code):
+                p, runner = provider(result, max_format_retries=0)
+                self.assertEqual(p.last_format_codes, [])
+                with self.assertRaises(ProviderFormatError) as caught:
+                    p.propose(request())
+                self.assertEqual(str(caught.exception),
+                                 "Codex response did not match the required format; code=" + code)
+                self.assertEqual(p.last_format_codes, [code])
+                self.assertNotIn(canary, str(caught.exception) + repr(p.last_format_codes))
+                self.assertEqual((p.last_calls, len(runner.calls)), (1, 1))
+
+    def test_unknown_format_reason_and_recursive_proposal_never_escape(self):
+        canary = "private-diagnostic-content-61829"
+        p, runner = provider(fake.reply([]), fake.reply([]))
+        with patch("iam.providers.codex.provider.classify",
+                   return_value=Classified(Kind.FORMAT, canary)):
+            with self.assertRaises(ProviderFormatError) as caught:
+                p.propose(request())
+        self.assertEqual(p.last_format_codes, ["unclassified_format", "unclassified_format"])
+        self.assertIn("code=unclassified_format", str(caught.exception))
+        self.assertNotIn(canary, str(caught.exception) + repr(p.last_format_codes)
+                         + runner.calls[1]["stdin"])
+        self.assertEqual((p.last_calls, len(runner.calls)), (2, 2))
+        p, runner = provider(fake.reply([]), max_format_retries=0)
+        with patch("iam.providers.codex.provider._proposals", side_effect=RecursionError(canary)):
+            with self.assertRaises(ProviderFormatError) as caught:
+                p.propose(request())
+        self.assertEqual(p.last_format_codes, ["proposal_schema"])
+        self.assertNotIn(canary, str(caught.exception) + repr(p.last_format_codes))
+        self.assertEqual((p.last_calls, len(runner.calls)), (1, 1))
+
+    def test_format_codes_survive_successful_repair_and_reset_for_each_proposal(self):
+        p, runner = provider(RunResult(0, "private first reply"), fake.reply([NOTE]), fake.reply([NOTE]))
+        response = p.propose(request())
+        self.assertEqual(response["usage"]["calls"], 2)
+        self.assertEqual(p.last_format_codes, ["stream_jsonl"])
+        self.assertEqual(jsonschema.errors("response", response), [])
+        prior_codes = p.last_format_codes
+        next_response = p.propose(request())
+        self.assertEqual(next_response["usage"]["calls"], 1)
+        self.assertEqual(p.last_format_codes, [])
+        self.assertIsNot(p.last_format_codes, prior_codes)
+        self.assertEqual(prior_codes, ["stream_jsonl"])
+        self.assertEqual((p.last_calls, len(runner.calls)), (1, 3))
+
+    def test_format_codes_keep_each_failure_and_reset_before_nonformat_error(self):
+        p, runner = provider(RunResult(0, "not JSONL"), fake.reply_text(json.dumps({**WIRE, "explanation": 3})),
+                             fake.auth_error())
+        with self.assertRaises(ProviderFormatError) as caught:
+            p.propose(request())
+        self.assertEqual(p.last_format_codes, ["stream_jsonl", "proposal_schema"])
+        self.assertIn("code=proposal_schema", str(caught.exception))
+        self.assertEqual((p.last_calls, len(runner.calls)), (2, 2))
+        with self.assertRaises(ProviderAuthError):
+            p.propose(request())
+        self.assertEqual(p.last_format_codes, [])
+        self.assertEqual((p.last_calls, len(runner.calls)), (1, 3))
 
     def test_typed_errors_never_retry_or_leak_diagnostics(self):
         cases = [(fake.auth_error(), ProviderAuthError), (fake.rate_limited(), ProviderLimitError),

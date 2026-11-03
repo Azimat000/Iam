@@ -15,6 +15,8 @@ from iam.cycle.cycle import DEFAULT_ALLOWED
 from iam.domain import new_id
 from iam.interfaces import Capability
 from iam.memory import PersistentMemory
+from iam.world import PersistentWorld, CAPABILITIES
+from iam.world.cycle import LivingCycle, WorldMemory
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
 from iam.state import EventSpec, StateController
@@ -117,8 +119,11 @@ class Runtime:
         else:
             provider = CodexProvider(self._model_run, CodexSandboxConfig(auth_file=self.auth_file))
         provider = self.session.provider(provider, charge=self.demo)
-        self.cycle = Cycle(self.ctl, provider, PersistentMemory(self.ctl), world, self.caps, creator,
-                           allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write'))
+        world = PersistentWorld(self.ctl, external=world)
+        world.initialize()
+        for capability in CAPABILITIES:
+            self.caps.register(capability)
+        self.cycle = LivingCycle(self.ctl, provider, WorldMemory(self.ctl), world, self.caps, creator)
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
 
     def _serve(self):
@@ -174,6 +179,10 @@ class Runtime:
         reason = fields.get("reason", "").strip()
         if not reason or len(reason) > 500:
             raise ValueError("Укажите причину действия длиной от 1 до 500 символов.")
+        if action == 'material_add':
+            if self.ctl.session_state == 'running' or self.session.in_flight:
+                raise SessionConflict('Поставьте сеанс на паузу и дождитесь ответа модели перед загрузкой текста.')
+            return self.cycle.world.add_material(fields.get('title', ''), fields.get('content', ''), reason)
         if action == "memory_restore":
             if self.ctl.session_state == 'running' or self.session.in_flight:
                 raise SessionConflict('Поставьте сеанс на паузу и дождитесь ответа модели.')

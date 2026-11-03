@@ -1,0 +1,503 @@
+{
+  "autonomous_choices": false,
+  "events": [
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_5MlbPfgUTuCCzI0AAMM0",
+      "idempotency_key": "per:exp_5MlbPfgUTuCCzI0AAMM0:create",
+      "life_time_ms": 0,
+      "occurred_at": "2026-11-03T17:58:52.003Z",
+      "payload": {
+        "changes": [
+          {
+            "after": "stopped",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_state"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_id"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_count"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "resume_count"
+          },
+          {
+            "after": {},
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments"
+          },
+          {
+            "after": {},
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world"
+          }
+        ],
+        "groups": [
+          "world_time"
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 0,
+          "caused_by": [
+            "evt_5MlbPfgUTuCCzI0AAMM0"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_state",
+              "value": "stopped"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_id",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "resume_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments",
+              "value": {}
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world",
+              "value": {}
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "EXPERIMENTAL: S22 scripted preparation",
+          "transition_id": "trn_5MlbPfgUTuCCzI0AAMM0"
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 1,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "state_version": 1,
+      "type": "persona.created"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_bBYyJx6E7YD2atxcnKnb",
+      "idempotency_key": "opr:opr_AyppA7PMvo4RMGBcTzSV",
+      "life_time_ms": 0,
+      "occurred_at": "2026-11-03T17:58:52.004Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "objects": {
+                "notebook": {
+                  "place_id": "desk",
+                  "title": "Блокнот"
+                }
+              },
+              "places": {
+                "desk": "Рабочий стол",
+                "room": "Личное пространство",
+                "shelf": "Библиотека"
+              }
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.space"
+          }
+        ],
+        "intervention_id": "opr_AyppA7PMvo4RMGBcTzSV",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Создано пустое личное пространство S22",
+        "target": "state",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 1,
+          "caused_by": [
+            "evt_bBYyJx6E7YD2atxcnKnb"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.space",
+              "value": {
+                "objects": {
+                  "notebook": {
+                    "place_id": "desk",
+                    "title": "Блокнот"
+                  }
+                },
+                "places": {
+                  "desk": "Рабочий стол",
+                  "room": "Личное пространство",
+                  "shelf": "Библиотека"
+                }
+              }
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "Создано пустое личное пространство S22",
+          "transition_id": "trn_AAsjOAW7IeuAii06P3O1"
+        },
+        "visible_to_persona": true
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 2,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "state_version": 2,
+      "type": "operator.intervention"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_m2EohIb77vFDZFJh1zel",
+      "idempotency_key": "ses:ses_UxbVxjTY6EFaQPb12P7y:start",
+      "life_time_ms": 0,
+      "occurred_at": "2026-11-03T17:58:52.005Z",
+      "payload": {
+        "changes": [
+          {
+            "after": "running",
+            "before": "stopped",
+            "group": "world_time",
+            "op": "transition",
+            "path": "session_state"
+          },
+          {
+            "after": "ses_UxbVxjTY6EFaQPb12P7y",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_id"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_count"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "resume_count"
+          }
+        ],
+        "life_time_ms": 0,
+        "session_id": "ses_UxbVxjTY6EFaQPb12P7y",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 2,
+          "caused_by": [
+            "evt_m2EohIb77vFDZFJh1zel"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "session_state",
+              "value": "running"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_id",
+              "value": "ses_UxbVxjTY6EFaQPb12P7y"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "resume_count",
+              "value": 0
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "начало сеанса",
+          "transition_id": "trn_b2Mb6M1Kk1TbNtjmO8jX"
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 3,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "session"
+      },
+      "state_version": 3,
+      "type": "session.started"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_1BzwmCbNqwJ8V2lPdq13",
+      "idempotency_key": "ses:ses_UxbVxjTY6EFaQPb12P7y:stop",
+      "life_time_ms": 0,
+      "occurred_at": "2026-11-03T17:58:52.006Z",
+      "payload": {
+        "changes": [
+          {
+            "after": "stopped",
+            "before": "running",
+            "group": "world_time",
+            "op": "transition",
+            "path": "session_state"
+          },
+          {
+            "after": null,
+            "before": "ses_UxbVxjTY6EFaQPb12P7y",
+            "group": "world_time",
+            "op": "set",
+            "path": "session_id"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          }
+        ],
+        "life_time_ms": 0,
+        "session_id": "ses_UxbVxjTY6EFaQPb12P7y",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 3,
+          "caused_by": [
+            "evt_1BzwmCbNqwJ8V2lPdq13"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "session_state",
+              "value": "stopped"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_id",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "остановка сеанса",
+          "transition_id": "trn_qX9KaNfhedS5QrSWGESe"
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 4,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "session"
+      },
+      "state_version": 4,
+      "type": "session.stopped"
+    }
+  ],
+  "family": "do_nothing",
+  "material_ids": {},
+  "no_fabricated_interest_or_skill_scores": true,
+  "prepared_reports": [],
+  "scripted_past": true,
+  "state": {
+    "affect": {},
+    "beliefs": {},
+    "intentions": {},
+    "preferences": {},
+    "relations": {},
+    "selfmodel": {},
+    "traits": {},
+    "world_time": {
+      "life_time_ms": 0,
+      "moments": {},
+      "pause_count": 0,
+      "pause_reason": null,
+      "paused_at": null,
+      "resume_count": 0,
+      "session_id": null,
+      "session_state": "stopped",
+      "world": {
+        "space": {
+          "objects": {
+            "notebook": {
+              "place_id": "desk",
+              "title": "Блокнот"
+            }
+          },
+          "places": {
+            "desk": "Рабочий стол",
+            "room": "Личное пространство",
+            "shelf": "Библиотека"
+          }
+        }
+      }
+    }
+  }
+}

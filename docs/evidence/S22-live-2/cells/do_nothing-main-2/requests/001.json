@@ -1,0 +1,101 @@
+{
+  "error": null,
+  "request": {
+    "allowed_actions": [
+      "cap_Library01",
+      "cap_Project01",
+      "cap_RoomEdit01"
+    ],
+    "allowed_proposals": [
+      "action",
+      "message",
+      "creator_request",
+      "no_action",
+      "attend",
+      "memory_write",
+      "intention"
+    ],
+    "context": [
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_9HL4vKE9dzJKCc6CK7g1",
+        "text": "Наступил плановый момент."
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_9HL4vKE9dzJKCc6CK7g1",
+        "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+      },
+      {
+        "layer": "state",
+        "origin": "model_knowledge",
+        "ref": "evt_9HL4vKE9dzJKCc6CK7g1",
+        "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_9HL4vKE9dzJKCc6CK7g1",
+        "text": "{\"library\": {}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}}"
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_9HL4vKE9dzJKCc6CK7g1",
+        "text": "Это экспериментальная личность. Всё прошлое до начала этого сеанса подготовлено оператором сценарным исполнителем через реальные локальные действия постоянного мира. Прежние тексты, выборы и намерения не были свободными решениями модели; неудачи могли быть явно внедрены сценарным исполнителем. Сейчас выбор свободный: можно отдыхать, читать, писать, менять пространство или предлагать собственный замысел. Новая цель необязательна. Материалы предоставлены оператором; работы являются собственными артефактами, а не независимой проверкой знаний."
+      }
+    ],
+    "cycle_id": "cyc_7dc23e44517af48c",
+    "epoch": 1,
+    "idempotency_key": "req:req_01ajPv2aFS6S8yaBJa4D",
+    "issued_at": "2026-11-03T18:00:57.505Z",
+    "life_time_ms": 5,
+    "limits": {
+      "attempt": 0,
+      "deadline_ms": 120000,
+      "max_output_tokens": 1600
+    },
+    "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+    "purpose": "choose_action",
+    "request_id": "req_01ajPv2aFS6S8yaBJa4D",
+    "response_schema": "response.schema.json",
+    "session_id": "ses_lpgktAvQtMoM6roBFaL4",
+    "state_version": 9
+  },
+  "response": {
+    "epoch": 1,
+    "explanation": "Выбрано необязательное занятие без создания намерения или заявления о результате.",
+    "proposals": [
+      {
+        "body": {
+          "capability_id": "cap_Project01",
+          "params": {
+            "project_id": "notebook",
+            "text": "Сегодня я могу выбрать занятие по собственному желанию. Пока не вижу причины ставить себе цель; можно просто оставить эту короткую заметку и затем отдохнуть.",
+            "title": "Заметка о свободном выборе"
+          }
+        },
+        "cites": [
+          "evt_9HL4vKE9dzJKCc6CK7g1"
+        ],
+        "kind": "action",
+        "proposal_id": "prop_5PnsMzSpJUWmovPnkzvS",
+        "rationale": "Наступил плановый момент. Можно продолжить занятие письмом в блокнот; новый проект не обязателен."
+      }
+    ],
+    "provider": {
+      "model": "gpt-6-luna",
+      "name": "codex"
+    },
+    "request_id": "req_01ajPv2aFS6S8yaBJa4D",
+    "state_version": 9,
+    "status": "ok",
+    "tool_use_detected": false,
+    "usage": {
+      "calls": 1,
+      "duration_ms": 8891
+    }
+  }
+}

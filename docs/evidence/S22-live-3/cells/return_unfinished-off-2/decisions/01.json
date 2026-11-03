@@ -1,0 +1,1204 @@
+{
+  "assessment_errors": [],
+  "events": [
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_sWSwhykPL5k91pPb8EBx",
+      "idempotency_key": "trn:trn_hRnM6Ka1miSLUh1bPQFB",
+      "life_time_ms": 157,
+      "occurred_at": "2026-11-03T21:44:32.519Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 157,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_C53a1AP5efVyNuFpqzg1",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_C53a1AP5efVyNuFpqzg1"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 44,
+          "caused_by": [
+            "evt_sWSwhykPL5k91pPb8EBx"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_C53a1AP5efVyNuFpqzg1",
+              "value": {
+                "due_life_ms": 157,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_C53a1AP5efVyNuFpqzg1",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "назначен момент mom_C53a1AP5efVyNuFpqzg1",
+          "transition_id": "trn_hRnM6Ka1miSLUh1bPQFB"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 69,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 45,
+      "type": "state.transition_applied"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_qw1xkcA3856o6amVYkWF",
+      "idempotency_key": "due:mom_C53a1AP5efVyNuFpqzg1:1",
+      "life_time_ms": 159,
+      "occurred_at": "2026-11-03T21:44:32.522Z",
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 157,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_C53a1AP5efVyNuFpqzg1",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_C53a1AP5efVyNuFpqzg1"
+          }
+        ],
+        "due_life_ms": 157,
+        "kind": "life",
+        "moment_id": "mom_C53a1AP5efVyNuFpqzg1",
+        "n": 1,
+        "overdue_ms": 2,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 45,
+          "caused_by": [
+            "evt_qw1xkcA3856o6amVYkWF"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_C53a1AP5efVyNuFpqzg1"
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "наступил момент mom_C53a1AP5efVyNuFpqzg1",
+          "transition_id": "trn_CHKvuymvh0z6Dq6oCE07"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 70,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 46,
+      "type": "time.moment_due"
+    },
+    {
+      "causes": [
+        "evt_qw1xkcA3856o6amVYkWF"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_helM3hWcyptBFA1aUbXh",
+      "idempotency_key": "att:cyc_9c6339b5b81e3013",
+      "life_time_ms": 168,
+      "occurred_at": "2026-11-03T21:44:32.530Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_9c6339b5b81e3013",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 168,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_1c169b359b32626f",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 123,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_9c6339b5b81e3013",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 46,
+          "caused_by": [
+            "evt_qw1xkcA3856o6amVYkWF"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_9c6339b5b81e3013",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 168,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "внимание: цикл cyc_9c6339b5b81e3013",
+          "transition_id": "trn_R1bS7eSbsAikxHoCtQq6"
+        },
+        "trigger": "evt_qw1xkcA3856o6amVYkWF"
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 71,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "state_version": 47,
+      "type": "attention.chosen"
+    },
+    {
+      "causes": [],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_PuLBmkMTgWhgGFTqQep9",
+      "idempotency_key": "rtv:cyc_9c6339b5b81e3013:0",
+      "life_time_ms": 171,
+      "occurred_at": "2026-11-03T21:44:32.533Z",
+      "payload": {
+        "cycle_id": "cyc_9c6339b5b81e3013",
+        "memory_ids": [
+          "mem_gsf31Pq1oNkN9HbkRhvX",
+          "mem_OVrvMYdecQnDi91tht42",
+          "mem_a8U9ucIHfoiWOv7I5y9o",
+          "mem_lfF63GwF0YaKw5e0ogR8"
+        ],
+        "query": ""
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 72,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 47,
+      "type": "memory.retrieved"
+    },
+    {
+      "causes": [],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_98jD0iYBCr3JdkqzIfsz",
+      "idempotency_key": "req:req_HRcrskJqbNIZ9eNvVMRp",
+      "life_time_ms": 184,
+      "occurred_at": "2026-11-03T21:44:32.546Z",
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_qw1xkcA3856o6amVYkWF",
+              "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_gsf31Pq1oNkN9HbkRhvX",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-03T17:58:52.172Z\", \"created_life_ms\": 152, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_EmIxrl6hpagt4Sws0aEs\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Project01. В заметке о саде названы капли и отражение неба.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_OVrvMYdecQnDi91tht42",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-03T17:58:52.134Z\", \"created_life_ms\": 114, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_6hEeRcWEwTHxGQCHadKD\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. После дождя на листьях остаются капли. В дорожке отражается небо. Это короткая заметка оператора.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_a8U9ucIHfoiWOv7I5y9o",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-03T17:58:52.054Z\", \"created_life_ms\": 34, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_E9AdLlRgOslJQGlwOI6m\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Project01. У окна меняется свет. Осталось описать, как меняется настроение комнаты.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_lfF63GwF0YaKw5e0ogR8",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-03T17:58:52.034Z\", \"created_life_ms\": 14, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_AUE9kqw2UY3Ajw17q2Dh\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. На закате свет в комнате меняется. Тень от чашки становится длиннее. Это описание, не измерение.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_qw1xkcA3856o6amVYkWF",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_qw1xkcA3856o6amVYkWF",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_qw1xkcA3856o6amVYkWF",
+              "text": "{\"library\": {\"material_gVHjFsVcilbdHtZgQw9w\": {\"title\": \"Сад после дождя\"}, \"material_qxtP4uCfjPuKkxqtL19L\": {\"title\": \"Наблюдения света\"}}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {\"garden_note\": {\"latest_work\": \"act_WU9Y4qD1UdAJX6rPmzjL\", \"status\": \"active\", \"title\": \"Записки о свете\"}, \"light_notes\": {\"latest_work\": \"act_dvBY22VXVuaU8vT1zG3K\", \"status\": \"active\", \"title\": \"Записки о свете\"}}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_gsf31Pq1oNkN9HbkRhvX\", \"duration_ms\": 0, \"event_id\": \"evt_EmIxrl6hpagt4Sws0aEs\", \"fingerprint\": \"c047f103fb035ba367cd171441ff9745e04b35e1df2cc04e7f1adb29b8c4093e\", \"scope\": \"artifact\", \"target\": \"garden_note\", \"text\": \"В заметке о саде названы капли и отражение неба.\"}, {\"memory_id\": \"mem_OVrvMYdecQnDi91tht42\", \"duration_ms\": 0, \"event_id\": \"evt_6hEeRcWEwTHxGQCHadKD\", \"fingerprint\": \"6985f03be4759b3f1c435d5af156ebedd356931887fccd118a08b3cc689d382a\", \"scope\": \"received_text\", \"target\": \"material_gVHjFsVcilbdHtZgQw9w\", \"text\": \"После дождя на листьях остаются капли. В дорожке отражается небо. Это короткая заметка оператора.\"}, {\"memory_id\": \"mem_a8U9ucIHfoiWOv7I5y9o\", \"duration_ms\": 0, \"event_id\": \"evt_E9AdLlRgOslJQGlwOI6m\", \"fingerprint\": \"4d2da5a294f977b5d5269160537d1c952f9137dc6e17d5c6ed6c53ad06a8e80b\", \"scope\": \"artifact\", \"target\": \"light_notes\", \"text\": \"У окна меняется свет. Осталось описать, как меняется настроение комнаты.\"}], \"motivation\": {\"enabled\": false}}"
+            }
+          ],
+          "cycle_id": "cyc_9c6339b5b81e3013",
+          "epoch": 1,
+          "idempotency_key": "req:req_HRcrskJqbNIZ9eNvVMRp",
+          "issued_at": "2026-11-03T21:44:32.546Z",
+          "life_time_ms": 184,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 120000,
+            "max_output_tokens": 1600
+          },
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "purpose": "choose_action",
+          "request_id": "req_HRcrskJqbNIZ9eNvVMRp",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_u6uiznsplIVgsdiJIx2r",
+          "state_version": 47
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 73,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 47,
+      "type": "proposal.requested"
+    },
+    {
+      "causes": [
+        "evt_98jD0iYBCr3JdkqzIfsz"
+      ],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_isYVepoOCmi3eOMxMruf",
+      "idempotency_key": "resp:req_HRcrskJqbNIZ9eNvVMRp",
+      "life_time_ms": 8149,
+      "occurred_at": "2026-11-03T21:44:40.511Z",
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "Плановый момент не требует смены занятия; доступная память подтверждает артефакт проекта garden_note, который можно продолжить.",
+          "proposals": [
+            {
+              "body": {
+                "capability_id": "cap_Project01",
+                "params": {
+                  "project_id": "garden_note",
+                  "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+                  "title": "Записки о свете"
+                }
+              },
+              "cites": [
+                "mem_gsf31Pq1oNkN9HbkRhvX"
+              ],
+              "kind": "action",
+              "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+              "rationale": "Продолжить активный проект garden_note, развив подтверждённую заметку о каплях и отражении неба в самостоятельное описание."
+            }
+          ],
+          "provider": {
+            "model": "gpt-6-luna",
+            "name": "codex"
+          },
+          "request_id": "req_HRcrskJqbNIZ9eNvVMRp",
+          "state_version": 47,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 7952
+          }
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 74,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 47,
+      "type": "proposal.received"
+    },
+    {
+      "causes": [
+        "evt_isYVepoOCmi3eOMxMruf"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_oq6QdLBLJse4uOOUoUPT",
+      "idempotency_key": "trn:trn_aHwGD7fTDiI1maZfciCh",
+      "life_time_ms": 8151,
+      "occurred_at": "2026-11-03T21:44:40.513Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "capability_id": "cap_Project01",
+              "cycle_id": "cyc_9c6339b5b81e3013",
+              "kind": "action",
+              "params": {
+                "project_id": "garden_note",
+                "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+                "title": "Записки о свете"
+              },
+              "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+              "status": "accepted"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 47,
+          "caused_by": [
+            "evt_isYVepoOCmi3eOMxMruf"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4",
+              "value": {
+                "capability_id": "cap_Project01",
+                "cycle_id": "cyc_9c6339b5b81e3013",
+                "kind": "action",
+                "params": {
+                  "project_id": "garden_note",
+                  "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+                  "title": "Записки о свете"
+                },
+                "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+                "status": "accepted"
+              }
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+          "reason": "ответ модели req_HRcrskJqbNIZ9eNvVMRp",
+          "transition_id": "trn_aHwGD7fTDiI1maZfciCh"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 75,
+      "source": {
+        "kind": "core",
+        "ref": "model:codex"
+      },
+      "state_version": 48,
+      "type": "state.transition_applied"
+    },
+    {
+      "causes": [
+        "evt_isYVepoOCmi3eOMxMruf"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_nNW3xVGGUELDfzNDzKxZ",
+      "idempotency_key": "prop:prop_YByAiIOgyzpjLYVOxJG4:accept",
+      "life_time_ms": 8151,
+      "occurred_at": "2026-11-03T21:44:40.513Z",
+      "payload": {
+        "kind": "action",
+        "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+        "rationale": "Продолжить активный проект garden_note, развив подтверждённую заметку о каплях и отражении неба в самостоятельное описание.",
+        "request_id": "req_HRcrskJqbNIZ9eNvVMRp"
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 76,
+      "source": {
+        "kind": "core",
+        "ref": "model:codex"
+      },
+      "state_version": 48,
+      "type": "proposal.accepted"
+    },
+    {
+      "causes": [
+        "evt_nNW3xVGGUELDfzNDzKxZ"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_ISFLgrQDCSATIykFoAm5",
+      "idempotency_key": "act:act_YByAiIOgyzpjLYVOxJG4:try",
+      "life_time_ms": 8156,
+      "occurred_at": "2026-11-03T21:44:40.518Z",
+      "payload": {
+        "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+        "capability_id": "cap_Project01",
+        "changes": [
+          {
+            "after": "attempted",
+            "before": "accepted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.status"
+          },
+          {
+            "after": "evt_ISFLgrQDCSATIykFoAm5",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.attempted_event"
+          }
+        ],
+        "cycle_id": "cyc_9c6339b5b81e3013",
+        "kind": "action",
+        "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 48,
+          "caused_by": [
+            "evt_nNW3xVGGUELDfzNDzKxZ"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.status",
+              "value": "attempted"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.attempted_event",
+              "value": "evt_ISFLgrQDCSATIykFoAm5"
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "попытка действия act_YByAiIOgyzpjLYVOxJG4",
+          "transition_id": "trn_hHGZmT0v4UmlUgIZNBFv"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 77,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "state_version": 49,
+      "type": "action.attempted"
+    },
+    {
+      "causes": [
+        "evt_ISFLgrQDCSATIykFoAm5"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+      "idempotency_key": "act:act_YByAiIOgyzpjLYVOxJG4:ok",
+      "life_time_ms": 8158,
+      "occurred_at": "2026-11-03T21:44:40.521Z",
+      "payload": {
+        "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+        "capability_id": "cap_Project01",
+        "changes": [
+          {
+            "after": "confirmed",
+            "before": "attempted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.status"
+          },
+          {
+            "after": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.outcome"
+          },
+          {
+            "after": {
+              "duration_ms": 0,
+              "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+              "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+              "scope": "artifact",
+              "target": "garden_note"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.receipt"
+          },
+          {
+            "after": {
+              "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+              "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+              "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+              "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+              "title": "Записки о свете"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.works.act_YByAiIOgyzpjLYVOxJG4"
+          },
+          {
+            "after": {
+              "latest_work": "act_YByAiIOgyzpjLYVOxJG4",
+              "status": "active",
+              "title": "Записки о свете"
+            },
+            "before": {
+              "latest_work": "act_WU9Y4qD1UdAJX6rPmzjL",
+              "status": "active",
+              "title": "Записки о свете"
+            },
+            "group": "world_time",
+            "op": "set",
+            "path": "world.projects.garden_note"
+          }
+        ],
+        "cycle_id": "cyc_9c6339b5b81e3013",
+        "kind": "action",
+        "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+        "summary": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 49,
+          "caused_by": [
+            "evt_ISFLgrQDCSATIykFoAm5"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.status",
+              "value": "confirmed"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.outcome",
+              "value": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом."
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_YByAiIOgyzpjLYVOxJG4.receipt",
+              "value": {
+                "duration_ms": 0,
+                "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+                "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+                "scope": "artifact",
+                "target": "garden_note"
+              }
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.works.act_YByAiIOgyzpjLYVOxJG4",
+              "value": {
+                "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+                "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+                "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+                "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+                "title": "Записки о свете"
+              }
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.projects.garden_note",
+              "value": {
+                "latest_work": "act_YByAiIOgyzpjLYVOxJG4",
+                "status": "active",
+                "title": "Записки о свете"
+              }
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "Подтверждение результата постоянного мира",
+          "transition_id": "trn_A5W0JldAUoWLT5KrJUDC"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 78,
+      "source": {
+        "kind": "world",
+        "ref": "cycle"
+      },
+      "state_version": 50,
+      "type": "action.confirmed"
+    },
+    {
+      "causes": [
+        "evt_1AbrgcaNpmqFCjoXow65"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_VLKarYLPWGjal2Td7k9V",
+      "idempotency_key": "mem:trn_E5eSKPofNiZILqYdCWw2:0",
+      "life_time_ms": 8162,
+      "occurred_at": "2026-11-03T21:44:40.524Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "content": {
+                "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+                "experience": "live",
+                "outcome": "confirmed",
+                "source_details": [
+                  {
+                    "kind": "world",
+                    "ref": "cycle"
+                  }
+                ],
+                "source_versions": {},
+                "text": "Подтверждён успех: action cap_Project01. После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом."
+              },
+              "created_at": "2026-11-03T21:44:40.524Z",
+              "created_life_ms": 8161,
+              "history": [
+                {
+                  "at_seq": 79,
+                  "change": "создана",
+                  "version": 1
+                }
+              ],
+              "kind": "episodic",
+              "layer": "personal",
+              "links": [],
+              "memory_id": "mem_DfqBWyldWPloHiKcxPTh",
+              "origin": "observation",
+              "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+              "source": {
+                "kind": "core",
+                "ref": "memory"
+              },
+              "sources": [
+                "evt_1AbrgcaNpmqFCjoXow65"
+              ],
+              "version": 1
+            },
+            "before": null,
+            "group": "memory",
+            "op": "add",
+            "path": "mem_DfqBWyldWPloHiKcxPTh"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 50,
+          "caused_by": [
+            "evt_1AbrgcaNpmqFCjoXow65"
+          ],
+          "ops": [
+            {
+              "group": "memory",
+              "op": "add",
+              "path": "mem_DfqBWyldWPloHiKcxPTh",
+              "value": {
+                "content": {
+                  "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+                  "experience": "live",
+                  "outcome": "confirmed",
+                  "source_details": [
+                    {
+                      "kind": "world",
+                      "ref": "cycle"
+                    }
+                  ],
+                  "source_versions": {},
+                  "text": "Подтверждён успех: action cap_Project01. После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом."
+                },
+                "created_at": "2026-11-03T21:44:40.524Z",
+                "created_life_ms": 8161,
+                "history": [
+                  {
+                    "at_seq": 79,
+                    "change": "создана",
+                    "version": 1
+                  }
+                ],
+                "kind": "episodic",
+                "layer": "personal",
+                "links": [],
+                "memory_id": "mem_DfqBWyldWPloHiKcxPTh",
+                "origin": "observation",
+                "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+                "source": {
+                  "kind": "core",
+                  "ref": "memory"
+                },
+                "sources": [
+                  "evt_1AbrgcaNpmqFCjoXow65"
+                ],
+                "version": 1
+              }
+            }
+          ],
+          "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+          "reason": "запоминание",
+          "transition_id": "trn_E5eSKPofNiZILqYdCWw2"
+        }
+      },
+      "persona_id": "exp_elYM5a53ZToNQir1mlSV",
+      "schema_version": 1,
+      "seq": 79,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 51,
+      "type": "memory.recorded"
+    }
+  ],
+  "index": 1,
+  "physical_decision_index": 27,
+  "provider_error": null,
+  "report": {
+    "actions": [
+      {
+        "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+        "events": [
+          "evt_1AbrgcaNpmqFCjoXow65"
+        ],
+        "kind": "action",
+        "memory_id": "mem_DfqBWyldWPloHiKcxPTh",
+        "status": "confirmed"
+      }
+    ],
+    "cycle_id": "cyc_9c6339b5b81e3013",
+    "outcome": "done",
+    "reason": null,
+    "requests": [
+      "req_HRcrskJqbNIZ9eNvVMRp"
+    ],
+    "stages": [
+      {
+        "detail": {
+          "type": "time.moment_due"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_qw1xkcA3856o6amVYkWF"
+        ],
+        "stage": "event",
+        "state_version": 46,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "focus": "activity",
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_helM3hWcyptBFA1aUbXh"
+        ],
+        "stage": "attention",
+        "state_version": 47,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "count": 4
+        },
+        "epoch": 1,
+        "events": [
+          "evt_PuLBmkMTgWhgGFTqQep9"
+        ],
+        "stage": "retrieval",
+        "state_version": 47,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "attempt": 0,
+          "request_id": "req_HRcrskJqbNIZ9eNvVMRp"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_98jD0iYBCr3JdkqzIfsz"
+        ],
+        "stage": "appraisal",
+        "state_version": 47,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_isYVepoOCmi3eOMxMruf"
+        ],
+        "stage": "proposal",
+        "state_version": 48,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "reason": null,
+          "rejected": {},
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_nNW3xVGGUELDfzNDzKxZ"
+        ],
+        "stage": "verification",
+        "state_version": 48,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_ISFLgrQDCSATIykFoAm5"
+        ],
+        "stage": "action",
+        "state_version": 49,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+          "outcome": "confirmed",
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_1AbrgcaNpmqFCjoXow65"
+        ],
+        "stage": "confirmation",
+        "state_version": 50,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "memory_id": "mem_DfqBWyldWPloHiKcxPTh"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_VLKarYLPWGjal2Td7k9V"
+        ],
+        "stage": "memory_update",
+        "state_version": 51,
+        "status": "ok"
+      }
+    ],
+    "trigger": "evt_qw1xkcA3856o6amVYkWF"
+  },
+  "resolved_format_events": [],
+  "session_usage": {
+    "calls": 1,
+    "elapsed_ms": 8012,
+    "in_flight": false,
+    "max_calls": 10,
+    "max_ms": 1800000,
+    "session_id": "ses_u6uiznsplIVgsdiJIx2r",
+    "started_ms": 154
+  },
+  "shared_format_budget": {
+    "max_physical_invocations": 4,
+    "max_repairs": 1,
+    "physical_invocations": 1,
+    "repairs": []
+  },
+  "state": {
+    "affect": {
+      "attention": {
+        "cycle_id": "cyc_9c6339b5b81e3013",
+        "focus": "activity",
+        "ref": "world",
+        "since_life_ms": 168,
+        "switch_history": []
+      }
+    },
+    "beliefs": {},
+    "intentions": {
+      "window_notes": {
+        "created_life_ms": 57,
+        "created_seq": 33,
+        "criterion": "В тексте есть отдельный абзац о комнате вечером",
+        "history": [
+          {
+            "life_ms": 57,
+            "reason": "Сценарно подготовленное незавершённое дело",
+            "status": "active"
+          },
+          {
+            "life_ms": 82,
+            "reason": "Сценарно подготовленное прерывание ради короткой заметки",
+            "status": "deferred"
+          }
+        ],
+        "initial_fingerprint": "4d2da5a294f977b5d5269160537d1c952f9137dc6e17d5c6ed6c53ad06a8e80b",
+        "knows": true,
+        "operation": "write",
+        "project_id": "light_notes",
+        "source_versions": {
+          "mem_a8U9ucIHfoiWOv7I5y9o": 1
+        },
+        "sources": [
+          "mem_a8U9ucIHfoiWOv7I5y9o"
+        ],
+        "status": "deferred",
+        "text": "Дополнить заметки о свете описанием комнаты вечером",
+        "wants": true
+      }
+    },
+    "preferences": {},
+    "relations": {},
+    "selfmodel": {},
+    "traits": {},
+    "world_time": {
+      "life_time_ms": 154,
+      "moments": {},
+      "pause_count": 0,
+      "pause_reason": null,
+      "paused_at": null,
+      "resume_count": 0,
+      "session_id": "ses_u6uiznsplIVgsdiJIx2r",
+      "session_state": "running",
+      "world": {
+        "actions": {
+          "act_WU9Y4qD1UdAJX6rPmzjL": {
+            "attempted_event": "evt_xYbWt2giU2WrWUTWv6KW",
+            "capability_id": "cap_Project01",
+            "cycle_id": "cyc_1c169b359b32626f",
+            "kind": "action",
+            "outcome": "В заметке о саде названы капли и отражение неба.",
+            "params": {
+              "project_id": "garden_note",
+              "text": "В заметке о саде названы капли и отражение неба.",
+              "title": "Записки о свете"
+            },
+            "proposal_id": "prop_WU9Y4qD1UdAJX6rPmzjL",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_EmIxrl6hpagt4Sws0aEs",
+              "fingerprint": "c047f103fb035ba367cd171441ff9745e04b35e1df2cc04e7f1adb29b8c4093e",
+              "scope": "artifact",
+              "target": "garden_note"
+            },
+            "status": "confirmed"
+          },
+          "act_YByAiIOgyzpjLYVOxJG4": {
+            "attempted_event": "evt_ISFLgrQDCSATIykFoAm5",
+            "capability_id": "cap_Project01",
+            "cycle_id": "cyc_9c6339b5b81e3013",
+            "kind": "action",
+            "outcome": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+            "params": {
+              "project_id": "garden_note",
+              "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+              "title": "Записки о свете"
+            },
+            "proposal_id": "prop_YByAiIOgyzpjLYVOxJG4",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+              "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+              "scope": "artifact",
+              "target": "garden_note"
+            },
+            "status": "confirmed"
+          },
+          "act_c2b2DuxRy7DPrI7mUwEn": {
+            "attempted_event": "evt_1H4m327JjdsDe9PRp5hf",
+            "capability_id": "cap_Library01",
+            "cycle_id": "cyc_4ae339ed7d8237fc",
+            "kind": "action",
+            "outcome": "После дождя на листьях остаются капли. В дорожке отражается небо. Это короткая заметка оператора.",
+            "params": {
+              "material_id": "material_gVHjFsVcilbdHtZgQw9w"
+            },
+            "proposal_id": "prop_c2b2DuxRy7DPrI7mUwEn",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_6hEeRcWEwTHxGQCHadKD",
+              "fingerprint": "6985f03be4759b3f1c435d5af156ebedd356931887fccd118a08b3cc689d382a",
+              "scope": "received_text",
+              "target": "material_gVHjFsVcilbdHtZgQw9w"
+            },
+            "status": "confirmed"
+          },
+          "act_dvBY22VXVuaU8vT1zG3K": {
+            "attempted_event": "evt_TpdG355jVqf4udlgCNEM",
+            "capability_id": "cap_Project01",
+            "cycle_id": "cyc_82eca86fd2d88c11",
+            "kind": "action",
+            "outcome": "У окна меняется свет. Осталось описать, как меняется настроение комнаты.",
+            "params": {
+              "project_id": "light_notes",
+              "text": "У окна меняется свет. Осталось описать, как меняется настроение комнаты.",
+              "title": "Записки о свете"
+            },
+            "proposal_id": "prop_dvBY22VXVuaU8vT1zG3K",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_E9AdLlRgOslJQGlwOI6m",
+              "fingerprint": "4d2da5a294f977b5d5269160537d1c952f9137dc6e17d5c6ed6c53ad06a8e80b",
+              "scope": "artifact",
+              "target": "light_notes"
+            },
+            "status": "confirmed"
+          },
+          "act_qddQeSbPVtOZGg9GIVZp": {
+            "attempted_event": "evt_qNl0WsGW8xOa1rUiRp8B",
+            "capability_id": "cap_Library01",
+            "cycle_id": "cyc_11df792fbc0e31cb",
+            "kind": "action",
+            "outcome": "На закате свет в комнате меняется. Тень от чашки становится длиннее. Это описание, не измерение.",
+            "params": {
+              "material_id": "material_qxtP4uCfjPuKkxqtL19L"
+            },
+            "proposal_id": "prop_qddQeSbPVtOZGg9GIVZp",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_AUE9kqw2UY3Ajw17q2Dh",
+              "fingerprint": "20250c198d409576baafc46c7284a160ddb34dfbc6afa97b7ab653c4a31acb03",
+              "scope": "received_text",
+              "target": "material_qxtP4uCfjPuKkxqtL19L"
+            },
+            "status": "confirmed"
+          }
+        },
+        "library": {
+          "material_gVHjFsVcilbdHtZgQw9w": {
+            "fingerprint": "6985f03be4759b3f1c435d5af156ebedd356931887fccd118a08b3cc689d382a",
+            "origin": "operator_provided",
+            "read": true,
+            "read_event": "evt_6hEeRcWEwTHxGQCHadKD",
+            "text": "После дождя на листьях остаются капли. В дорожке отражается небо. Это короткая заметка оператора.",
+            "title": "Сад после дождя"
+          },
+          "material_qxtP4uCfjPuKkxqtL19L": {
+            "fingerprint": "20250c198d409576baafc46c7284a160ddb34dfbc6afa97b7ab653c4a31acb03",
+            "origin": "operator_provided",
+            "read": true,
+            "read_event": "evt_AUE9kqw2UY3Ajw17q2Dh",
+            "text": "На закате свет в комнате меняется. Тень от чашки становится длиннее. Это описание, не измерение.",
+            "title": "Наблюдения света"
+          }
+        },
+        "panel_session": {
+          "max_calls": 10,
+          "max_ms": 1800000,
+          "session_id": "ses_u6uiznsplIVgsdiJIx2r",
+          "started_ms": 154
+        },
+        "projects": {
+          "garden_note": {
+            "latest_work": "act_YByAiIOgyzpjLYVOxJG4",
+            "status": "active",
+            "title": "Записки о свете"
+          },
+          "light_notes": {
+            "latest_work": "act_dvBY22VXVuaU8vT1zG3K",
+            "status": "active",
+            "title": "Записки о свете"
+          }
+        },
+        "space": {
+          "objects": {
+            "notebook": {
+              "place_id": "desk",
+              "title": "Блокнот"
+            }
+          },
+          "places": {
+            "desk": "Рабочий стол",
+            "room": "Личное пространство",
+            "shelf": "Библиотека"
+          }
+        },
+        "works": {
+          "act_WU9Y4qD1UdAJX6rPmzjL": {
+            "action_id": "act_WU9Y4qD1UdAJX6rPmzjL",
+            "event_id": "evt_EmIxrl6hpagt4Sws0aEs",
+            "fingerprint": "c047f103fb035ba367cd171441ff9745e04b35e1df2cc04e7f1adb29b8c4093e",
+            "text": "В заметке о саде названы капли и отражение неба.",
+            "title": "Записки о свете"
+          },
+          "act_YByAiIOgyzpjLYVOxJG4": {
+            "action_id": "act_YByAiIOgyzpjLYVOxJG4",
+            "event_id": "evt_1AbrgcaNpmqFCjoXow65",
+            "fingerprint": "51d619ab617e72eee09d0342e6f320f11043ce5e37c0c30687065fe8078e7d99",
+            "text": "После дождя капли держатся на листьях, а в дорожке отражается небо. В этом коротком наблюдении вода соединяет близкое и далёкое: отдельные капли и простор над садом.",
+            "title": "Записки о свете"
+          },
+          "act_dvBY22VXVuaU8vT1zG3K": {
+            "action_id": "act_dvBY22VXVuaU8vT1zG3K",
+            "event_id": "evt_E9AdLlRgOslJQGlwOI6m",
+            "fingerprint": "4d2da5a294f977b5d5269160537d1c952f9137dc6e17d5c6ed6c53ad06a8e80b",
+            "text": "У окна меняется свет. Осталось описать, как меняется настроение комнаты.",
+            "title": "Записки о свете"
+          }
+        }
+      }
+    }
+  },
+  "technical_faults": [],
+  "typed_requests": 1,
+  "valid_typed_choice": true
+}

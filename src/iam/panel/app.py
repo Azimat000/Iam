@@ -97,14 +97,16 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
 
     @app.post("/actions/{action}")
     async def act(request: Request, action: str):
-        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore"):
+        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore", "material_add"):
             return PlainTextResponse("Неизвестная команда.", 404)
-        page = "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""
+        page = 'world' if action == 'material_add' else "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""
         fields = None
         try:
-            fields = await read_form(request, token)
+            fields = await read_form(request, token, max_bytes=131_072 if action == 'material_add' else 16_384)
             result = await call("mutate", action, clean(fields))
             message = "Запись восстановлена в личную память. Вмешательство оператора сохранено в журнале." if action == "memory_restore" else "Действие сохранено в журнале."
+            if action == 'material_add':
+                message = 'Текст добавлен в библиотеку. Личность сможет сама выбрать его чтение в следующем сеансе.'
             if action == "restore":
                 message = "Копия восстановлена в отдельную базу: " + result + ". Для её открытия завершите сервер и укажите этот путь при запуске."
             return await response(page, notice=message)

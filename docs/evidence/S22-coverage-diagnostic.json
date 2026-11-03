@@ -1,0 +1,119 @@
+{
+  "purpose": "bounded read-only diagnosis after rejected full3; no code change, no new acceptance, no model",
+  "fixed_local_test_runs": 8,
+  "runs": [
+    {
+      "run": 1,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": false,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": false,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 6,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 7,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    },
+    {
+      "run": 8,
+      "test_passed": true,
+      "learning_proposal_calls": [
+        {
+          "sources_count": 2,
+          "all_sources_assessments": true,
+          "all_sources_visible": true,
+          "distinct_action_count": 1,
+          "distinct_fingerprints": 1,
+          "violation": "procedure_invalid"
+        }
+      ]
+    }
+  ],
+  "finding": "The assertion that no procedure exists can pass without deterministically reaching the distinct-result guard. A later isolated hit cannot repair the rejected full3 evidence."
+}

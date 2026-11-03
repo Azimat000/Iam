@@ -1,0 +1,578 @@
+{
+  "assessment_errors": [],
+  "events": [
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_NXp3Bw7wvuJt25bbdxap",
+      "idempotency_key": "trn:trn_sM4cAoPIZpXMYcZSXKIf",
+      "life_time_ms": 7647,
+      "occurred_at": "2026-11-03T18:00:30.509Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 7647,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_EVCDg3KF4oXv8Hv8u3QE",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_EVCDg3KF4oXv8Hv8u3QE"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 13,
+          "caused_by": [
+            "evt_NXp3Bw7wvuJt25bbdxap"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_EVCDg3KF4oXv8Hv8u3QE",
+              "value": {
+                "due_life_ms": 7647,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_EVCDg3KF4oXv8Hv8u3QE",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "назначен момент mom_EVCDg3KF4oXv8Hv8u3QE",
+          "transition_id": "trn_sM4cAoPIZpXMYcZSXKIf"
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 18,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 14,
+      "type": "state.transition_applied"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_RQOh7aARzlKeJx0fyymE",
+      "idempotency_key": "due:mom_EVCDg3KF4oXv8Hv8u3QE:1",
+      "life_time_ms": 7649,
+      "occurred_at": "2026-11-03T18:00:30.510Z",
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 7647,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_EVCDg3KF4oXv8Hv8u3QE",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_EVCDg3KF4oXv8Hv8u3QE"
+          }
+        ],
+        "due_life_ms": 7647,
+        "kind": "life",
+        "moment_id": "mom_EVCDg3KF4oXv8Hv8u3QE",
+        "n": 1,
+        "overdue_ms": 1,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 14,
+          "caused_by": [
+            "evt_RQOh7aARzlKeJx0fyymE"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_EVCDg3KF4oXv8Hv8u3QE"
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "наступил момент mom_EVCDg3KF4oXv8Hv8u3QE",
+          "transition_id": "trn_m7B94p2dJKrGOIInOHHn"
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 19,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 15,
+      "type": "time.moment_due"
+    },
+    {
+      "causes": [
+        "evt_RQOh7aARzlKeJx0fyymE"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_ZTlr8t3EZPOpQEdRPEhu",
+      "idempotency_key": "att:cyc_7c52a2798dbe3a90",
+      "life_time_ms": 7652,
+      "occurred_at": "2026-11-03T18:00:30.513Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_7c52a2798dbe3a90",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 7651,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_0716ed61c7fbe0da",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 3,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_7c52a2798dbe3a90",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 15,
+          "caused_by": [
+            "evt_RQOh7aARzlKeJx0fyymE"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_7c52a2798dbe3a90",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 7651,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "reason": "внимание: цикл cyc_7c52a2798dbe3a90",
+          "transition_id": "trn_QY5O5OaC53WiCmm1jSCs"
+        },
+        "trigger": "evt_RQOh7aARzlKeJx0fyymE"
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 20,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "state_version": 16,
+      "type": "attention.chosen"
+    },
+    {
+      "causes": [],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_4eCHwmnpPDH8NPSIUTQc",
+      "idempotency_key": "rtv:cyc_7c52a2798dbe3a90:0",
+      "life_time_ms": 7653,
+      "occurred_at": "2026-11-03T18:00:30.515Z",
+      "payload": {
+        "cycle_id": "cyc_7c52a2798dbe3a90",
+        "memory_ids": [
+          "mem_bsRlU7C48NfotbCAB8wN"
+        ],
+        "query": ""
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 21,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 16,
+      "type": "memory.retrieved"
+    },
+    {
+      "causes": [],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_2XUIE5YIVIBxkfpKRp8f",
+      "idempotency_key": "req:req_MNfaSShPVN4uhQamo7xC",
+      "life_time_ms": 7657,
+      "occurred_at": "2026-11-03T18:00:30.519Z",
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_RQOh7aARzlKeJx0fyymE",
+              "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_bsRlU7C48NfotbCAB8wN",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-03T18:00:30.482Z\", \"created_life_ms\": 7620, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_dZMpTe6arD8AkVkhMfZw\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Project01. Сейчас у меня нет отдельной цели. Можно продолжить исследовать мир, но можно и остановиться: сигналы не назначают занятие. Сегодня я выбираю записать это наблюдение и оставить пространство для следующего свободного решения.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_RQOh7aARzlKeJx0fyymE",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_RQOh7aARzlKeJx0fyymE",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_RQOh7aARzlKeJx0fyymE",
+              "text": "{\"library\": {}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {\"notebook\": {\"title\": \"Заметка о выборе\", \"latest_work\": \"act_WEtlo6rw9YzhhYxGm6sY\", \"status\": \"active\"}}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_bsRlU7C48NfotbCAB8wN\", \"event_id\": \"evt_dZMpTe6arD8AkVkhMfZw\", \"target\": \"notebook\", \"scope\": \"artifact\", \"fingerprint\": \"8b14f8f308293193a82c8b37d118689b240c0559aa5e25b1894208120a12ddec\", \"duration_ms\": 0, \"text\": \"Сейчас у меня нет отдельной цели. Можно продолжить исследовать мир, но можно и остановиться: сигналы не назначают занятие. Сегодня я выбираю записать это наблюдение и оставить пространство для следующего свободного решения.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"notebook\", \"sources\": [\"mem_bsRlU7C48NfotbCAB8wN\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}}"
+            }
+          ],
+          "cycle_id": "cyc_7c52a2798dbe3a90",
+          "epoch": 1,
+          "idempotency_key": "req:req_MNfaSShPVN4uhQamo7xC",
+          "issued_at": "2026-11-03T18:00:30.519Z",
+          "life_time_ms": 7657,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 120000,
+            "max_output_tokens": 1600
+          },
+          "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+          "purpose": "choose_action",
+          "request_id": "req_MNfaSShPVN4uhQamo7xC",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_aOkLKsR5uu7IqOAWW4Fc",
+          "state_version": 16
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 22,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 16,
+      "type": "proposal.requested"
+    },
+    {
+      "causes": [
+        "evt_2XUIE5YIVIBxkfpKRp8f"
+      ],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_undnBDq3U4DGkySdw5B2",
+      "idempotency_key": "resp:req_MNfaSShPVN4uhQamo7xC",
+      "life_time_ms": 17077,
+      "occurred_at": "2026-11-03T18:00:39.939Z",
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "Предлагаю сохранить осторожную гипотезу на основе собственного эпизода; это не объективная оценка и не обязательство продолжать проект.",
+          "proposals": [
+            {
+              "body": {
+                "draft": {
+                  "content": {
+                    "motivation": {
+                      "interest": 0.4,
+                      "need": 0.1,
+                      "topic": "notebook"
+                    },
+                    "text": "Я могу выбирать занятие или отдых без отдельной цели; текущие сигналы помогают сориентироваться, но не назначают мне действие."
+                  },
+                  "kind": "semantic",
+                  "origin": "own_hypothesis"
+                }
+              },
+              "cites": [
+                "mem_bsRlU7C48NfotbCAB8wN",
+                "evt_RQOh7aARzlKeJx0fyymE"
+              ],
+              "kind": "memory_write",
+              "proposal_id": "prop_uQT3ZmazgvRez7uLBJ4O",
+              "rationale": "Предлагаю собственную интерпретацию подтверждённой записи: свобода выбора включает возможность продолжить или остановиться, а сигналы не определяют занятие. Основание — запись о наблюдении и состояние без активных целей."
+            }
+          ],
+          "provider": {
+            "model": "gpt-6-luna",
+            "name": "codex"
+          },
+          "request_id": "req_MNfaSShPVN4uhQamo7xC",
+          "state_version": 16,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 9409
+          }
+        }
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 23,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 16,
+      "type": "proposal.received"
+    },
+    {
+      "causes": [
+        "evt_undnBDq3U4DGkySdw5B2"
+      ],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_a8Um0cUGkNdt9qgKrmRe",
+      "idempotency_key": "prop:prop_uQT3ZmazgvRez7uLBJ4O:reject",
+      "life_time_ms": 17077,
+      "occurred_at": "2026-11-03T18:00:39.939Z",
+      "payload": {
+        "kind": "memory_write",
+        "proposal_id": "prop_uQT3ZmazgvRez7uLBJ4O",
+        "reason": "motivation_invalid",
+        "request_id": "req_MNfaSShPVN4uhQamo7xC"
+      },
+      "persona_id": "exp_5MlbPfgUTuCCzI0AAMM0",
+      "schema_version": 1,
+      "seq": 24,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 16,
+      "type": "proposal.rejected"
+    }
+  ],
+  "index": 2,
+  "provider_error": null,
+  "report": {
+    "actions": [],
+    "cycle_id": "cyc_7c52a2798dbe3a90",
+    "outcome": "rejected",
+    "reason": "no_proposal_accepted",
+    "requests": [
+      "req_MNfaSShPVN4uhQamo7xC"
+    ],
+    "stages": [
+      {
+        "detail": {
+          "type": "time.moment_due"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_RQOh7aARzlKeJx0fyymE"
+        ],
+        "stage": "event",
+        "state_version": 15,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "focus": "activity",
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_ZTlr8t3EZPOpQEdRPEhu"
+        ],
+        "stage": "attention",
+        "state_version": 16,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "count": 1
+        },
+        "epoch": 1,
+        "events": [
+          "evt_4eCHwmnpPDH8NPSIUTQc"
+        ],
+        "stage": "retrieval",
+        "state_version": 16,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "attempt": 0,
+          "request_id": "req_MNfaSShPVN4uhQamo7xC"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_2XUIE5YIVIBxkfpKRp8f"
+        ],
+        "stage": "appraisal",
+        "state_version": 16,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "status": "rejected"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_undnBDq3U4DGkySdw5B2"
+        ],
+        "stage": "proposal",
+        "state_version": 16,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "reason": "no_proposal_accepted",
+          "rejected": {
+            "prop_uQT3ZmazgvRez7uLBJ4O": "motivation_invalid"
+          },
+          "status": "rejected"
+        },
+        "epoch": 1,
+        "events": [],
+        "stage": "verification",
+        "state_version": 16,
+        "status": "failed"
+      }
+    ],
+    "trigger": "evt_RQOh7aARzlKeJx0fyymE"
+  },
+  "session_usage": {
+    "calls": 2,
+    "elapsed_ms": 17078,
+    "in_flight": false,
+    "max_calls": 10,
+    "max_ms": 1800000,
+    "session_id": "ses_aOkLKsR5uu7IqOAWW4Fc",
+    "started_ms": 0
+  },
+  "state": {
+    "affect": {
+      "attention": {
+        "cycle_id": "cyc_7c52a2798dbe3a90",
+        "focus": "activity",
+        "ref": "world",
+        "since_life_ms": 7651,
+        "switch_history": []
+      }
+    },
+    "beliefs": {},
+    "intentions": {},
+    "preferences": {},
+    "relations": {},
+    "selfmodel": {},
+    "traits": {},
+    "world_time": {
+      "life_time_ms": 0,
+      "moments": {},
+      "pause_count": 0,
+      "pause_reason": null,
+      "paused_at": null,
+      "resume_count": 0,
+      "session_id": "ses_aOkLKsR5uu7IqOAWW4Fc",
+      "session_state": "running",
+      "world": {
+        "actions": {
+          "act_WEtlo6rw9YzhhYxGm6sY": {
+            "attempted_event": "evt_AIyux3YdGFgkpyeqnGV0",
+            "capability_id": "cap_Project01",
+            "cycle_id": "cyc_0716ed61c7fbe0da",
+            "kind": "action",
+            "outcome": "Сейчас у меня нет отдельной цели. Можно продолжить исследовать мир, но можно и остановиться: сигналы не назначают занятие. Сегодня я выбираю записать это наблюдение и оставить пространство для следующего свободного решения.",
+            "params": {
+              "project_id": "notebook",
+              "text": "Сейчас у меня нет отдельной цели. Можно продолжить исследовать мир, но можно и остановиться: сигналы не назначают занятие. Сегодня я выбираю записать это наблюдение и оставить пространство для следующего свободного решения.",
+              "title": "Заметка о выборе"
+            },
+            "proposal_id": "prop_WEtlo6rw9YzhhYxGm6sY",
+            "receipt": {
+              "duration_ms": 0,
+              "event_id": "evt_dZMpTe6arD8AkVkhMfZw",
+              "fingerprint": "8b14f8f308293193a82c8b37d118689b240c0559aa5e25b1894208120a12ddec",
+              "scope": "artifact",
+              "target": "notebook"
+            },
+            "status": "confirmed"
+          }
+        },
+        "panel_session": {
+          "max_calls": 10,
+          "max_ms": 1800000,
+          "session_id": "ses_aOkLKsR5uu7IqOAWW4Fc",
+          "started_ms": 0
+        },
+        "projects": {
+          "notebook": {
+            "latest_work": "act_WEtlo6rw9YzhhYxGm6sY",
+            "status": "active",
+            "title": "Заметка о выборе"
+          }
+        },
+        "space": {
+          "objects": {
+            "notebook": {
+              "place_id": "desk",
+              "title": "Блокнот"
+            }
+          },
+          "places": {
+            "desk": "Рабочий стол",
+            "room": "Личное пространство",
+            "shelf": "Библиотека"
+          }
+        },
+        "works": {
+          "act_WEtlo6rw9YzhhYxGm6sY": {
+            "action_id": "act_WEtlo6rw9YzhhYxGm6sY",
+            "event_id": "evt_dZMpTe6arD8AkVkhMfZw",
+            "fingerprint": "8b14f8f308293193a82c8b37d118689b240c0559aa5e25b1894208120a12ddec",
+            "text": "Сейчас у меня нет отдельной цели. Можно продолжить исследовать мир, но можно и остановиться: сигналы не назначают занятие. Сегодня я выбираю записать это наблюдение и оставить пространство для следующего свободного решения.",
+            "title": "Заметка о выборе"
+          }
+        }
+      }
+    }
+  },
+  "typed_requests": 1
+}
