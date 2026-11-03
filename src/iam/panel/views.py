@@ -4,6 +4,7 @@ from html import escape
 from .memory import render_memory
 
 NAV = {"": "Сеанс", "events": "События", "state": "Состояние", "memory": "Память",
+       "world": "Мир и занятия",
        "requests": "Просьбы к вам", "capabilities": "Возможности", "experiments": "Эксперименты",
        "usage": "Расход и ошибки", "backups": "Копии и восстановление"}
 STATUSES = {"running": "Идёт", "paused": "На паузе", "stopped": "Не запущен"}
@@ -108,6 +109,9 @@ def render(page, data, token, *, error=None, notice=None, values=None):
                     '<label class="check"><input type="checkbox" name="confirm" value="memory" required> Вернуть эту версию в личную память</label>')
             content += form('memory_restore', 'Восстановить запись памяти', token, data, body=body, reason='', values=values)
         content += '</section>'
+    elif page == 'world':
+        from .world import render_world
+        content = render_world(data, token, form, dump, values=values)
     elif page == "requests":
         content = '<p>Просьбы личности и сохранённые статусы. Ответы через панель появятся на этапе S23.</p>'
         content += event_rows(data["requests"]) + dump(data["state"]["world_time"].get("world", {}).get("creator_requests", {}))

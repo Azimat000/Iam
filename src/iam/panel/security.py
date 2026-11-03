@@ -34,14 +34,14 @@ class LocalOnly:
         await response(scope, receive, send)
 
 
-async def read_form(request, token):
+async def read_form(request, token, *, max_bytes=16_384):
     if request.headers.get("content-type", "").split(";", 1)[0] != "application/x-www-form-urlencoded":
         raise ValueError("Отправьте обычную форму панели.")
     raw = b""
     async for chunk in request.stream():
         raw += chunk
-        if len(raw) > 16_384:
-            raise ValueError("Форма слишком велика. Сократите причину действия.")
+        if len(raw) > max_bytes:
+            raise ValueError("Форма слишком велика. Сократите текст и причину действия.")
     fields = parse_qs(raw.decode("utf-8"), keep_blank_values=True, strict_parsing=True, max_num_fields=12)
     if any(len(values) != 1 for values in fields.values()):
         raise ValueError("Повторяющиеся поля формы не разрешены.")
