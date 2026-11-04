@@ -40,7 +40,7 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
         return await asyncio.wrap_future(runtime.submit(name, *args, **kwargs))
 
     async def response(page, *, status=200, error=None, notice=None, values=None, selection=None, **query):
-        data = clean(await call("view", relations=page == "state", **query))
+        data = clean(await call("view", relations=page == "state", selfmodel=page == "selfmodel", **query))
         if page == 'experiments':
             try:
                 archive = clean(load_archive(experiment_snapshot))

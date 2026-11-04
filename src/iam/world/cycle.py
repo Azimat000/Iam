@@ -2,13 +2,14 @@
 import json
 
 from iam.cycle import Cycle
-from iam.cycle.cycle import DEFAULT_ALLOWED, _ACTION_EVENTS, _RESULT_STATUS
+from iam.cycle.cycle import DEFAULT_ALLOWED, _ACTION_EVENTS, _RESULT_STATUS, CycleReport, cycle_id
 from iam.cycle.handlers import make_kind_handlers
 from iam.domain import Op, new_id
 from iam.interfaces import ActionRequest
 from iam.intentions import Intentions
 from iam.intentions.completion import CompletionProvider
 from iam.memory import PersistentMemory
+from iam.metacognition import Reflection
 from iam.motivation import Motivation
 from iam.state import EventSpec, KindDecision, Violation
 from . import READ, WRITE, MOVE
@@ -64,7 +65,8 @@ class WorldMemory(PersistentMemory):
 class LivingCycle(Cycle):
     def __init__(self, controller, provider, memory, world, capabilities, creator, *, motivation_off=False, **kwargs):
         super().__init__(controller, provider, memory, world, capabilities, creator,
-                         allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write', 'intention'), **kwargs)
+                         allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write', 'intention', 'reflection'), **kwargs)
+        self.reflection = Reflection(memory, capabilities)
         self.intentions = Intentions(memory, world)
         world.intentions = self.intentions
         self.motivation = Motivation(memory, self.intentions, off=motivation_off)
@@ -118,9 +120,12 @@ class LivingCycle(Cycle):
                     and self.ctl.find_event(key='due:'+mid+':1') is None):
                 self.ctl.schedule_moment(life_moment(mid,max(goal['not_before_life_ms'],self.ctl.life_time_ms),key))
 
-    def run(self,*args,**kwargs):
+    def run(self, trigger, *, round_=0):
+        if self.reflection.running:
+            return self._end(CycleReport(cycle_id(trigger.event_id, round_), trigger.event_id),
+                             "skipped", "reflection_in_progress")
         self._schedule_intentions()
-        return super().run(*args,**kwargs)
+        return super().run(trigger, round_=round_)
 
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
@@ -155,6 +160,8 @@ class LivingCycle(Cycle):
                 'с request_key и text. Для той же цели сохрани прежний ключ. '
                 'Повтор возможен только при retry_allowed. Согласие не выдаёт право.'
             )
+        context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
+                           'text': self.reflection.guidance(context)})
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
@@ -166,6 +173,12 @@ class LivingCycle(Cycle):
         if self.ctl.session_state == 'running' and not self.memory.off and result.status in ('applied','partial','rejected'):
             for assessment in self.intentions.reviews.values():
                 self.motivation.learning.remember(assessment)
+        if rep.outcome == "done" and any(pr["kind"] == "reflection" and pr["proposal_id"] in result.accepted
+                                         for pr in response["proposals"]):
+            parent = self.ctl.find_event(key=f"req:{response['request_id']}").payload["request"]
+            accepted = {event.payload["proposal_id"]: event.event_id for event in result.transition.events
+                        if event.type == "proposal.accepted"}
+            self.reflection.run(self, rep, parent, accepted, response)
 
     def _settle(self, aid, kind, outcome, attempted_id, common):
         event_id = new_id('evt')

@@ -40,14 +40,15 @@ class HttpTest(unittest.TestCase):
         data = {**data, "reason": "проверка оператора", **extra}
         return self.client.post("/actions/" + action, data=data, headers={"Origin": BASE})
 
-    def test_nine_routes_security_headers_and_read_only_views(self):
-        for route in ("/", "/events", "/state", "/memory", "/requests", "/capabilities", "/experiments", "/usage", "/backups"):
+    def test_routes_security_headers_and_read_only_views(self):
+        for route in ("/", "/events", "/state", "/selfmodel", "/memory", "/requests", "/capabilities", "/experiments", "/usage", "/backups"):
             with self.subTest(route=route):
                 r = self.client.get(route)
                 self.assertEqual(r.status_code, 200, r.text)
                 self.assertIn('lang="ru"', r.text)
                 self.assertIn("no-store", r.headers["cache-control"])
                 self.assertIn("frame-ancestors 'none'", r.headers["content-security-policy"])
+        self.assertIn("Пока нет размышлений с доступными основаниями", self.client.get("/selfmodel").text)
         self.assertIn("Записей памяти пока нет", self.client.get("/memory").text)
         self.assertEqual(self.client.get("/style.css").status_code, 200)
         self.assertEqual(self.client.get("/favicon.ico").status_code, 204)

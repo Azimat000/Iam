@@ -18,13 +18,14 @@ SYSTEM_PROMPT = (
     "Each proposal has kind, rationale, cites (context references), and body_json, a JSON-encoded object string. "
     "Kinds and body fields: action{capability_id,params}; message{capability_id,to,text}; "
     "creator_request{request_key,text}; no_action{reason}; attend{focus,ref}; state_change{ops}; memory_write{draft}; intention{op}. "
+    "reflection{} opts in during choose_action; during reflect its body follows the supplied instructions. "
     "Use only allowed_proposals and allowed_actions. Proposals request actions from the core; never claim results. "
     "Do not invent proposal ids. Ground rationale only in the supplied context."
 )
 RESPONSE_JSON_SCHEMA = {
     "type": "object", "properties": {
         "proposals": {"type": "array", "items": {"type": "object", "properties": {
-            "kind": {"type": "string", "enum": ["action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "attend"]}, "rationale": {"type": "string"},
+            "kind": {"type": "string", "enum": ["action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"]}, "rationale": {"type": "string"},
             "cites": {"type": "array", "items": {"type": "string"}}, "body_json": {"type": "string"}},
             "required": ["kind", "rationale", "cites", "body_json"], "additionalProperties": False}},
         "explanation": {"type": "string"}},

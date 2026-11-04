@@ -87,7 +87,8 @@ class CodexProvider:
         if self.sandbox.auth_file is None and self._run is subprocess_runner:
             raise ProviderAuthError("Codex requires subscription credentials")
         format_code = "unclassified_format"
-        for attempt in range(self.max_format_retries + 1):
+        retries = 0 if request["purpose"] == "reflect" and request["allowed_proposals"] == ["reflection"] else self.max_format_retries
+        for attempt in range(retries + 1):
             auth = session.auth if session is not None else read_auth(self.sandbox.auth_file, REPO_ROOT)
             remaining = deadline - time.monotonic()
             if remaining <= 0:

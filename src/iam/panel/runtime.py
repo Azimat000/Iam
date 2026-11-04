@@ -217,7 +217,7 @@ class Runtime:
             limits = {"max_calls": int(fields.get("calls", 10)), "max_ms": int(fields.get("minutes", 30)) * 60_000}
         return self.command(action, reason, **limits)
 
-    def view(self, *, before=None, version=None, relations=False):
+    def view(self, *, before=None, version=None, relations=False, selfmodel=False):
         ctl = self.ctl
         events = ctl.events_after(0)
         selected = [e for e in events if before is None or e.seq < before][-50:]
@@ -230,7 +230,8 @@ class Runtime:
         requests = [e.to_dict() for e in events if e.type in ("creator.request", "creator.reply")
                     or e.type == "operator.intervention" and str(e.payload.get("target", "")).startswith("crq_")][-50:]
         relations_view = self.cycle.memory.overview() if relations and version is None else None
-        return {"relations_view": relations_view, "persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
+        selfmodel_view = self.cycle.reflection.model.view() if selfmodel else None
+        return {"selfmodel_view": selfmodel_view, "relations_view": relations_view, "persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
                 "session_id": ctl.session_id, "pause_reason": ctl.state["world_time"].get("pause_reason"),
                 "epoch": ctl.epoch, "version": ctl.state_version, "view_version": version,
                 "life_ms": ctl.life_time_ms, "usage": self.session.usage(), "sending": self.sending, "state": state,
