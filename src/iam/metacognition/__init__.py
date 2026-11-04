@@ -16,6 +16,7 @@ INSTRUCTIONS = (
     'level: observation|hypothesis|stable_change, text: краткое объяснение}. '
     'cites — только ссылки mem_ или evt_ из пакета. Для stable_change добавь trait (имя существующей черты) '
     'и delta (от -0.05 до 0.05), а в cites укажи независимые подтверждённые результаты разных действий. '
+    'Для history/observation текст должен точно совпадать с полем episode одного из следов. '
     'События внутри созданной истории — вымысел. Твои объяснения будут сохранены как объяснения модели.'
 )
 
@@ -56,9 +57,7 @@ class Reflection:
         if not refs or any(ref not in visible or (ref not in rows and not self._trace(ref)) for ref in refs):
             return self.reject("reflection_source")
         if part == "history" and level == "observation" and not any(
-                ref in rows and rows[ref].kind in ("autobiographical", "episodic")
-                and rows[ref].origin == "observation" and rows[ref].content.get("experience") == "live"
-                for ref in refs):
+                ref in rows and self._episode(rows[ref], ctx.state) == message.strip() for ref in refs):
             return self.reject("reflection_biography")
         saved = {"part": part, "level": level, "text": message.strip(), "origin": "model_explanation",
                  "refs": {ref: rows[ref].version for ref in refs if ref in rows}, "traces": sorted(set(refs) - rows.keys()),
@@ -80,6 +79,13 @@ class Reflection:
         ops.append(Op("memory", note.memory_id, "add", note.to_dict(), True))
         ops.append(Op("selfmodel", "reflections." + request["request_id"], "set", saved, True))
         return KindDecision(tuple(ops))
+
+    def _episode(self, row, state):
+        if (row.kind not in ("autobiographical", "episodic") or row.origin != "observation"
+                or row.content.get("experience") != "live"):
+            return None
+        actions = state["world_time"].get("world", {}).get("actions", {})
+        return self.model.episode(row, actions)
 
     def _trace(self, ref):
         event = self.ctl.find_event(event_id=ref)
@@ -154,6 +160,11 @@ class Reflection:
                 description = json.dumps(data, ensure_ascii=False) if data is not None else row.text
                 context.append({"ref": row.memory_id, "origin": row.origin, "layer": row.layer, "text": description[:1000]})
                 seen.add(row.memory_id)
+        state = self.ctl.state
+        for index, item in enumerate(context):
+            episode = self._episode(rows[item["ref"]], state)
+            if episode is not None:
+                context[index] = {**item, "text": json.dumps({"episode": episode}, ensure_ascii=False)}
         selected = [(pr["kind"], accepted[pr["proposal_id"]]) for pr in response["proposals"]
                     if pr["proposal_id"] in accepted]
         for kind, ref in selected:

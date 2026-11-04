@@ -108,7 +108,7 @@ class ReflectionTest(LivingCase):
     def test_provider_swap_preserves_history_and_measures_different_choices(self):
         first = self.read()
         self.run_reply(reflect(), replies=(Reply((reflect(
-            {"part": "history", "level": "observation", "text": "Я выбрала чтение."}, [first.memory_id]),)),))
+            {"part": "history", "level": "observation", "text": "Прочитан материал."}, [first.memory_id]),)),))
         before = self.c.state, self.c.state_version, self.history(), list(self.c.store.events())
         alternate = ScriptedProvider((Reply((rest(),)),), name="other", model="other-1")
         self.cycle.provider = CompletionProvider(alternate, self.cycle.intentions)
@@ -141,7 +141,7 @@ class ReflectionTest(LivingCase):
             self.assertEqual(chosen["text"], "Выбран вариант: action.")
             self.assertEqual(self.c.find_event(event_id=chosen["ref"]).payload["kind"], "action")
             self.assertEqual(instructions["origin"], "model_knowledge")
-            return Reply((reflect({"part": "history", "level": "observation", "text": "Чтение состоялось."},
+            return Reply((reflect({"part": "history", "level": "observation", "text": "Прочитан материал."},
                                   [result["ref"], chosen["ref"]]),))
         report = self.run_reply(act(READ, {"material_id": self.material}), reflect(), replies=(answer,))
         entry, = self.history()
@@ -227,6 +227,18 @@ class ReflectionTest(LivingCase):
         rejection = [e for e in self.c.store.events() if e.type == "proposal.rejected"][-1]
         self.assertEqual(rejection.payload["reason"], "reflection_biography")
         self.assertEqual(self.history(), [])
+        work = self.write("Сюжет: я высадилась на Луне.")
+
+        def from_work(request):
+            self.assertNotIn("Луне", str(request["context"]))
+            episode = next(item["text"] for item in request["context"] if item["ref"] == work.memory_id)
+            self.assertIn("Создана работа.", episode)
+            return Reply((reflect(body, [work.memory_id]),))
+
+        self.run_reply(reflect(), replies=(from_work,))
+        rejection = [e for e in self.c.store.events() if e.type == "proposal.rejected"][-1]
+        self.assertEqual(rejection.payload["reason"], "reflection_biography")
+        self.assertFalse(self.history())
 
     def test_outside_response_and_changed_format_rejected(self):
         row = self.read()

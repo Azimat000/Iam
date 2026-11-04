@@ -61,14 +61,8 @@ class SelfModel:
         for row in records:
             if row.origin != "observation" or row.content.get("experience") != "live":
                 continue
-            if row.kind == "autobiographical":
-                biography.append(cited(row))
-            elif row.kind == "episodic" and row.content.get("outcome") == "confirmed":
-                action = actions.get(row.content.get("action_id"), {})
-                scope = action.get("receipt", {}).get("scope")
-                labels = {"artifact": "Создана работа.", "received_text": "Прочитан материал.",
-                          "world_state": "Подтверждено изменение в личном пространстве."}
-                biography.append({"ref": row.memory_id, "text": labels.get(scope, "Подтверждён результат действия.")})
+            if row.kind == "autobiographical" or row.kind == "episodic" and row.content.get("outcome") == "confirmed":
+                biography.append({"ref": row.memory_id, "text": self.episode(row, actions)})
         skills = {
             "capabilities": [{"id": cap.capability_id, "name": cap.name, "status": cap.status}
                              for cap in self.capabilities.list()],
@@ -90,6 +84,21 @@ class SelfModel:
         return {"parts": {key: value if self.memory._safe_item(value, blocked=blocked) else None
                           for key, value in parts.items()},
                 "history": sorted(self.history(rows), key=lambda entry: entry["state_version"], reverse=True)}
+
+    @staticmethod
+    def episode(row, actions):
+        """Короткое описание подтверждённого эпизода без сюжета прочитанного или написанного."""
+        action = actions.get(row.content.get("action_id"), {})
+        scope = action.get("receipt", {}).get("scope")
+        labels = {"artifact": "Создана работа.", "received_text": "Прочитан материал.",
+                  "world_state": "Подтверждено изменение в личном пространстве."}
+        if row.content.get("outcome") == "failed":
+            return "Действие завершилось неудачей."
+        if row.content.get("outcome") == "unknown":
+            return "Исход действия остался неизвестен."
+        if row.content.get("outcome") == "confirmed":
+            return labels.get(scope, "Подтверждён результат действия.")
+        return "Сохранено собственное наблюдение."
 
     def roots(self, row, actions):
         """Подтверждения разных объектов, без повторных редакций и копий."""
