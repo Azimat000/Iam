@@ -160,7 +160,9 @@ class LivingCycle(Cycle):
                 'с request_key и text. Для той же цели сохрани прежний ключ. '
                 'Повтор возможен только при retry_allowed. Согласие не выдаёт право.'
             )
-        context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE + ' ' + self.reflection.guidance(context)},
+        context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
+                           'text': self.reflection.guidance(context)})
+        context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
         return context

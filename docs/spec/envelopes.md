@@ -57,8 +57,8 @@
 | `memory_write` | запомнить/пересмотреть | `{draft}` (черновик записи, `origin` указан) |
 | `intention` | создать/перевести намерение | `{op, intention_id?, text?, to_status?}` |
 | `creator_request` | просьба оператору | `{request_key, text}` |
-| `reflection` | Добровольное размышление | При `choose_action`: пустой объект и пустые ссылки. При `reflect`: `{part, level, text}` и ссылки на доступные следы. Для `stable_change` добавляются `trait` и `delta`. |
 | `no_action` | отдых/бездействие | `{reason}` |
+| `reflection` | Добровольное размышление | При `choose_action`: пустой объект и пустые ссылки. При `reflect`: `{part, level, text}` и ссылки на доступные следы. Для `stable_change` добавляются `trait` и `delta`. |
 | `attend` | выбор внимания, в том числе открыть сообщение | `{focus, ref?}`, `focus` ∈ `activity`, `intention`, `event`, `dialogue`, `rest` |
 
 Правила:
