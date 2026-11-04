@@ -107,7 +107,8 @@ ACTION_MACHINE = StateMachine(
     initial=frozenset({"accepted"}))
 
 # Пути, которые ведёт только цикл через разборщики видов и события исхода; модель не правит их как state_change.
-RESERVED_MODEL_PATHS = (("world_time", "world", "actions"), ("world_time", "world", "creator_requests"))
+RESERVED_MODEL_PATHS = (("world_time", "world", "actions"), ("world_time", "world", "creator_requests"),
+                        ("world_time", "capability_permissions"))
 
 MACHINES = (INTENTION_MACHINE, SESSION_MACHINE, ACTION_MACHINE)
 

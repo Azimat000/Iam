@@ -36,14 +36,16 @@ class TelegramMailbox:
                 raise ValueError("эта база уже связана с другим Telegram-ботом")
             self.put("bot_id", bot_id)
 
-    def incoming(self, uid, *, input_id=None, sender=None, text=None):
+    def incoming(self, uid, *, input_id=None, sender=None, text=None, reply_to=None):
         if input_id is None:
             result = self.ctl.record_event(EventSpec("system.rejected_sender", f"rjs:telegram:{uid}",
                 {"update_id": uid, "reason": "unsupported_or_unauthorized"}), actor_ref="telegram_receiver")
         else:
-            result = self.ctl.record_event(EventSpec("input.arrived", f"rx:telegram:{uid}", {
-                "input_id": input_id, "channel": "telegram", "sender": str(sender), "text": text}),
-                actor_ref="telegram_receiver")
+            payload = {"input_id": input_id, "channel": "telegram", "sender": str(sender), "text": text}
+            if reply_to is not None:
+                payload["reply_to_message_id"] = reply_to
+            result = self.ctl.record_event(EventSpec("input.arrived", f"rx:telegram:{uid}", payload),
+                                           actor_ref="telegram_receiver")
         if result.event is None:
             raise RuntimeError("Telegram: запись входящего отклонена; offset сохранён не будет")
         if input_id is not None:

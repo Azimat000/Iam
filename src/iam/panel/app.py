@@ -40,7 +40,7 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
         return await asyncio.wrap_future(runtime.submit(name, *args, **kwargs))
 
     async def response(page, *, status=200, error=None, notice=None, values=None, selection=None, **query):
-        data = clean(await call("view", **query))
+        data = clean(await call("view", relations=page == "state", **query))
         if page == 'experiments':
             try:
                 archive = clean(load_archive(experiment_snapshot))
@@ -97,9 +97,10 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
 
     @app.post("/actions/{action}")
     async def act(request: Request, action: str):
-        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore", "material_add"):
+        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore", "material_add",
+                          "capability_grant", "capability_revoke", "capability_limits", "creator_response"):
             return PlainTextResponse("Неизвестная команда.", 404)
-        page = 'world' if action == 'material_add' else "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""
+        page = 'requests' if action == 'creator_response' else 'capabilities' if action.startswith('capability_') else 'world' if action == 'material_add' else "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""
         fields = None
         try:
             fields = await read_form(request, token, max_bytes=131_072 if action == 'material_add' else 16_384)

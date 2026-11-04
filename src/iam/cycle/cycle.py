@@ -16,6 +16,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Iterable
 
+from iam.creator_bridge import PATH, event_key, records as creator_records, request_id
 from iam.domain import Event, MemoryRecord, Op, Source, Transition, new_id
 from iam.interfaces import (ActionOutcome, ActionRequest, Capabilities, CognitiveProvider, CreatorBridge,
                             CreatorRequest, Delivery, Memory, StateController, World)
@@ -299,7 +300,7 @@ class Cycle:
         attempt_type, attempt_key = _ACTION_EVENTS[kind]["attempt"]
         attempted_id = new_id("evt")
         common = {"action_id": aid, "kind": kind, "capability_id": request.capability_id, "cycle_id": rep.cycle_id,
-                  "proposal_id": pr["proposal_id"]}
+                  "proposal_id": pr["proposal_id"], "session_id": self.ctl.session_id}
         path = f"world.actions.{aid}"
         res = self._move([Op("world_time", f"{path}.status", "transition", "attempted", True),
                           Op("world_time", f"{path}.attempted_event", "set", attempted_id, True)],
@@ -366,12 +367,16 @@ class Cycle:
 
     def _ask_creator(self, rep: CycleReport, pr: dict, accepted_id: str) -> None:
         key, text = pr["body"]["request_key"], pr["body"]["text"]
-        crq = new_id("crq")
-        path = f"world.creator_requests.{key}"
+        item = creator_records(self.ctl.state)[key]
+        crq = request_id(pr["proposal_id"])
+        path = f"{PATH}.{key}"
+        previous = item.get("previous_request")
         res = self._move([Op("world_time", f"{path}.status", "set", "open", True),
                           Op("world_time", f"{path}.crq_id", "set", crq, True)], f"просьба оператору {key}",
-                         EventSpec("creator.request", f"crq:{key}", {"crq_id": crq, "request_key": key, "text": text,
-                                                                    "cycle_id": rep.cycle_id}), (accepted_id,))
+                         EventSpec("creator.request", event_key(key, crq, bool(previous)),
+                                   {"crq_id": crq, "request_key": key, "text": text,
+                                    "cycle_id": rep.cycle_id, "previous_request": previous,
+                                    "session_id": self.ctl.session_id}), (accepted_id,))
         self._stage(rep, "action", "ok" if res.applied else "failed", (e.event_id for e in res.events[:1]),
                     {"creator_request": key, "status": res.status})
         if not res.applied:

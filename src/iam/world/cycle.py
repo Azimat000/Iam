@@ -143,6 +143,18 @@ class LivingCycle(Cycle):
                                 if any(item['event_id'] == state.get('works', {}).get(value['latest_work'], {}).get('event_id')
                                        for item in results) and self.memory._safe_item(value)},
                    'intentions': goals, 'world_results': results[:3], 'motivation': self.motivation.signals(records)}
+        if hasattr(self.capabilities, 'entries'):
+            catalog['capabilities'] = self.capabilities.entries()
+            requests = self.ctl.state['world_time']['world'].get('creator_requests', {})
+            catalog['creator_requests'] = {
+                key: {'status': value['status'], 'outcome': value.get('outcome')}
+                for key, value in list(requests.items())[-12:]
+            }
+            catalog['creator_request_rule'] = (
+                'Если нужен инструмент, можно ждать, отказаться или предложить creator_request '
+                'с request_key и text. Для той же цели сохрани прежний ключ. '
+                'Повтор возможен только при retry_allowed. Согласие не выдаёт право.'
+            )
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
