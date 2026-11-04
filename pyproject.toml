@@ -45,6 +45,8 @@ critical_min_lines = 98.0
 critical_min_branches = 100.0
 # Критичные модули (шаблоны fnmatch относительно корня). Список растёт вместе с кодом.
 critical = [
+    "src/iam/capabilities/*.py",  # права и общая квота отправок S23
+    "src/iam/creator_bridge/*.py",  # отсутствие повторов и связь ответа после чтения S23
     "src/iam/world/*.py",  # результаты мира и скрытое чтение S22
     "src/iam/intentions/*.py",  # основания целей и подтверждение done S22
     "src/iam/motivation/*.py",  # источники мотивации и off S22

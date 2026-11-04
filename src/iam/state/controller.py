@@ -331,6 +331,10 @@ class StateController:
                 v.append(Violation("session_forbids", f"{spec.type} недопустимо при сеансе {self.session_state}"))
         if not privileged:
             v += self._protected(t.ops)
+        if any(op.group == "world_time" and op.path.split(".")[0] == "capability_permissions" for op in t.ops):
+            if not (internal and p.actor == "operator" and carrier.type == "operator.intervention"
+                    and carrier.payload.get("kind") in ("grant_capability", "revoke_capability", "set_capability_limits")):
+                v.append(Violation("capability_permission_forbidden", "Доступ меняет только оператор через панель"))
         out = self._run_ops(t.ops, p.actor, carrier.type, self._state, t.caused_by, carrier.event_id)
         out.violations[:0] = v
         if not out.violations:
@@ -641,11 +645,27 @@ class StateController:
     def intervene(self, kind: str, reason: str, ops: Iterable[Op], *, target: str = "state") -> ApplyResult:
         """Техническое вмешательство оператора (`operator.intervention`, permissions.md#interventions): только
         из панели, только с причиной (I-2), журнал не переписывается (I-3), поля сеанса — только методами сеанса.
-        Работает и на паузе. Поддержан вид `technical_fix`; остальные виды — в срезах, где живут их данные."""
-        if kind != "technical_fix":
-            raise NotSupported(f"вмешательство {kind!r}: права и копии — S06/S23, настройки — S10")
+        Работает и на паузе. Виды вмешательства ограничены по назначению."""
+        ops = tuple(ops)
+        if kind in ("grant_capability", "revoke_capability", "set_capability_limits"):
+            from iam.capabilities import REGISTRY_PATH, parse_limits
+
+            if not isinstance(target, str) or "." in target or not reason.strip() or len(ops) != 1:
+                raise ValueError("Недопустимое вмешательство в права")
+            if kind == "set_capability_limits":
+                value = ops[0].value
+                field = "limits"
+                if not isinstance(value, dict) or parse_limits(value) != value:
+                    raise ValueError("Недопустимые пределы возможности")
+            else:
+                value = "granted" if kind == "grant_capability" else "revoked"
+                field = "status"
+            if ops[0] != Op("world_time", f"{REGISTRY_PATH}.{target}.{field}", "set", value, True):
+                raise ValueError("Недопустимое вмешательство в права")
+        elif kind != "technical_fix":
+            raise NotSupported(f"вмешательство {kind!r}: копии — S06, настройки — S10")
         iid, ev_id = new_id("opr"), new_id("evt")
-        t = Transition(new_id("trn"), self.persona_id, self._epoch, self._version, tuple(ops), reason.strip(), (ev_id,))
+        t = Transition(new_id("trn"), self.persona_id, self._epoch, self._version, ops, reason.strip(), (ev_id,))
         carrier = EventSpec("operator.intervention", f"opr:{iid}", {
             "intervention_id": iid, "kind": kind, "operator_channel": "panel", "reason": reason.strip(),
             "target": target, "visible_to_persona": True}, event_id=ev_id)
@@ -662,6 +682,42 @@ class StateController:
         companion = EventSpec('memory.recorded', f'mem:{tid}:0', {'memory_id': record.memory_id,
                               'restored_by_operator': True}, causes=(eid,))
         return self._apply(Proposal(t, 'operator', 'panel', carrier, (companion,)), privileged=False, internal=True)
+
+    def record_creator_reply(self, arrival: Event, read: Event) -> None:
+        """Связать уже подтверждённое чтение с отправленной просьбой из того же чата."""
+        from .telegram import TelegramMailbox
+
+        payload = arrival.payload
+        reply_to = payload.get("reply_to_message_id")
+        if arrival.source.ref != "telegram_receiver" or reply_to is None:
+            return
+        input_id = payload.get("input_id")
+        if (input_id is None or arrival.type != "input.arrived"
+                or read.type != "input.read" or read.source.ref != "perception"
+                or read.payload.get("input_id") != input_id
+                or self.find_event(event_id=read.event_id) != read
+                or self.find_event(event_id=arrival.event_id) != arrival
+                or arrival.seq >= read.seq or self.store.get_inbox(input_id).arrived_seq != arrival.seq):
+            raise ValueError("Ответ можно связать только после подтверждённого чтения")
+        request = TelegramMailbox(self).sent_request(payload.get("sender"), reply_to)
+        if request is None:
+            return
+        crq_id = request.payload["crq_id"]
+        external_id = arrival.idempotency_key.rsplit(":", 1)[-1]
+        key = f"crp:{crq_id}:{external_id}"
+        if self.find_event(key=key) is not None:
+            return
+        link = {"crq_id": crq_id, "input_id": input_id, "arrival_event": arrival.event_id}
+        path = f"world.creator_replies.{crq_id}.{input_id}"
+        causes = (request.event_id, read.event_id)
+        transition = Transition(new_id("trn"), self.persona_id, self._epoch, self._version,
+                                (Op("world_time", path, "set", link, True),),
+                                "Прочитан ответ на просьбу", causes)
+        event = EventSpec("creator.reply", key, link, causes=causes)
+        result = self._apply(Proposal(transition, actor_ref="creator_bridge", carrier=event),
+                             privileged=False, internal=True)
+        if not result.applied:
+            raise RuntimeError("Не удалось связать прочитанный ответ с просьбой")
 
     # --- запросы и ответы модели ---------------------------------------------------------------
 
@@ -801,7 +857,7 @@ class StateController:
             if any(o.group == "memory" for o in ops):
                 return Violation("memory_via_proposal", "Память пишется отдельным предложением"), working, ()
             if any(overlaps(touched(o), r) for o in ops for r in rules.RESERVED_MODEL_PATHS):
-                return Violation("reserved_path", "исход действий и просьб ведёт цикл, а не state_change"), working, ()
+                return Violation("reserved_path", "исход действий, просьбы и разрешения не меняются через state_change"), working, ()
         else:
             handler = self._kinds.get(pr["kind"])
             if handler is None:

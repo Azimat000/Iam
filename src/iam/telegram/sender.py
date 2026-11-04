@@ -1,7 +1,7 @@
 """Отправка с постоянным учётом попытки ДО сети. Неопределённое автоматически не повторяем."""
 from __future__ import annotations
 
-import hashlib
+from iam.creator_bridge import delivery_id, event_key
 
 from iam.interfaces import ActionOutcome, Delivery
 from iam.state import EventSpec
@@ -50,8 +50,7 @@ class Sender:
                     or action.get("text") != text or action.get("capability_id") != self.capability_id
                     or action.get("status") != "attempted"):
                     raise ValueError("отправка не совпадает с принятым действием")
-            elif (event.payload.get("text") != text or action_id != "act_" + hashlib.sha256(
-                    event.payload.get("crq_id", "").encode()).hexdigest()[:16]):
+            elif (event.payload.get("text") != text or action_id != delivery_id(event.payload.get("crq_id", ""))):
                 raise ValueError("отправка не совпадает с просьбой ядра")
             if retry_of is not None:
                 original = self.store.get_outbox(retry_of)
@@ -108,10 +107,12 @@ class CreatorBridge:
         return []
 
     def submit(self, request):
-        event = self.sender.ctl.find_event(key="crq:" + request.request_key)
-        if event is None:
+        ctl = self.sender.ctl
+        event = (ctl.find_event(key=event_key(request.request_key, request.crq_id, True))
+                 or ctl.find_event(key=event_key(request.request_key, request.crq_id)))
+        if event is None or event.payload.get("crq_id") != request.crq_id:
             return Delivery(False, "Telegram: нет просьбы ядра")
-        aid = "act_" + hashlib.sha256(request.crq_id.encode()).hexdigest()[:16]
+        aid = delivery_id(request.crq_id)
         try:
             status = self.sender.send(aid, self.recipient, request.text, requested_seq=event.seq)
         except ValueError:

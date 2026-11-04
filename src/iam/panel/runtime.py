@@ -10,20 +10,23 @@ from pathlib import Path
 
 from iam.backup import create_backup, default_backup_dir, list_backups, open_for_write, restore_backup
 from iam.backup.scan import SecretScanner
+from iam.capabilities import Registry, TELEGRAM_ID
+from iam.creator_bridge import Bridge, Requests
 from iam.cycle import Cycle, Runner
 from iam.cycle.cycle import DEFAULT_ALLOWED
 from iam.domain import new_id
 from iam.interfaces import Capability
 from iam.memory import PersistentMemory
 from iam.world import PersistentWorld, CAPABILITIES
-from iam.world.cycle import LivingCycle, WorldMemory
+from iam.world.cycle import LivingCycle
+from iam.social import SocialMemory
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
 from iam.state import EventSpec, StateController
 from iam.state.session import panel_records
 from iam.state.telegram import TelegramMailbox
 from iam.storage import Store
-from iam.stubs import Reply, ScriptedProvider, StubCapabilities, StubCreatorBridge, StubWorld, rest
+from iam.stubs import Reply, ScriptedProvider, StubCreatorBridge, StubWorld, rest
 from iam.telegram import Client, CreatorBridge, Receiver, Sender
 
 
@@ -103,7 +106,6 @@ class Runtime:
         self.session = SessionRunner(self.ctl)
         self.scanner = SecretScanner(use_env=True)
         self.receiver = None
-        self.caps = StubCapabilities()
         creator, world = StubCreatorBridge(deliver=False), StubWorld("fail")
         if self.telegram_user is not None:
             client = Client(timeout=0)
@@ -112,7 +114,6 @@ class Runtime:
             self.receiver = Receiver(self.ctl, client, [self.telegram_user])
             world = Sender(self.ctl, client, [self.telegram_user])
             creator = CreatorBridge(self.receiver, world, self.telegram_user)
-            self.caps = StubCapabilities([Capability("cap_Telegram01", "Telegram", "Сообщения создателю")])
         if self.demo:
             provider = ScriptedProvider([lambda request: Reply(proposals=(rest("Демонстрация: действий нет."),))] * 100,
                                         name="demo")
@@ -121,9 +122,13 @@ class Runtime:
         provider = self.session.provider(provider, charge=self.demo)
         world = PersistentWorld(self.ctl, external=world)
         world.initialize()
-        for capability in CAPABILITIES:
-            self.caps.register(capability)
-        self.cycle = LivingCycle(self.ctl, provider, WorldMemory(self.ctl), world, self.caps, creator)
+        telegram = Capability(TELEGRAM_ID, "Telegram", "Сообщения создателю",
+                              "available" if self.telegram_user is not None else "unavailable_temporarily")
+        self.caps = Registry(self.ctl, (telegram, *CAPABILITIES))
+        self.requests = Requests(self.ctl)
+        creator = Bridge(creator, self.caps, self.telegram_user)
+        self.cycle = LivingCycle(self.ctl, provider, SocialMemory(self.ctl), world, self.caps, creator)
+        self.cycle.perception.on_read = self.ctl.record_creator_reply
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
 
     def _serve(self):
@@ -179,6 +184,14 @@ class Runtime:
         reason = fields.get("reason", "").strip()
         if not reason or len(reason) > 500:
             raise ValueError("Укажите причину действия длиной от 1 до 500 символов.")
+        if action == "creator_response":
+            return self.requests.respond(fields.get("request_key", ""), fields.get("crq_id", ""),
+                                         fields.get("decision"), reason)
+        if action == "capability_limits":
+            return self.caps.set_limits(fields.get("capability_id", ""), fields, reason=reason)
+        if action in ("capability_grant", "capability_revoke"):
+            return self.caps.set_permission(fields.get("capability_id", ""),
+                                            grant=action == "capability_grant", reason=reason)
         if action == 'material_add':
             if self.ctl.session_state == 'running' or self.session.in_flight:
                 raise SessionConflict('Поставьте сеанс на паузу и дождитесь ответа модели перед загрузкой текста.')
@@ -204,7 +217,7 @@ class Runtime:
             limits = {"max_calls": int(fields.get("calls", 10)), "max_ms": int(fields.get("minutes", 30)) * 60_000}
         return self.command(action, reason, **limits)
 
-    def view(self, *, before=None, version=None):
+    def view(self, *, before=None, version=None, relations=False):
         ctl = self.ctl
         events = ctl.events_after(0)
         selected = [e for e in events if before is None or e.seq < before][-50:]
@@ -214,13 +227,16 @@ class Runtime:
         box = TelegramMailbox(ctl)
         last_poll = box.get("last_poll_at")
         age = ((dt.datetime.now(dt.UTC) - dt.datetime.fromisoformat(last_poll)).total_seconds() if last_poll else None)
-        requests = [e.to_dict() for e in events if e.type == "creator.request"][-50:]
-        return {"persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
+        requests = [e.to_dict() for e in events if e.type in ("creator.request", "creator.reply")
+                    or e.type == "operator.intervention" and str(e.payload.get("target", "")).startswith("crq_")][-50:]
+        relations_view = self.cycle.memory.overview() if relations and version is None else None
+        return {"relations_view": relations_view, "persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
                 "session_id": ctl.session_id, "pause_reason": ctl.state["world_time"].get("pause_reason"),
                 "epoch": ctl.epoch, "version": ctl.state_version, "view_version": version,
                 "life_ms": ctl.life_time_ms, "usage": self.session.usage(), "sending": self.sending, "state": state,
                 "events": [e.to_dict() for e in reversed(selected)], "history": records["history"],
-                "memories": records["memories"], "requests": requests, "capabilities": [c.__dict__ for c in self.caps.list()],
+                "memories": records["memories"], "requests": requests, "capabilities": self.caps.entries(),
+                "telegram_replies": self.requests.telegram_replies(events),
                 "errors": [e.to_dict() for e in events if e.type in ("system.error", "system.limit_reached")][-50:],
                 "backups": [{"id": i.manifest["snapshot_id"], "created_at": i.manifest["created_at"],
                              "version": i.manifest["state_version"]} for i in infos],

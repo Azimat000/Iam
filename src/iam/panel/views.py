@@ -25,18 +25,25 @@ def duration(ms):
     return f"{ms // 60_000:02d}:{ms // 1000 % 60:02d}"
 
 
-def form(action, label, token, data, *, body="", reason=None, primary=False, values=None):
+def form(action, label, token, data, *, body="", reason=None, primary=False, values=None, form_id=None, choices=(), reason_label="Причина действия"):
     if data["sending"]:
         return ''
     values = values or {}
+    form_id = form_id or action
     reason = values.get("reason", label if reason is None else reason)
+    if choices:
+        buttons = '<div class="actions">' + ''.join(
+            f'<button type="submit" name="decision" value="{e(key)}" class="secondary">{e(text)}</button>'
+            for key, text in choices) + '</div>'
+    else:
+        buttons = f'<button type="submit" class="{"primary" if primary else "secondary"}">{e(label)}</button>'
     return (f'<form method="post" action="/actions/{action}">'
             f'<input type="hidden" name="csrf" value="{e(token)}">'
             f'<input type="hidden" name="version" value="{data["version"]}">'
             f'<input type="hidden" name="epoch" value="{data["epoch"]}">'
-            f'{body}<label for="reason-{action}">Причина действия</label>'
-            f'<input id="reason-{action}" name="reason" value="{e(reason)}" maxlength="500" required>'
-            f'<button type="submit" class="{"primary" if primary else "secondary"}">{e(label)}</button></form>')
+            f'{body}<label for="reason-{form_id}">{e(reason_label)}</label>'
+            f'<input id="reason-{form_id}" name="reason" value="{e(reason)}" maxlength="500" required>'
+            f'{buttons}</form>')
 
 
 def event_rows(events):
@@ -95,7 +102,11 @@ def render(page, data, token, *, error=None, notice=None, values=None):
         content = '<p>Только чтение. Выберите сохранённую версию состояния.</p><div class="version-links">'
         content += ''.join(f'<a href="/state?version={v["state_version"]}">Версия {v["state_version"]}</a>'
                            for v in data["history"] if v["epoch"] == data["epoch"])
-        content += '</div>' + dump({"view_version": data["view_version"] or data["version"], "state": data["state"]})
+        content += '</div>'
+        if data.get("relations_view") is not None:
+            from .social import render_social
+            content += render_social(data["relations_view"])
+        content += dump({"view_version": data["view_version"] or data["version"], "state": data["state"]})
     elif page == "memory":
         content = render_memory(data["memories"])
         content += '<section><h2>Восстановить запись из архива</h2><p>Выберите одну запись и её прежнюю версию по журналу событий. Будет создана новая запись личной памяти с отметкой о вмешательстве оператора.</p>'
@@ -113,11 +124,11 @@ def render(page, data, token, *, error=None, notice=None, values=None):
         from .world import render_world
         content = render_world(data, token, form, dump, values=values)
     elif page == "requests":
-        content = '<p>Просьбы личности и сохранённые статусы. Ответы через панель появятся на этапе S23.</p>'
-        content += event_rows(data["requests"]) + dump(data["state"]["world_time"].get("world", {}).get("creator_requests", {}))
+        from .requests import render_requests
+        content = render_requests(data, token, form, event_rows)
     elif page == "capabilities":
-        content = '<p>Доступные средства · только чтение. Изменение прав появится на этапе S23.</p>'
-        content += dump(data["capabilities"]) if data["capabilities"] else '<p>Внешние действия не подключены.</p>'
+        from .capabilities import render_capabilities
+        content = render_capabilities(data, token, form)
     elif page == "experiments":
         content = data['experiment_content']
     elif page == "usage":

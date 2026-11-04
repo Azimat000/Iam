@@ -55,8 +55,12 @@ class Receiver:
         accepted = (type(sid) is int and sid in self.allowed and type(cid) is int and cid == sid
                     and chat.get("type") == "private" and sender.get("is_bot") is False
                     and isinstance(text, str) and bool(text))
-        return self.box.incoming(uid, **({"input_id": input_id_for("telegram", str(uid)),
-                                           "sender": sid, "text": text} if accepted else {}))
+        if not accepted:
+            return self.box.incoming(uid)
+        reply = message.get("reply_to_message")
+        reply_id = reply.get("message_id") if isinstance(reply, dict) else None
+        return self.box.incoming(uid, input_id=input_id_for("telegram", str(uid)), sender=sid, text=text,
+                                 reply_to=reply_id if type(reply_id) is int and reply_id > 0 else None)
 
     def notices(self, level="N1"):
         """Метаданные для S10/S20; текст не выдаётся до input.read."""

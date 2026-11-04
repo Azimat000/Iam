@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 
+from iam.creator_bridge import PATH, records, request_id
 from iam.domain import Op
 from iam.interfaces import Capabilities
 from iam.state import KindContext, KindDecision, KindHandler, Violation
@@ -49,6 +50,10 @@ def make_kind_handlers(capabilities: Capabilities, *, max_actions: int = 1) -> d
                        f"возможности {cap_id} нет в реестре или она не доступна ({cap.status if cap else 'нет'})")
         if cap_id not in ctx.request["allowed_actions"]:
             return _no("capability_not_allowed", f"{cap_id} не входит в allowed_actions запроса")
+        if hasattr(capabilities, "limit_violation"):
+            problem = capabilities.limit_violation(cap, body, ctx.request["session_id"], ctx.life_time_ms)
+            if problem:
+                return _no("capability_limit", problem)
         if sum(k in EXECUTABLE for k in ctx.accepted_kinds) >= max_actions:
             return _no("too_many_actions", f"из одного ответа принимается не более {max_actions} действий")
         record = {"status": "accepted", "kind": pr["kind"], "capability_id": cap_id,
@@ -62,14 +67,23 @@ def make_kind_handlers(capabilities: Capabilities, *, max_actions: int = 1) -> d
         if (early := checked(pr)) is not None:
             return early
         key = pr["body"]["request_key"]
-        if not REQUEST_KEY_RE.match(key):
+        if not REQUEST_KEY_RE.fullmatch(key):
             return _no("bad_request_key", "request_key: 1–40 символов из букв, цифр, «_» и «-»")
-        have = ctx.state["world_time"].get("world", {}).get("creator_requests", {}).get(key)
-        if have is not None and have["status"] == "open":
+        have = records(ctx.state).get(key)
+        if have is not None and have["status"] not in ("accepted", "retry_allowed"):
             return _no("duplicate_request", f"просьба {key} уже отправлялась: без новых обстоятельств не повторяется")
-        return KindDecision((_set("world_time", f"world.creator_requests.{key}",
-                                  {"status": "accepted", "text": pr["body"]["text"],
-                                   "proposal_id": pr["proposal_id"]}),))
+        text = pr["body"]["text"]
+        normalized = " ".join(text.split()).casefold()
+        if any(other_key != key and " ".join(item["text"].split()).casefold() == normalized
+               for other_key, item in records(ctx.state).items()):
+            return _no("duplicate_request", "Эта просьба уже сохранена под другим ключом")
+        value = {"status": "accepted", "text": text, "proposal_id": pr["proposal_id"],
+                 "crq_id": request_id(pr["proposal_id"])}
+        if have is not None:
+            previous = have["crq_id"] if have["status"] == "retry_allowed" else have.get("previous_request")
+            if previous:
+                value["previous_request"] = previous
+        return KindDecision((_set("world_time", f"{PATH}.{key}", value),))
 
     def no_action(pr: dict, ctx: KindContext) -> KindDecision:
         if (early := checked(pr)) is not None:

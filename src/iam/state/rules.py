@@ -19,6 +19,7 @@ ACTORS = ("operator", "core", "model", "world")
 CARRIER_ACTORS: dict[str, frozenset[str]] = {
     "persona.created": frozenset({"operator"}),
     "operator.intervention": frozenset({"operator"}),
+    "creator.reply": frozenset({"core"}),
     "session.started": frozenset({"operator", "core"}),
     "session.paused": frozenset({"operator", "core"}),
     "session.resumed": frozenset({"operator", "core"}),
@@ -38,7 +39,7 @@ DEFAULT_CARRIER_ACTORS = frozenset({"core", "model", "operator"})
 # создание личности, наступивший момент, вмешательство оператора — только через `intervene`): через общий `apply` их не провести, иначе журнал мог бы
 # сообщить о сеансе или моменте, которых в состоянии нет.
 RESERVED_CARRIERS = frozenset({"operator.intervention", "persona.created", "session.started", "session.paused", "session.resumed",
-                               "session.stopped", "time.moment_due"})
+                               "session.stopped", "time.moment_due", "creator.reply"})
 
 EVENT_SOURCE_KIND = {"operator": "operator_panel", "core": "core", "model": "core", "world": "world"}
 
@@ -107,7 +108,8 @@ ACTION_MACHINE = StateMachine(
     initial=frozenset({"accepted"}))
 
 # Пути, которые ведёт только цикл через разборщики видов и события исхода; модель не правит их как state_change.
-RESERVED_MODEL_PATHS = (("world_time", "world", "actions"), ("world_time", "world", "creator_requests"))
+RESERVED_MODEL_PATHS = (("world_time", "world", "actions"), ("world_time", "world", "creator_requests"),
+                        ("world_time", "world", "creator_replies"), ("world_time", "capability_permissions"))
 
 MACHINES = (INTENTION_MACHINE, SESSION_MACHINE, ACTION_MACHINE)
 

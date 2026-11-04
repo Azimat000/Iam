@@ -323,8 +323,10 @@ class InterventionTest(StateCase):
         c = self.c
         self.assertEqual(c.intervene("technical_fix", "подправить время", [set_("world_time", "life_time_ms", 5)]).reason,
                          "protected_field")
-        with self.assertRaises(NotSupported):
+        with self.assertRaises(ValueError):
             c.intervene("grant_capability", "дать право", [])
+        with self.assertRaises(NotSupported):
+            c.intervene("unrecognized_kind", "неизвестное вмешательство", [])
 
     def test_intervention_does_not_rewrite_journal(self):
         c = self.c

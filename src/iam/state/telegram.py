@@ -36,14 +36,16 @@ class TelegramMailbox:
                 raise ValueError("эта база уже связана с другим Telegram-ботом")
             self.put("bot_id", bot_id)
 
-    def incoming(self, uid, *, input_id=None, sender=None, text=None):
+    def incoming(self, uid, *, input_id=None, sender=None, text=None, reply_to=None):
         if input_id is None:
             result = self.ctl.record_event(EventSpec("system.rejected_sender", f"rjs:telegram:{uid}",
                 {"update_id": uid, "reason": "unsupported_or_unauthorized"}), actor_ref="telegram_receiver")
         else:
-            result = self.ctl.record_event(EventSpec("input.arrived", f"rx:telegram:{uid}", {
-                "input_id": input_id, "channel": "telegram", "sender": str(sender), "text": text}),
-                actor_ref="telegram_receiver")
+            payload = {"input_id": input_id, "channel": "telegram", "sender": str(sender), "text": text}
+            if reply_to is not None:
+                payload["reply_to_message_id"] = reply_to
+            result = self.ctl.record_event(EventSpec("input.arrived", f"rx:telegram:{uid}", payload),
+                                           actor_ref="telegram_receiver")
         if result.event is None:
             raise RuntimeError("Telegram: запись входящего отклонена; offset сохранён не будет")
         if input_id is not None:
@@ -56,6 +58,16 @@ class TelegramMailbox:
         rows = self.store.con.execute(
             "SELECT input_id, sender, received_at, channel FROM inbox WHERE channel = 'telegram' ORDER BY arrived_seq")
         return [dict(r) for r in rows if r["input_id"] not in read]
+
+    def sent_request(self, recipient, external_id):
+        row = self.store.con.execute(
+            "SELECT requested_seq FROM outbox WHERE channel = 'telegram' AND status = 'sent' "
+            "AND recipient = ? AND external_id = ?", (recipient, str(external_id)),
+        ).fetchone()
+        if row is None:
+            return None
+        event = self.store.get_event(row[0])
+        return event if event.type == "creator.request" else None
 
     def exists(self, action_id):
         return self.store.con.execute("SELECT 1 FROM outbox WHERE action_id = ?", (action_id,)).fetchone() is not None
