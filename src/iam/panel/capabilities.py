@@ -2,11 +2,13 @@
 
 from html import escape
 
+from iam.capabilities import TELEGRAM_ID
+
 LIMIT_LABELS = {
     "max_uses_per_session": "Максимум использований за сеанс",
     "max_uses_per_period": "Максимум использований за период",
     "period_life_ms": "Длительность периода, мс собственного времени",
-    "duration_max_ms": "Максимальная длительность действия, мс",
+    "duration_max_ms": "Предел заявленной длительности, мс",
 }
 
 
@@ -26,6 +28,7 @@ def render_capabilities(data, token, form):
             f'<label for="{key}-{field}">{text}</label><input id="{key}-{field}" type="number" '
             f'min="1" max="86400000" name="{field}" value="{escape(str(entry["limits"].get(field, "")), quote=True)}">'
             for field, text in LIMIT_LABELS.items()
+            if field != "duration_max_ms" or entry["capability_id"] != TELEGRAM_ID
         )
         limits = form("capability_limits", "Сохранить пределы", token, data, form_id=f"limits-{key}", reason="",
                       body=target + '<p class="help">Пустое поле сохраняет предел по умолчанию.</p>' + settings)

@@ -104,3 +104,15 @@ class RegistryTest(StateCase):
         reopened = Registry(restored, [tool])
         self.assertFalse(reopened.get(tool.capability_id).available)
         self.assertEqual(reopened.get(tool.capability_id).limits, {"max_uses_per_session": 2})
+
+    def test_invalid_limit_or_denied_transition_leaves_settings_unchanged(self):
+        ctl = self.controller()
+        registry = Registry(ctl, [Capability(TELEGRAM_ID, "Telegram")])
+        with self.assertRaisesRegex(ValueError, "количество отправок"):
+            registry.set_limits(TELEGRAM_ID, {"duration_max_ms": "50"}, reason="Проверка поля")
+        with self.assertRaisesRegex(ValueError, "Пределы не сохранены"):
+            registry.set_limits(TELEGRAM_ID, {"max_uses_per_session": "1"}, reason="x")
+        with self.assertRaisesRegex(ValueError, "Разрешение не сохранено"):
+            registry.set_permission(TELEGRAM_ID, grant=False, reason="x")
+        self.assertTrue(registry.get(TELEGRAM_ID).available)
+        self.assertEqual(registry.get(TELEGRAM_ID).limits, {})

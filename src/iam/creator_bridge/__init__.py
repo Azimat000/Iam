@@ -34,11 +34,7 @@ class Bridge:
         return self.transport.poll_replies()
 
     def submit(self, request):
-        tool = self.registry.get(TELEGRAM_ID)
-        if tool is None or not tool.available:
-            return Delivery(False, "Telegram недоступен. Просьба сохранена в панели.")
-        ctl = self.registry.ctl
-        reason = self.registry.limit_violation(tool, {"to": str(self.recipient)}, ctl.session_id, ctl.life_time_ms)
+        reason = self.registry.execution_violation(TELEGRAM_ID, {"to": str(self.recipient)})
         if reason:
             return Delivery(False, reason)
         return self.transport.submit(request)
@@ -49,20 +45,18 @@ class Requests:
         self.ctl = controller
 
     @staticmethod
-    def telegram_replies(events, outbox):
-        requests = {delivery_id(event.payload["crq_id"]): event.payload["crq_id"]
-                    for event in events if event.type == "creator.request" and event.payload.get("crq_id")}
-        sent = {str(item["external_id"]): requests[item["action_id"]] for item in outbox
-                if item["action_id"] in requests and item["status"] == "sent" and item["external_id"] is not None}
-        read = {event.payload.get("input_id") for event in events if event.type == "input.read"}
+    def telegram_replies(events):
+        arrivals = {event.event_id: event for event in events if event.type == "input.arrived"}
+        reads = {event.event_id: event.payload.get("input_id") for event in events if event.type == "input.read"}
         replies = {}
         for event in events:
-            if (event.type != "input.arrived" or event.source.ref != "telegram_receiver"
-                    or event.payload.get("input_id") not in read):
-                continue
-            crq_id = sent.get(str(event.payload.get("reply_to_message_id")))
-            if crq_id is not None:
-                replies.setdefault(crq_id, []).append({"text": event.payload["text"], "event_id": event.event_id})
+            if event.type == "creator.reply":
+                arrival = arrivals.get(event.payload.get("arrival_event"))
+                if arrival is not None and arrival.payload.get("input_id") in {
+                    reads[cause] for cause in event.causes if cause in reads
+                }:
+                    replies.setdefault(event.payload["crq_id"], []).append({
+                        "text": arrival.payload["text"], "event_id": event.event_id})
         return replies
 
     def respond(self, key, crq_id, decision, answer):

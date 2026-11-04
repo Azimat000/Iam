@@ -59,6 +59,16 @@ class TelegramMailbox:
             "SELECT input_id, sender, received_at, channel FROM inbox WHERE channel = 'telegram' ORDER BY arrived_seq")
         return [dict(r) for r in rows if r["input_id"] not in read]
 
+    def sent_request(self, recipient, external_id):
+        row = self.store.con.execute(
+            "SELECT requested_seq FROM outbox WHERE channel = 'telegram' AND status = 'sent' "
+            "AND recipient = ? AND external_id = ?", (recipient, str(external_id)),
+        ).fetchone()
+        if row is None:
+            return None
+        event = self.store.get_event(row[0])
+        return event if event.type == "creator.request" else None
+
     def exists(self, action_id):
         return self.store.con.execute("SELECT 1 FROM outbox WHERE action_id = ?", (action_id,)).fetchone() is not None
 

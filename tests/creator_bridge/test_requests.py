@@ -1,10 +1,14 @@
 from iam.capabilities import Registry, TELEGRAM_ID
-from iam.creator_bridge import Bridge, Requests, delivery_id, records
+from iam.creator_bridge import Bridge, Requests, records
 from iam.interfaces import Capability, CreatorRequest
 from iam.state import EventSpec
+from iam.state.telegram import TelegramMailbox
 from iam.cycle import Cycle
+from iam.cycle.runner import input_id_for
+from iam.domain import Op
+from iam.social import SocialMemory
 from iam.telegram import CreatorBridge as TelegramTransport
-from iam.stubs import Reply, ScriptedProvider, StubCreatorBridge, StubMemory, act, ask
+from iam.stubs import Reply, ScriptedProvider, StubCreatorBridge, StubMemory, act, ask, attend, say
 
 from cycle.helpers import CAP_PLOT, INTENTION, CycleCase
 from telegram import helpers as telegram_helpers
@@ -35,35 +39,29 @@ class RequestsTest(CycleCase):
         self.assertEqual(len(self.creator.submitted), 2)
         with self.assertRaises(ValueError):
             bridge.respond("plot", first, "accept", "Устаревший ответ")
+        with self.assertRaisesRegex(ValueError, "Ответ не сохранён"):
+            bridge.respond("plot", again["crq_id"], "accept", "x")
         bridge.respond("plot", again["crq_id"], "accept", "Попробую помочь")
         bridge.respond("plot", again["crq_id"], "record_result", "Проверю новый файл завтра")
         self.assertEqual(records(self.c.state)["plot"]["outcome"], "operator_reported")
         with self.assertRaises(ValueError):
             bridge.respond("plot", again["crq_id"], "record_result", "Повтор результата")
 
-    def test_linked_telegram_reply_is_visible_only_after_read(self):
-        from iam.cycle import Cycle
-        from iam.cycle.runner import input_id_for
-        from iam.social import SocialMemory
-        from iam.stubs import attend
+    def test_authorized_repeat_survives_interruption_before_sending(self):
+        from unittest.mock import patch
 
-        self.build(Reply((ask("help", "Помоги с графиком"),)))
-        self.cycle.run(self.due())
-        crq_id = records(self.c.state)["help"]["crq_id"]
-        outbox = [{"action_id": delivery_id(crq_id), "status": "sent", "external_id": "101"}]
-        memory = SocialMemory(self.c)
-        self.cycle = Cycle(self.c, self.provider, memory, self.world, self.caps, self.creator)
-        iid = input_id_for("telegram", "9")
-        event = self.c.record_event(EventSpec("input.arrived", "rx:telegram:9", {
-            "input_id": iid, "channel": "telegram", "sender": "123", "text": "Посмотрю позже",
-            "reply_to_message_id": 101,
-        }), actor_ref="telegram_receiver").event
-        self.assertEqual(Requests.telegram_replies(self.c.events_after(0), outbox), {})
-        self.provider.queue(Reply((attend("dialogue", iid),)))
-        self.cycle.run(event)
-        result = Requests.telegram_replies(self.c.events_after(0), outbox)
-        self.assertEqual(result[crq_id], [{"text": "Посмотрю позже", "event_id": event.event_id}])
-        self.assertEqual(records(self.c.state)["help"]["status"], "open")
+        cycle = self.build(Reply((ask("plot", "Нужен график"),)),
+                           Reply((ask("plot", "Нужен график"),)),
+                           Reply((ask("plot", "Нужен график"),)))
+        cycle.run(self.due())
+        first = records(self.c.state)["plot"]["crq_id"]
+        Requests(self.c).respond("plot", first, "circumstances", "Появились новые данные")
+        with patch.object(cycle, "_ask_creator", side_effect=KeyboardInterrupt), self.assertRaises(KeyboardInterrupt):
+            cycle.run(self.due())
+        self.assertEqual(records(self.c.state)["plot"]["status"], "accepted")
+        self.assertEqual(cycle.run(self.due()).outcome, "done")
+        self.assertEqual(records(self.c.state)["plot"]["previous_request"], first)
+        self.assertEqual(len(self.creator.submitted), 2)
 
     def test_revoked_telegram_does_not_send_a_request(self):
         ctl = self.controller()
@@ -104,8 +102,145 @@ class TelegramRequestsTest(telegram_helpers.TelegramCase):
             cycle.run(event)
         self.assertEqual(len(self.api.messages), 1)
         self.assertEqual(len(records(self.c.state)), 2)
+        first = self.c.find_event(key="crq:first")
+        with self.assertRaisesRegex(ValueError, "не совпадает с просьбой"):
+            self.tx.send("act_OtherAction1", user, "Нужен график", requested_seq=first.seq)
+        mismatched = CreatorRequest(first.payload["crq_id"], "first", "Другой текст")
+        self.assertFalse(transport.submit(mismatched).delivered)
         update = telegram_helpers.update(10)
         update["message"]["reply_to_message"] = {"message_id": 1}
         self.api.updates = [update]
         self.assertEqual(self.rx.poll_once(), 1)
         self.assertEqual(self.c.find_event(key="rx:telegram:10").payload["reply_to_message_id"], 1)
+
+    def test_refusal_scenario_records_linked_reply_and_keeps_waiting_intention(self):
+        user = telegram_helpers.USER
+        self.c.start_session()
+        self.assertTrue(self.c.apply(self.prop(self.c, Op("intentions", "plotting_tool", "set", {
+            "text": "Хочу получить инструмент для графиков", "status": "active",
+        }, True))).applied)
+        self.assertTrue(self.c.apply(self.prop(self.c, Op("intentions", "plotting_tool.status", "transition",
+                                                       "waiting_opportunity", True))).applied)
+        registry = Registry(self.c, [Capability(TELEGRAM_ID, "Telegram")])
+        bridge = Bridge(TelegramTransport(self.rx, self.tx, user), registry, user)
+        provider = ScriptedProvider([Reply((ask("plot", "Подключи графики"),)),
+                                     Reply((attend("dialogue", input_id_for("telegram", "10")),)),
+                                     Reply((ask("plot", "Подключи графики"),))])
+        cycle = Cycle(self.c, provider, SocialMemory(self.c), self.tx, registry, bridge)
+        requests = Requests(self.c)
+        cycle.perception.on_read = self.c.record_creator_reply
+        event = self.c.record_event(EventSpec("input.arrived", "rx:test:1", {"text": "Нужен график"})).event
+        self.assertEqual(cycle.run(event).outcome, "done")
+        request = self.c.find_event(key="crq:plot")
+        crq_id = request.payload["crq_id"]
+        update = telegram_helpers.update(10, text="Нет, графики пока не подключу")
+        update["message"]["reply_to_message"] = {"message_id": 1}
+        alias = self.c.record_event(EventSpec("input.arrived", "rx:telegram:100", {
+            "input_id": input_id_for("telegram", "10"), "channel": "telegram", "sender": str(user),
+            "text": "Поддельный входящий с таким же идентификатором", "reply_to_message_id": 1,
+        }), actor_ref="telegram_receiver").event
+        self.api.updates = [update]
+        self.assertEqual(self.rx.poll_once(), 1)
+        arrival = self.c.find_event(key="rx:telegram:10")
+        self.assertIsNone(self.c.find_event(key=f"crp:{crq_id}:10"))
+        fake_reply = EventSpec("creator.reply", f"crp:{crq_id}:10", {
+            "crq_id": crq_id, "input_id": arrival.payload["input_id"], "arrival_event": arrival.event_id,
+        }, causes=(arrival.event_id,))
+        forged = self.c.apply(self.prop(self.c, Op("traits", "spoof", "set", True, True), carrier=fake_reply))
+        self.assertEqual(forged.reason, "carrier_reserved")
+        with self.assertRaises(ValueError):
+            self.c.record_creator_reply(arrival, arrival)
+        self.assertEqual(Requests.telegram_replies(self.c.events_after(0)), {})
+        self.assertEqual(cycle.run(self.c.find_event(key="rx:telegram:10")).outcome, "done")
+        reply = self.c.find_event(key=f"crp:{crq_id}:10")
+        read = self.c.find_event(key="rd:" + input_id_for("telegram", "10"))
+        from dataclasses import replace
+        other_chat = replace(arrival, payload={**arrival.payload, "sender": "999"})
+        with self.assertRaises(ValueError):
+            self.c.record_creator_reply(other_chat, read)
+        self.assertIsNone(TelegramMailbox(self.c).sent_request("999", 1))
+        self.c.record_creator_reply(arrival, read)
+        self.assertEqual(sum(e.type == "creator.reply" for e in self.c.events_after(0)), 1)
+        with self.assertRaises(ValueError):
+            self.c.record_creator_reply(alias, read)
+        self.assertEqual(reply.causes, (request.event_id, read.event_id))
+        self.assertEqual(Requests.telegram_replies([arrival, replace(reply, causes=(request.event_id,))]), {})
+        self.assertEqual(Requests.telegram_replies(self.c.events_after(0))[crq_id][0]["text"],
+                         "Нет, графики пока не подключу")
+        requests.respond("plot", crq_id, "decline", "Графики пока не подключу")
+        self.assertEqual(cycle.run(read).outcome, "rejected")
+        self.assertEqual(len(self.api.messages), 1)
+        self.assertEqual(self.c.state["intentions"]["plotting_tool"]["status"], "waiting_opportunity")
+
+    def test_shared_quota_with_request_then_message(self):
+        self.assert_shared_quota(request_first=True)
+
+    def test_shared_quota_with_message_then_request(self):
+        self.assert_shared_quota(request_first=False)
+
+    def assert_shared_quota(self, *, request_first):
+        user = telegram_helpers.USER
+        self.c.start_session()
+        tool = Capability(TELEGRAM_ID, "Telegram", limits={"max_uses_per_session": 1})
+        registry = Registry(self.c, [tool])
+        bridge = Bridge(TelegramTransport(self.rx, self.tx, user), registry, user)
+        request = ask("plot", "Подключи графики")
+        message = say(TELEGRAM_ID, str(user), "Обычное сообщение")
+        proposals = (request, message) if request_first else (message, request)
+        cycle = Cycle(self.c, ScriptedProvider([Reply(proposals)]), StubMemory(), self.tx, registry, bridge)
+        event = self.c.record_event(EventSpec("input.arrived", "rx:test:1", {"text": "Входящее"})).event
+        report = cycle.run(event)
+        self.assertEqual(len(self.api.messages), 1)
+        self.assertEqual(report.actions[0].status, "not_attempted" if request_first else "confirmed")
+        self.assertEqual(records(self.c.state)["plot"]["status"], "open")
+
+    def test_failed_link_rolls_back_read_and_can_be_retried(self):
+        user = telegram_helpers.USER
+        self.c.start_session()
+        registry = Registry(self.c, [Capability(TELEGRAM_ID, "Telegram")])
+        bridge = Bridge(TelegramTransport(self.rx, self.tx, user), registry, user)
+        provider = ScriptedProvider()
+        memory = SocialMemory(self.c)
+        cycle = Cycle(self.c, provider, memory, self.tx, registry, bridge)
+        cycle.perception.on_read = self.c.record_creator_reply
+        provider.queue(Reply((ask("help", "Помоги с графиком"),)))
+        initial = self.c.record_event(EventSpec("input.arrived", "rx:test:1", {"text": "Входящее"})).event
+        cycle.run(initial)
+        reject = True
+
+        def validator(check):
+            return ["Сбой связи"] if reject and check.carrier_type == "creator.reply" else []
+
+        self.c.add_validator("test_reply_link", validator)
+        update = telegram_helpers.update(10, text="Ответ")
+        update["message"]["reply_to_message"] = {"message_id": 1}
+        self.api.updates = [update]
+        self.rx.poll_once()
+        arrival = self.c.find_event(key="rx:telegram:10")
+        iid = input_id_for("telegram", "10")
+        provider.queue(Reply((attend("dialogue", iid),)))
+        with self.assertRaises(RuntimeError):
+            cycle.run(arrival)
+        self.assertEqual(memory.history()["creator"]["history"], [])
+        self.assertIsNone(self.c.find_event(key="rd:" + iid))
+        reject = False
+        provider.queue(Reply((attend("dialogue", iid),)))
+        self.assertEqual(cycle.run(arrival, round_=1).outcome, "done")
+        self.assertEqual(len(memory.history()["creator"]["history"]), 1)
+
+    def test_read_without_matching_sent_request_stays_ordinary(self):
+        self.c.start_session()
+        registry = Registry(self.c, [Capability(TELEGRAM_ID, "Telegram")])
+        provider = ScriptedProvider([
+            Reply((attend("dialogue", input_id_for("telegram", str(uid))),)) for uid in (10, 11)
+        ])
+        cycle = Cycle(self.c, provider, SocialMemory(self.c), self.tx, registry, StubCreatorBridge())
+        cycle.perception.on_read = self.c.record_creator_reply
+        unknown = telegram_helpers.update(10, text="Ответ к другому сообщению")
+        unknown["message"]["reply_to_message"] = {"message_id": 999}
+        self.api.updates = [unknown, telegram_helpers.update(11, text="Обычный разговор")]
+        self.assertEqual(self.rx.poll_once(), 2)
+        for uid in (10, 11):
+            self.assertEqual(cycle.run(self.c.find_event(key=f"rx:telegram:{uid}")).outcome, "done")
+        self.assertEqual(len(cycle.memory.history()["creator"]["history"]), 2)
+        self.assertEqual(Requests.telegram_replies(self.c.events_after(0)), {})

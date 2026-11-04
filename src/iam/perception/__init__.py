@@ -14,6 +14,7 @@ class Perception:
             raise ValueError('Уровень N1/N2 и положительный предел уведомлений обязательны')
         self.ctl, self.memory, self.level, self.limit = controller, memory, level, limit
         self._writing = None
+        self.on_read = None
         controller._perception_guard = self._guard
         controller.add_validator('perception_state', lambda check: controller._perception_guard.__self__._validate(check))
 
@@ -128,6 +129,8 @@ class Perception:
                         content={'experience': 'live'})
                     if not self.memory.write(record).applied:
                         raise RuntimeError('Прочитанное не удалось записать; чтение отменено')
+                if result.applied and self.on_read is not None:
+                    self.on_read(self._arrivals()[iid], result.events[0])
                 return result
         ids = [item['ref'] for item in request['context'] if item['layer'] == 'notice'
                and self._states().get(item['ref'], {}).get('stage') == 'noticed']

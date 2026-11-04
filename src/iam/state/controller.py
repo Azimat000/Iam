@@ -683,6 +683,42 @@ class StateController:
                               'restored_by_operator': True}, causes=(eid,))
         return self._apply(Proposal(t, 'operator', 'panel', carrier, (companion,)), privileged=False, internal=True)
 
+    def record_creator_reply(self, arrival: Event, read: Event) -> None:
+        """Связать уже подтверждённое чтение с отправленной просьбой из того же чата."""
+        from .telegram import TelegramMailbox
+
+        payload = arrival.payload
+        reply_to = payload.get("reply_to_message_id")
+        if arrival.source.ref != "telegram_receiver" or reply_to is None:
+            return
+        input_id = payload.get("input_id")
+        if (input_id is None or arrival.type != "input.arrived"
+                or read.type != "input.read" or read.source.ref != "perception"
+                or read.payload.get("input_id") != input_id
+                or self.find_event(event_id=read.event_id) != read
+                or self.find_event(event_id=arrival.event_id) != arrival
+                or arrival.seq >= read.seq or self.store.get_inbox(input_id).arrived_seq != arrival.seq):
+            raise ValueError("Ответ можно связать только после подтверждённого чтения")
+        request = TelegramMailbox(self).sent_request(payload.get("sender"), reply_to)
+        if request is None:
+            return
+        crq_id = request.payload["crq_id"]
+        external_id = arrival.idempotency_key.rsplit(":", 1)[-1]
+        key = f"crp:{crq_id}:{external_id}"
+        if self.find_event(key=key) is not None:
+            return
+        link = {"crq_id": crq_id, "input_id": input_id, "arrival_event": arrival.event_id}
+        path = f"world.creator_replies.{crq_id}.{input_id}"
+        causes = (request.event_id, read.event_id)
+        transition = Transition(new_id("trn"), self.persona_id, self._epoch, self._version,
+                                (Op("world_time", path, "set", link, True),),
+                                "Прочитан ответ на просьбу", causes)
+        event = EventSpec("creator.reply", key, link, causes=causes)
+        result = self._apply(Proposal(transition, actor_ref="creator_bridge", carrier=event),
+                             privileged=False, internal=True)
+        if not result.applied:
+            raise RuntimeError("Не удалось связать прочитанный ответ с просьбой")
+
     # --- запросы и ответы модели ---------------------------------------------------------------
 
     def record_request(self, request: dict) -> RecordResult:

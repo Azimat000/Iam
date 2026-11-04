@@ -79,8 +79,10 @@ def make_kind_handlers(capabilities: Capabilities, *, max_actions: int = 1) -> d
             return _no("duplicate_request", "Эта просьба уже сохранена под другим ключом")
         value = {"status": "accepted", "text": text, "proposal_id": pr["proposal_id"],
                  "crq_id": request_id(pr["proposal_id"])}
-        if have is not None and have["status"] == "retry_allowed":
-            value["previous_request"] = have["crq_id"]
+        if have is not None:
+            previous = have["crq_id"] if have["status"] == "retry_allowed" else have.get("previous_request")
+            if previous:
+                value["previous_request"] = previous
         return KindDecision((_set("world_time", f"{PATH}.{key}", value),))
 
     def no_action(pr: dict, ctx: KindContext) -> KindDecision:

@@ -296,6 +296,13 @@ class Cycle:
 
     def _act(self, rep: CycleReport, pr: dict, accepted_id: str) -> None:
         body, kind, aid = pr["body"], pr["kind"], action_id_for(pr["proposal_id"])
+        if hasattr(self.capabilities, "execution_violation"):
+            problem = self.capabilities.execution_violation(body["capability_id"], body)
+            if problem:
+                self.record_fault("capability_execution_denied", aid, {"action_id": aid, "reason": problem})
+                self._stage(rep, "action", "failed", (), {"action_id": aid, "reason": problem})
+                rep.actions.append(ActionReport(aid, kind, "not_attempted"))
+                return
         request = ActionRequest(aid, kind, body["capability_id"], body.get("params", {}), body.get("to"), body.get("text"))
         attempt_type, attempt_key = _ACTION_EVENTS[kind]["attempt"]
         attempted_id = new_id("evt")

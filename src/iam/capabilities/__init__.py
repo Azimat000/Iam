@@ -64,6 +64,12 @@ class Registry:
             for key, tool in self._tools.items()
         ]
 
+    def execution_violation(self, capability_id, body):
+        capability = self.get(capability_id)
+        if capability is None or not capability.available:
+            return "Возможность сейчас недоступна."
+        return self.limit_violation(capability, body, self.ctl.session_id, self.ctl.life_time_ms)
+
     def limit_violation(self, capability, body, session_id, now):
         limits = capability.limits
         duration = limits.get("duration_max_ms")
@@ -122,6 +128,8 @@ class Registry:
         if capability_id not in self._tools:
             raise ValueError("Возможность не найдена. Обновите страницу.")
         limits = parse_limits(fields)
+        if capability_id == TELEGRAM_ID and "duration_max_ms" in limits:
+            raise ValueError("У Telegram можно ограничить количество отправок.")
         result = self.ctl.intervene("set_capability_limits", reason, (
             Op("world_time", f"{REGISTRY_PATH}.{capability_id}.limits", "set", limits, True),),
             target=capability_id)

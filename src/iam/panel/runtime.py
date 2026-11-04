@@ -128,6 +128,7 @@ class Runtime:
         self.requests = Requests(self.ctl)
         creator = Bridge(creator, self.caps, self.telegram_user)
         self.cycle = LivingCycle(self.ctl, provider, SocialMemory(self.ctl), world, self.caps, creator)
+        self.cycle.perception.on_read = self.ctl.record_creator_reply
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
 
     def _serve(self):
@@ -226,7 +227,7 @@ class Runtime:
         box = TelegramMailbox(ctl)
         last_poll = box.get("last_poll_at")
         age = ((dt.datetime.now(dt.UTC) - dt.datetime.fromisoformat(last_poll)).total_seconds() if last_poll else None)
-        requests = [e.to_dict() for e in events if e.type == "creator.request"
+        requests = [e.to_dict() for e in events if e.type in ("creator.request", "creator.reply")
                     or e.type == "operator.intervention" and str(e.payload.get("target", "")).startswith("crq_")][-50:]
         relations_view = self.cycle.memory.overview() if relations and version is None else None
         return {"relations_view": relations_view, "persona_id": ctl.persona_id, "demo": self.demo, "session_state": ctl.session_state,
@@ -235,7 +236,7 @@ class Runtime:
                 "life_ms": ctl.life_time_ms, "usage": self.session.usage(), "sending": self.sending, "state": state,
                 "events": [e.to_dict() for e in reversed(selected)], "history": records["history"],
                 "memories": records["memories"], "requests": requests, "capabilities": self.caps.entries(),
-                "telegram_replies": self.requests.telegram_replies(events, records["outbox"]),
+                "telegram_replies": self.requests.telegram_replies(events),
                 "errors": [e.to_dict() for e in events if e.type in ("system.error", "system.limit_reached")][-50:],
                 "backups": [{"id": i.manifest["snapshot_id"], "created_at": i.manifest["created_at"],
                              "version": i.manifest["state_version"]} for i in infos],
