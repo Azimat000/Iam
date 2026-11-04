@@ -166,11 +166,22 @@ class PersistentCoreTest(unittest.TestCase):
                         session.command("resume", "Разобрать незавершённое действие")
                         self.assertEqual(len(cycle.settle_unfinished()), 1)
                         self.assertEqual(cycle.settle_unfinished(), [])
-                        failed = [action for action in cycle.world.state["actions"].values()
-                                  if action.get("params", {}).get("project_id") == "interrupted"]
-                        self.assertEqual(len(failed), (index + 1) // 4)
-                        self.assertEqual({action["status"] for action in failed}, {"unknown_outcome"})
-                        self.assertTrue(all("receipt" not in action for action in failed))
+                        interrupted = {aid: action for aid, action in cycle.world.state["actions"].items()
+                                       if action.get("params", {}).get("project_id") == "interrupted"}
+                        self.assertEqual(len(interrupted), (index + 1) // 4)
+                        self.assertEqual({action["status"] for action in interrupted.values()}, {"unknown_outcome"})
+                        self.assertTrue(all("receipt" not in action for action in interrupted.values()))
+                        outcomes = {aid: [] for aid in interrupted}
+                        for event in store.events():
+                            aid = event.payload.get("action_id")
+                            if aid in outcomes and event.type in (
+                                "action.unknown_outcome", "action.confirmed", "activity.completed"
+                            ):
+                                outcomes[aid].append(event.type)
+                        self.assertTrue(all(types == ["action.unknown_outcome"] for types in outcomes.values()))
+                        self.assertFalse(any(row.content.get("action_id") in interrupted
+                                             and row.content.get("outcome") == "confirmed"
+                                             for row in ctl.readable_memories()))
                         session.command("stop", "Завершить проверку неизвестного исхода")
                     self.assert_history(store, cycle)
 
