@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import hashlib
+
 from iam.domain import Source
 
 from .paths import StateMachine
@@ -39,9 +41,14 @@ DEFAULT_CARRIER_ACTORS = frozenset({"core", "model", "operator"})
 # создание личности, наступивший момент, вмешательство оператора — только через `intervene`): через общий `apply` их не провести, иначе журнал мог бы
 # сообщить о сеансе или моменте, которых в состоянии нет.
 RESERVED_CARRIERS = frozenset({"operator.intervention", "persona.created", "session.started", "session.paused", "session.resumed",
-                               "session.stopped", "time.moment_due", "creator.reply"})
+                               "session.stopped", "time.moment_due", "creator.reply", "reflection.done"})
 
 EVENT_SOURCE_KIND = {"operator": "operator_panel", "core": "core", "model": "core", "world": "world"}
+
+
+def reflection_request_id(epoch: int, cycle_id: str) -> str:
+    digest = hashlib.sha256(f"reflection:{epoch}:{cycle_id}".encode()).hexdigest()[:24]
+    return "req_" + digest
 
 
 def event_source(actor: str, ref: str) -> Source:

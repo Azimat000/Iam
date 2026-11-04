@@ -136,9 +136,10 @@ class MemoryLifecycle:
         texts.update(h['previous_text'] for r in rows for h in r.history if 'previous_text' in h)
         return ids | texts
 
-    def _safe_item(self, value):
+    def _safe_item(self, value, *, blocked=None):
         text = json.dumps(value, ensure_ascii=False)
-        return not any(json.dumps(marker, ensure_ascii=False)[1:-1] in text for marker in self._blocked())
+        markers = self._blocked() if blocked is None else blocked
+        return not any(json.dumps(marker, ensure_ascii=False)[1:-1] in text for marker in markers)
 
     def decision_state(self):
         """Выбор внимания не читает кеш цели/оценки с забытым основанием."""

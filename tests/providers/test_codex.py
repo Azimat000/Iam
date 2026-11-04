@@ -100,6 +100,13 @@ class ProviderTests(unittest.TestCase):
                 p.propose(request())
             self.assertEqual(len(runner.calls), retries + 1)
 
+    def test_reflection_does_not_retry_format_errors(self):
+        p, runner = provider(fake.garbage(), fake.reply([]))
+        req = dict(request(), purpose="reflect", allowed_proposals=["reflection"], allowed_actions=[])
+        with self.assertRaises(ProviderFormatError):
+            p.propose(req)
+        self.assertEqual(len(runner.calls), 1)
+
     def test_wire_shape_and_common_schema_are_enforced(self):
         bad = [[], {}, {**WIRE, "request_id": "forged"}, {**WIRE, "explanation": 3},
                {**WIRE, "proposals": {}}, {**WIRE, "proposals": ["not object"]}]
@@ -371,7 +378,7 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(set(proposal["required"]), set(proposal["properties"]))
         self.assertEqual(set(RESPONSE_JSON_SCHEMA["required"]), set(RESPONSE_JSON_SCHEMA["properties"]))
         self.assertEqual(set(proposal["properties"]["kind"]["enum"]),
-                         {"action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "attend"})
+                         {"action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"})
         self.assertEqual(proposal["properties"]["body_json"], {"type": "string"})
 
 

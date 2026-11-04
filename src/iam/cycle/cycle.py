@@ -21,6 +21,7 @@ from iam.domain import Event, MemoryRecord, Op, Source, Transition, new_id
 from iam.interfaces import (ActionOutcome, ActionRequest, Capabilities, CognitiveProvider, CreatorBridge,
                             CreatorRequest, Delivery, Memory, StateController, World)
 from iam.state import ApplyResult, EventSpec, Proposal
+from iam.state.rules import reflection_request_id
 
 from .attention import AttentionPolicy, Focus
 from .handlers import EXECUTABLE, action_id_for, make_kind_handlers
@@ -216,13 +217,16 @@ class Cycle:
             return context
         return [first] + [{"ref": r.memory_id, "origin": r.origin, "layer": r.layer, "text": r.text} for r in records]
 
-    def _request(self, cid: str, context: list[dict], attempt: int, retry_of: str | None) -> dict:
-        rid = new_id("req")
+    def _request(self, cid: str, context: list[dict], attempt: int, retry_of: str | None,
+                 *, purpose: str = "choose_action") -> dict:
+        reflecting = purpose == "reflect"
+        rid = reflection_request_id(self.ctl.epoch, cid) if reflecting else new_id("req")
         req = {"request_id": rid, "persona_id": self.ctl.persona_id, "session_id": self.ctl.session_id,
                "epoch": self.ctl.epoch, "state_version": self.ctl.state_version,
                "issued_at": self.ctl.clock.calendar_now(), "life_time_ms": self.ctl.clock.now_ms(),
-               "purpose": "choose_action", "context": context, "allowed_proposals": list(self.allowed_proposals),
-               "allowed_actions": [c.capability_id for c in self.capabilities.list() if c.available],
+               "purpose": purpose, "context": context,
+               "allowed_proposals": ["reflection"] if reflecting else list(self.allowed_proposals),
+               "allowed_actions": [] if reflecting else [c.capability_id for c in self.capabilities.list() if c.available],
                "limits": {"max_output_tokens": self.max_output_tokens, "deadline_ms": self.deadline_ms,
                           "attempt": attempt},
                "response_schema": "response.schema.json", "idempotency_key": f"req:{rid}", "cycle_id": cid}

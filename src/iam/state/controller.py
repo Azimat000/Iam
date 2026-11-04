@@ -335,6 +335,9 @@ class StateController:
             if not (internal and p.actor == "operator" and carrier.type == "operator.intervention"
                     and carrier.payload.get("kind") in ("grant_capability", "revoke_capability", "set_capability_limits")):
                 v.append(Violation("capability_permission_forbidden", "Доступ меняет только оператор через панель"))
+        if ("reflection" in self._kinds and p.actor == "model" and not internal
+                and any(op.group in ("selfmodel", "traits") for op in t.ops)):
+            v.append(Violation("reflection_required", "Черты и самомодель защищены правилами рефлексии"))
         out = self._run_ops(t.ops, p.actor, carrier.type, self._state, t.caused_by, carrier.event_id)
         out.violations[:0] = v
         if not out.violations:
@@ -730,6 +733,17 @@ class StateController:
         spec = EventSpec("proposal.requested", request["idempotency_key"], {"request": request})
         if request["persona_id"] != self.persona_id or request["session_id"] != self.session_id:
             return self._refuse(spec, "wrong_context", "запрос другой личности или не текущего сеанса")
+        if request["purpose"] == "reflect" and "reflection" in request["allowed_proposals"]:
+            if (request["allowed_proposals"] != ["reflection"] or request["allowed_actions"]
+                    or not request.get("cycle_id") or request["epoch"] != self._epoch
+                    or request["request_id"] != rules.reflection_request_id(self._epoch, request["cycle_id"])
+                    or request["idempotency_key"] != f"req:{request['request_id']}"
+                    or request["limits"]["attempt"] or request.get("retry_of")):
+                return self._refuse(spec, "reflection_request", "Допускается один запрос рефлексии без действий")
+            parent = self._state["selfmodel"].get("reflection_intent")
+            asked = self.store.find_event(key=f"req:{parent}") if parent else None
+            if asked is None or asked.payload["request"].get("cycle_id") != request["cycle_id"]:
+                return self._refuse(spec, "reflection_opt_in", "Требуется добровольный выбор в том же цикле")
         res = self._record(spec)
         if res.event is not None:
             self._pending.setdefault(request["request_id"], self.clock.monotonic_ms())
@@ -781,6 +795,9 @@ class StateController:
             rejected = {pr["proposal_id"]: "tool_use_detected" for pr in response["proposals"]}
             self._log_rejections(response, rejected, received)
             return ResponseResult("rejected", "tool_use_detected", received, rejected=rejected)
+        if request["purpose"] == "reflect" and request["allowed_proposals"] == ["reflection"]:
+            if response["usage"]["calls"] != 1 or len(response["proposals"]) > 1:
+                return ResponseResult("rejected", "reflection_limit", received)
         return self._judge_proposals(response, received, request)
 
     def _stale_reasons(self, response: dict, request: dict, sent_at: int | None) -> list[str]:
@@ -840,8 +857,16 @@ class StateController:
         mark = tuple(EventSpec("proposal.accepted", f"prop:{pr['proposal_id']}:accept", {
             "proposal_id": pr["proposal_id"], "request_id": rid, "kind": pr["kind"], "rationale": pr["rationale"]})
             for pr in accepted)
-        res = self._apply(Proposal(t, "model", response["provider"]["name"], companions=mark, request_id=rid),
-                          privileged=False)
+        reflection = any(pr["kind"] == "reflection" for pr in accepted)
+        carrier = (EventSpec("reflection.done", f"ref:{request['cycle_id']}",
+                             {"cycle_id": request["cycle_id"], "provider": response["provider"]})
+                   if reflection and request["purpose"] == "reflect" else None)
+        if carrier is not None:
+            note = next(op.value for op in ops if op.group == "memory")
+            mark += (EventSpec("memory.recorded", f"mem:{t.transition_id}:0",
+                               {"memory_id": note["memory_id"], "origin": "model_explanation"}),)
+        res = self._apply(Proposal(t, "model", response["provider"]["name"], carrier, mark, request_id=rid),
+                          privileged=False, internal=reflection)
         ok = res.applied
         names = tuple(pr["proposal_id"] for pr in accepted)
         if not ok:   # принятые по отдельности, но не записанные вместе: каждому — запись об отказе (E-9)
@@ -854,6 +879,8 @@ class StateController:
         """(нарушение | None, состояние после, операции) для одного предложения."""
         if pr["kind"] == "state_change":
             ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
+            if "reflection" in self._kinds and any(o.group in ("selfmodel", "traits") for o in ops):
+                return Violation("reflection_required", "Черты и самомодель защищены правилами рефлексии"), working, ()
             if any(o.group == "memory" for o in ops):
                 return Violation("memory_via_proposal", "Память пишется отдельным предложением"), working, ()
             if any(overlaps(touched(o), r) for o in ops for r in rules.RESERVED_MODEL_PATHS):
@@ -876,7 +903,7 @@ class StateController:
         bad = self._protected(ops)
         if bad:
             return bad[0], working, ()
-        if pr["kind"] == "memory_write":
+        if pr["kind"] in ("memory_write", "reflection"):
             self._memory_grants.update(canonical_json(o.to_dict()) for o in ops if o.group == "memory")
         cites = tuple(c for c in pr["cites"] if c.startswith("evt_"))
         out = self._run_ops(ops, "model", "state.transition_applied", working, (*cites, received_id), None)

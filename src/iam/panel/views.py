@@ -3,7 +3,7 @@ import json
 from html import escape
 from .memory import render_memory
 
-NAV = {"": "Сеанс", "events": "События", "state": "Состояние", "memory": "Память",
+NAV = {"": "Сеанс", "events": "События", "state": "Состояние", "selfmodel": "Представление о себе", "memory": "Память",
        "world": "Мир и занятия",
        "requests": "Просьбы к вам", "capabilities": "Возможности", "experiments": "Эксперименты",
        "usage": "Расход и ошибки", "backups": "Копии и восстановление"}
@@ -107,6 +107,9 @@ def render(page, data, token, *, error=None, notice=None, values=None):
             from .social import render_social
             content += render_social(data["relations_view"])
         content += dump({"view_version": data["view_version"] or data["version"], "state": data["state"]})
+    elif page == "selfmodel":
+        from .selfmodel import render_selfmodel
+        content = render_selfmodel(data["selfmodel_view"], e)
     elif page == "memory":
         content = render_memory(data["memories"])
         content += '<section><h2>Восстановить запись из архива</h2><p>Выберите одну запись и её прежнюю версию по журналу событий. Будет создана новая запись личной памяти с отметкой о вмешательстве оператора.</p>'
