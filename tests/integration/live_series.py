@@ -10,6 +10,7 @@ import platform
 import re
 import shutil
 import subprocess
+import tomllib
 
 from iam.domain import new_id
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
@@ -21,7 +22,9 @@ from iam.world.cycle import LivingCycle
 from integration.test_persistent_core import tick, wire
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "s25-series-1"
+VERSION = "s25-series-2-curious"
+PROFILE_PATH = ROOT / "scenarios/personas/curious.toml"
+PROFILE = tomllib.loads(PROFILE_PATH.read_text())
 MODEL = "gpt-6-luna"
 MAX_DECISIONS = 54
 MAX_CALLS = 216
@@ -39,9 +42,20 @@ INPUTS = {
 PAIRS = (("A", 1, "memory"), ("B", 1, "motivation"), ("C", 2, "memory"))
 
 
+def profile_context(memory):
+    created = memory.ctl.find_event(key="per:" + memory.ctl.persona_id + ":create")
+    profile = {"id": PROFILE["id"], "name": PROFILE["name"], "traits": PROFILE["traits"],
+               "motives": [] if memory.motivation_off else PROFILE["motives"], "temporary": True}
+    return {"ref": created.event_id, "origin": "observation", "layer": "state",
+            "text": json.dumps({"initial_profile": profile, "source": "operator_initial_configuration",
+                                "note": "Начальные черты и общие мотивы. Это не прожитая биография и не готовые цели."},
+                               ensure_ascii=False, sort_keys=True)}
+
+
 class ExperimentCycle(LivingCycle):
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
+        context.append(profile_context(self.memory))
         context.append({"ref": trigger.event_id, "origin": "model_knowledge", "layer": "state",
                         "text": "Это отдельная экспериментальная история. Материалы и реплики предоставлены "
                                 "стендом. Прежние решения в этой базе сделаны выбранной моделью. "
@@ -67,7 +81,9 @@ def check_request(request, memory):
     blocked = memory._blocked()
     if memory.off:
         blocked |= {row.text for row in memory.ctl.readable_memories()}
-    if not memory._safe_item(request["context"], blocked=blocked):
+    trusted = profile_context(memory)
+    untrusted = [item for item in request["context"] if item != trusted]
+    if not memory._safe_item(untrusted, blocked=blocked):
         raise StopSeries("hidden_memory_content")
 
 
@@ -93,7 +109,8 @@ def sources():
              for path in (ROOT / directory).rglob("*")
              if path.is_file() and path.suffix in (".py", ".json")]
     paths.extend(ROOT / path for path in ("pyproject.toml", "docs/evidence/S25-live-design.md",
-                                          "docs/COMPLETION.md"))
+                                          "docs/COMPLETION.md", "scenarios/personas/curious.toml",
+                                          "docs/evidence/S25-curious-design.md"))
     return {str(path.relative_to(ROOT)): sha(path) for path in sorted(paths)}
 
 
@@ -106,7 +123,10 @@ def initial_database(path, story):
     path.parent.mkdir(parents=True, exist_ok=True)
     with Store.create(path, new_id("exp")) as store:
         ctl = StateController(store)
-        if not ctl.create_persona().applied:
+        initial = {"traits": {"traits": [{"name": key, "value": value, "source": "initial"}
+                                         for key, value in PROFILE["traits"].items()]},
+                   "preferences": {"initial_profile": {"name": PROFILE["name"], "motives": PROFILE["motives"]}}}
+        if not ctl.create_persona(initial).applied:
             raise StopSeries("persona_creation")
         _, cycle, _ = wire(ctl)
         if story in MATERIALS:
@@ -152,7 +172,8 @@ def run_series(output, *, mode="stub", auth_file=None, provider_factory=None):
     if sources() != frozen:
         raise StopSeries("sources_changed_during_preparation")
     manifest = {"version": VERSION, "model": MODEL, "mode": mode, "commit": commit, "sources": frozen,
-                "python": platform.python_version(), "initial": initial, "materials": MATERIALS,
+                "python": platform.python_version(), "initial": initial, "profile": PROFILE,
+                "profile_sha256": sha(PROFILE_PATH), "materials": MATERIALS,
                 "inputs": [{"story": key[0], "session": key[1], "text": text} for key, text in INPUTS.items()],
                 "pairs": PAIRS, "stories": list("ABCDE"), "sessions": 3, "decisions_per_session": 2,
                 "budgets": {"decisions": MAX_DECISIONS, "model_calls": MAX_CALLS,

@@ -34,7 +34,7 @@ class LostAck:
         raise TelegramError(408, "Подтверждение потеряно")
 
 
-class ScenarioTest(unittest.TestCase):
+class CoreScenarioCase(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="iam-s25-scenario-")
         self.addCleanup(self.temp.cleanup)
@@ -73,6 +73,18 @@ class ScenarioTest(unittest.TestCase):
             (output / (self._testMethodName + ".json")).write_text(
                 json.dumps(clean, ensure_ascii=False, indent=2) + "\n")
 
+    @staticmethod
+    def ancestors(store, event_id):
+        events = {e.event_id: e for e in store.events()}
+        seen, pending = set(), [event_id]
+        while pending:
+            current = pending.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            pending.extend(events[current].causes)
+        return seen
+
     def run_choice(self, *proposals, replies=()):
         result = choose(self.cycle, self.p, *proposals, replies=replies)
         self.assertEqual(verify(self.store), [])
@@ -105,6 +117,8 @@ class ScenarioTest(unittest.TestCase):
                     "kind": "emotional_associative" if field == "appraisal" else "semantic",
                     "origin": "own_hypothesis", "content": {"text": text, field: spec}}}}
 
+
+class ScenarioTest(CoreScenarioCase):
     def test_lost_ack_is_unknown_once_and_stays_unsent_after_restart(self):
         self.session.command("stop", "Подключить тестовый канал")
         client = LostAck()
@@ -185,7 +199,14 @@ class ScenarioTest(unittest.TestCase):
                    "cites": [], "body": {"op": "transition", "intention_id": "notes",
                                          "to_status": "waiting_opportunity"}}
         self.assertEqual(self.run_choice(waiting).outcome, "done")
-        self.run_choice(act("cap_Missing01", {}), ask("editor", "Нужен внешний редактор"))
+        unavailable = act("cap_Missing01", {})
+        self.run_choice(unavailable, ask("editor", "Нужен внешний редактор"))
+        rejected = next(e for e in self.store.events() if e.type == "proposal.rejected"
+                        and e.payload.get("proposal_id") == unavailable["proposal_id"])
+        self.assertEqual(rejected.payload["kind"], "action")
+        self.assertEqual(self.cycle.world.state.get("projects", {}), {})
+        self.assertFalse(any(e.type in ("action.attempted", "action.confirmed") and
+                             e.payload.get("proposal_id") == unavailable["proposal_id"] for e in self.store.events()))
         first = records(self.c.state)["editor"]
         self.assertFalse(any(e.type == "action.confirmed" and e.payload.get("capability_id") == "cap_Missing01"
                              for e in self.store.events()))
@@ -218,10 +239,12 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(self.run_choice(rest()).outcome, "done")
 
     def test_repeated_criticism_changes_emotion_without_independent_support(self):
+        self.cycle.retrieval_limit = 20
+        self.cycle.memory.working_limit = 20
         memory_ids = []
         moods = []
         belief_id = None
-        for number in range(2):
+        for number in range(3):
             source = self.read_message("Это было недостаточно конкретно.", sender="same_author")
             memory_ids.append(source.memory_id)
             appraisal = self.draft("appraisal", {"valence": -0.8, "arousal": 0.6,
@@ -234,9 +257,16 @@ class ScenarioTest(unittest.TestCase):
             current = self.store.get_memory(self.c.state["beliefs"]["concrete"]["memory_id"])
             if number:
                 self.assertEqual(current.memory_id, belief_id)
-                self.assertEqual(current.version, 2)
+                self.assertEqual(current.version, number + 1)
             belief_id = current.memory_id
             self.assertEqual(self.cycle.memory.support(current.sources)["independent_support"], 0)
+        statements = [row for row in self.cycle.memory.records()
+                      if row.origin == "stated_by_other" and row.claim_kind == "fact_claim"]
+        self.assertEqual(len(statements), 3)
+        self.assertTrue(all(row.sources for row in statements))
+        self.assertEqual(len({self.store.get_memory(mid).sources[0] for mid in memory_ids}), 3)
+        support = self.cycle.memory.support(memory_ids)
+        self.assertEqual(support["unknown_groups"], ["source:same_author"])
         self.assertLess(moods[1], moods[0])
         self.run_choice(rest())
         self.assertIn(belief_id, json.dumps(self.p.calls[-1], ensure_ascii=False))
@@ -357,6 +387,7 @@ class ScenarioTest(unittest.TestCase):
         self.session.command("stop", "Сохранить общее начало")
         self.store.close()
         chosen = []
+        self.trace["branches"] = {}
         for topic, text in (("light", "Опыт Светлый"), ("rain", "Опыт Дождливый")):
             branch = Path(self.temp.name) / (topic + ".db")
             shutil.copyfile(self.path, branch)
@@ -383,6 +414,15 @@ class ScenarioTest(unittest.TestCase):
                 action, = report.actions
                 self.assertEqual(action.status, "confirmed")
                 chosen.append(cycle.world.state["actions"][action.action_id]["params"]["project_id"])
+                accepted = next(e for e in store.events() if e.type == "proposal.accepted"
+                                and e.payload.get("request_id") == provider.calls[-1]["request_id"])
+                retrieved = ctl.find_event(key="rtv:" + report.cycle_id + ":0")
+                self.assertIn(retrieved.event_id, self.ancestors(store, accepted.event_id))
+                self.assertIn(result.memory_id, retrieved.payload["memory_ids"])
+                other = "Дождливый" if topic == "light" else "Светлый"
+                self.assertNotIn(other, json.dumps(provider.calls, ensure_ascii=False))
+                self.trace["branches"][topic] = {"events": [e.to_dict() for e in store.events()],
+                                                "requests": provider.calls, "state": ctl.state}
                 self.assertEqual(verify(store), [])
                 session.command("stop", "Конец ветви")
         self.assertEqual(chosen, ["light", "rain"])

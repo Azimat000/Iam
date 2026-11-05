@@ -35,8 +35,10 @@ def wire(controller, *, provider=None, charge=True, client=None, recipient=None,
     registry = Registry(controller, (telegram, *CAPABILITIES))
     creator = Bridge(StubCreatorBridge(deliver=False), registry, recipient)
     if client is not None:
-        from iam.telegram import Sender
+        from iam.telegram import CreatorBridge, Receiver, Sender
+        receiver = Receiver(controller, client, [recipient])
         world.external = Sender(controller, client, [recipient])
+        creator = Bridge(CreatorBridge(receiver, world.external, recipient), registry, recipient)
     provider = provider if provider is not None else ScriptedProvider()
     cycle = cycle_type(controller, session.provider(provider, charge=charge), SocialMemory(controller),
                         world, registry, creator, motivation_off=motivation_off, **cycle_options)

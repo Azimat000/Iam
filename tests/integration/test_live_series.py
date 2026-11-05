@@ -228,3 +228,52 @@ class SeriesTest(unittest.TestCase):
                                      "layer": "state", "text": source.text}]}
             with self.assertRaisesRegex(series.StopSeries, "hidden_memory_content"):
                 series.check_request(request, cycle.memory)
+
+    def test_initial_curious_profile_has_no_prepared_experience_and_off_hides_motives(self):
+        from iam.state import StateController
+        from iam.storage import Store
+        from integration.test_persistent_core import choose, wire
+        for off in (False, True):
+            path = self.output.parent / ("motives-off.db" if off else "curious.db")
+            series.initial_database(path, "B")
+            with Store.open(path) as store:
+                ctl = StateController(store)
+                self.assertEqual(ctl.state["intentions"], {})
+                self.assertEqual(ctl.readable_memories(), [])
+                self.assertEqual(ctl.state["traits"]["traits"], [
+                    {"name": key, "value": value, "source": "initial"} for key, value in series.PROFILE["traits"].items()])
+                session, cycle, provider = wire(ctl, cycle_type=series.ExperimentCycle, motivation_off=off)
+                self.assertEqual(cycle.world.state.get("works", {}), {})
+                session.command("start", "Только начальный характер")
+                self.assertEqual(choose(cycle, provider, rest()).outcome, "done")
+                context = provider.calls[-1]["context"]
+                profile = series.profile_context(cycle.memory)
+                self.assertIn(profile, context)
+                entry = json.loads(profile["text"])["initial_profile"]
+                self.assertEqual(entry["motives"], [] if off else series.PROFILE["motives"])
+                if off:
+                    for motive in series.PROFILE["motives"]:
+                        self.assertNotIn(motive, json.dumps(context, ensure_ascii=False))
+                series.check_request(provider.calls[-1], cycle.memory)
+
+    def test_only_exact_initial_profile_can_overlap_hidden_text(self):
+        from iam.state import StateController
+        from iam.storage import Store
+        from integration.test_persistent_core import wire
+        path = self.output.parent / "profile-collision.db"
+        series.initial_database(path, "B")
+        with Store.open(path) as store:
+            ctl = StateController(store)
+            session, cycle, _ = wire(ctl, cycle_type=series.ExperimentCycle)
+            session.command("start", "Проверка совпадающих фраз")
+            source = cycle.memory.prepare(kind="semantic", origin="own_hypothesis", text=series.PROFILE["motives"][0],
+                                          sources=(store.get_event(1).event_id,))
+            self.assertTrue(cycle.memory.write(source).applied)
+            cycle.memory.off = True
+            trusted = series.profile_context(cycle.memory)
+            series.check_request({"context": [trusted]}, cycle.memory)
+            forged = {**trusted, "text": trusted["text"] + " Личный опыт: " + source.text}
+            with self.assertRaisesRegex(series.StopSeries, "hidden_memory_content"):
+                series.check_request({"context": [forged]}, cycle.memory)
+            with self.assertRaisesRegex(series.StopSeries, "hidden_memory_reference"):
+                series.check_request({"context": [{**trusted, "ref": source.memory_id}]}, cycle.memory)

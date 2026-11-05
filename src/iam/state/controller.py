@@ -15,6 +15,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Callable, Iterable
@@ -335,6 +336,10 @@ class StateController:
             if not (internal and p.actor == "operator" and carrier.type == "operator.intervention"
                     and carrier.payload.get("kind") in ("grant_capability", "revoke_capability", "set_capability_limits")):
                 v.append(Violation("capability_permission_forbidden", "Доступ меняет только оператор через панель"))
+        if any(op.group == "preferences" and op.path.split(".")[0] == "provider_config" for op in t.ops):
+            if not (internal and p.actor == "operator" and carrier.type == "operator.intervention"
+                    and carrier.payload.get("kind") == "edit_config"):
+                v.append(Violation("provider_config_forbidden", "Поставщика меняет только явная команда оператора"))
         if ("reflection" in self._kinds and p.actor == "model" and not internal
                 and any(op.group in ("selfmodel", "traits") for op in t.ops)):
             v.append(Violation("reflection_required", "Черты и самомодель защищены правилами рефлексии"))
@@ -665,13 +670,25 @@ class StateController:
                 field = "status"
             if ops[0] != Op("world_time", f"{REGISTRY_PATH}.{target}.{field}", "set", value, True):
                 raise ValueError("Недопустимое вмешательство в права")
+        elif kind == "edit_config":
+            if self.store.store_kind != "experimental" or target != "provider" or not reason.strip() or len(ops) != 1:
+                raise ValueError("Недопустимое изменение поставщика")
+            op = ops[0]
+            value = op.value
+            if (not isinstance(value, dict) or set(value) != {"name", "model"}
+                    or any(not isinstance(item, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}", item) is None
+                           for item in value.values())
+                    or op != Op("preferences", "provider_config", "set", value, True)):
+                raise ValueError("Нужны только идентификаторы поставщика и модели")
         elif kind != "technical_fix":
             raise NotSupported(f"вмешательство {kind!r}: копии — S06, настройки — S10")
         iid, ev_id = new_id("opr"), new_id("evt")
         t = Transition(new_id("trn"), self.persona_id, self._epoch, self._version, ops, reason.strip(), (ev_id,))
+        config = ({"before": self.state["preferences"].get("provider_config"),
+                   "after": copy.deepcopy(ops[0].value)} if kind == "edit_config" else {})
         carrier = EventSpec("operator.intervention", f"opr:{iid}", {
             "intervention_id": iid, "kind": kind, "operator_channel": "panel", "reason": reason.strip(),
-            "target": target, "visible_to_persona": True}, event_id=ev_id)
+            "target": target, "visible_to_persona": kind != "edit_config", **config}, event_id=ev_id)
         return self._apply(Proposal(t, "operator", "panel", carrier), privileged=False, internal=True)
 
     def restore_memory(self, record: MemoryRecord, *, reason: str) -> ApplyResult:
@@ -744,6 +761,9 @@ class StateController:
             asked = self.store.find_event(key=f"req:{parent}") if parent else None
             if asked is None or asked.payload["request"].get("cycle_id") != request["cycle_id"]:
                 return self._refuse(spec, "reflection_opt_in", "Требуется добровольный выбор в том же цикле")
+        retrieval = self.find_event(key="rtv:" + request.get("cycle_id", "") + ":0")
+        if retrieval is not None:
+            spec = replace(spec, causes=(retrieval.event_id,))
         res = self._record(spec)
         if res.event is not None:
             self._pending.setdefault(request["request_id"], self.clock.monotonic_ms())
@@ -881,6 +901,8 @@ class StateController:
             ops = tuple(Op.from_dict(o) for o in pr["body"]["ops"])
             if "reflection" in self._kinds and any(o.group in ("selfmodel", "traits") for o in ops):
                 return Violation("reflection_required", "Черты и самомодель защищены правилами рефлексии"), working, ()
+            if any(o.group == "preferences" and o.path.split(".")[0] == "provider_config" for o in ops):
+                return Violation("provider_config_forbidden", "Поставщика меняет только явная команда оператора"), working, ()
             if any(o.group == "memory" for o in ops):
                 return Violation("memory_via_proposal", "Память пишется отдельным предложением"), working, ()
             if any(overlaps(touched(o), r) for o in ops for r in rules.RESERVED_MODEL_PATHS):
