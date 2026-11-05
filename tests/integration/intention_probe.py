@@ -15,6 +15,7 @@ from iam.storage import Store
 from iam.stubs import Reply, ScriptedProvider, rest
 from integration.answer_audit import record_answer
 from integration import live_series as series
+from integration import typed_intention as typed
 from integration.test_persistent_core import tick, wire
 
 VERSION = "s25-intention-probe-1"
@@ -43,12 +44,15 @@ class ProbeProvider(series.GuardedProvider):
     def propose(self, request):
         if request["purpose"] == "choose_action" and request["limits"].get("attempt", 0):
             raise series.StopSeries("format_repair_disabled")
+        self.active["purpose"] = request["purpose"]
         return super().propose(request)
 
 
 def frozen_sources():
     return {**series.sources(), "docs/evidence/S25-intention-probe-design.md":
-            series.sha(series.ROOT / "docs/evidence/S25-intention-probe-design.md")}
+            series.sha(series.ROOT / "docs/evidence/S25-intention-probe-design.md"),
+            "docs/evidence/S25-typed-intention-design.md":
+            series.sha(series.ROOT / "docs/evidence/S25-typed-intention-design.md")}
 
 
 def snapshot(source, destination):
@@ -59,9 +63,16 @@ def snapshot(source, destination):
             origin.backup(target)
 
 
-def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=None):
+def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=None,
+              protocol="original", image="iam-codex:1"):
     if mode not in ("live", "stub") or (mode == "live" and not auth_file):
         raise ValueError("Invalid probe mode or credentials")
+    if protocol not in ("original", "typed"):
+        raise ValueError("Invalid probe protocol")
+    if protocol == "typed" and mode == "live" and provider_factory is None:
+        import re
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
+            raise ValueError("Typed live requires an immutable audited image ID")
     output = Path(output).resolve()
     source = Path(source).resolve()
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
@@ -89,14 +100,20 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                 if StateController(store).state != recorded["state"]:
                     raise ValueError("Source database differs from the recorded live history")
         initial[story] = {"sha256": series.sha(destination), "history_digest": series.state_digest(destination)}
-    artifacts.write("manifest.json", {"version": VERSION, "mode": mode, "model": series.MODEL,
-                    "sources": frozen, "initial": initial, "stories": STORIES, "arms": ARMS,
+    version = "s25-typed-intention-1" if protocol == "typed" else VERSION
+    arms = ("baseline", "explicit", "memory_off") if protocol == "typed" else ARMS
+    artifacts.write("manifest.json", {"version": version, "mode": mode, "model": series.MODEL,
+                    "sources": frozen, "initial": initial, "stories": STORIES,
                     "source_manifest_sha256": series.sha(source / "manifest.json") if source_manifest else None,
-                    "deliberation": DELIBERATION, "max_decisions": 6, "max_model_calls": MAX_CALLS,
+                    "protocol": protocol, "arms": arms, "image": image,
+                    "deliberation": None if protocol == "typed" else DELIBERATION,
+                    "typed_schema": typed.SCHEMA if protocol == "typed" else None,
+                    "typed_prompt": typed.PROMPT if protocol == "typed" else None,
+                    "max_decisions": 6, "max_model_calls": MAX_CALLS,
                     "cell_model_calls": 2, "native_retries": 0, "cycle_retries": 0,
                     "readiness": None, "scope": "Diagnostic only; no continuation/completion claim."}, exclusive=True)
     manifest_sha = series.sha(output / "manifest.json")
-    summary = {"version": VERSION, "mode": mode, "status": "running", "model_calls": 0,
+    summary = {"version": version, "mode": mode, "status": "running", "model_calls": 0,
                "decisions": 0, "attempts": [], "cells": [], "readiness": None}
 
     def save():
@@ -109,7 +126,7 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
     save()
     try:
         for story in STORIES:
-            for arm in ARMS:
+            for arm in arms:
                 check_frozen()
                 name = f"{story}-{arm}"
                 db = output / f"cells/{name}/persona.db"
@@ -130,6 +147,10 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                         nonlocal cell_calls
                         if summary["model_calls"] >= MAX_CALLS or cell_calls >= 2:
                             raise series.StopSeries("physical_call_cap")
+                        use_typed = (protocol == "typed" and arm != "baseline"
+                                     and active.get("purpose") == "choose_action")
+                        if use_typed:
+                            argv, stdin = typed.prepare_transport(argv, stdin)
                         active["session"].charge()
                         cell_calls += 1
                         summary["model_calls"] += 1
@@ -146,15 +167,17 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                             raise
                         attempt.update(status="returned", returncode=result.returncode, timed_out=result.timed_out)
                         save()
-                        return result
+                        return typed.adapt_run(result) if use_typed else result
 
                     inner = (provider_factory(name, transport) if provider_factory else
-                             CodexProvider(transport, CodexSandboxConfig(auth_file=str(auth), persist_auth_updates=True),
+                             CodexProvider(transport, CodexSandboxConfig(auth_file=str(auth), image=image,
+                                                                       persist_auth_updates=True),
                                            model=series.MODEL, timeout_s=60, max_format_retries=0) if mode == "live" else
                              ScriptedProvider([Reply((rest(),))]))
                     provider = series.audit.AuditedProvider(ProbeProvider(inner, active), artifacts,
                                                           "cells/" + name, disclose=False)
-                    cycle_type = series.ExperimentCycle if arm == "baseline" else DeliberationCycle
+                    cycle_type = (series.ExperimentCycle if protocol == "typed" or arm == "baseline"
+                                  else DeliberationCycle)
                     session, cycle, _ = wire(ctl, provider=provider, charge=mode == "stub", cycle_type=cycle_type,
                                               max_rerequest=0)
                     active.update(session=session, memory=cycle.memory)
@@ -200,8 +223,11 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--mode", choices=("stub", "live"), default="stub")
     parser.add_argument("--auth-file")
+    parser.add_argument("--protocol", choices=("original", "typed"), default="original")
+    parser.add_argument("--image", default="iam-codex:1")
     args = parser.parse_args()
-    summary = run_probe(args.source, args.output, mode=args.mode, auth_file=args.auth_file)
+    summary = run_probe(args.source, args.output, mode=args.mode, auth_file=args.auth_file,
+                        protocol=args.protocol, image=args.image)
     print(json.dumps(summary, ensure_ascii=False))
     return 0 if summary["status"] == "completed" else 1
 
