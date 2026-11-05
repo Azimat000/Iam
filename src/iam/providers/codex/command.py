@@ -16,6 +16,8 @@ SYSTEM_PROMPT = (
     "You are the proposal engine of a digital persona core. You have no tools and cannot act in the world. "
     "Reply with exactly one JSON object containing proposals and explanation. "
     "Each proposal has kind, rationale, cites (context references), and body_json, a JSON-encoded object string. "
+    "cites may contain only evt_ or mem_ references from the context. "
+    "Visible inp_ notice identifiers are attention targets in attend body.ref, never citations. "
     "Kinds and body fields: action{capability_id,params}; message{capability_id,to,text}; "
     "creator_request{request_key,text}; no_action{reason}; attend{focus,ref}; state_change{ops}; memory_write{draft}; intention{op}. "
     "reflection{} opts in during choose_action; during reflect its body follows the supplied instructions. "
@@ -26,7 +28,7 @@ RESPONSE_JSON_SCHEMA = {
     "type": "object", "properties": {
         "proposals": {"type": "array", "items": {"type": "object", "properties": {
             "kind": {"type": "string", "enum": ["action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"]}, "rationale": {"type": "string"},
-            "cites": {"type": "array", "items": {"type": "string"}}, "body_json": {"type": "string"}},
+            "cites": {"type": "array", "items": {"type": "string", "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"}}, "body_json": {"type": "string"}},
             "required": ["kind", "rationale", "cites", "body_json"], "additionalProperties": False}},
         "explanation": {"type": "string"}},
     "required": ["proposals", "explanation"], "additionalProperties": False,
