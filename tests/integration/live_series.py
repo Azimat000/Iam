@@ -22,7 +22,7 @@ from iam.world.cycle import LivingCycle
 from integration.test_persistent_core import tick, wire
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "s25-series-2-curious"
+VERSION = "s25-series-3-interface"
 PROFILE_PATH = ROOT / "scenarios/personas/curious.toml"
 PROFILE = tomllib.loads(PROFILE_PATH.read_text())
 MODEL = "gpt-6-luna"
@@ -57,9 +57,8 @@ class ExperimentCycle(LivingCycle):
         context = super()._context(trigger, focus, records)
         context.append(profile_context(self.memory))
         context.append({"ref": trigger.event_id, "origin": "model_knowledge", "layer": "state",
-                        "text": "Это отдельная экспериментальная история. Материалы и реплики предоставлены "
-                                "стендом. Прежние решения в этой базе сделаны выбранной моделью. "
-                                "Выбор текущего занятия свободный, можно также отдыхать."})
+                        "text": "Отдельная экспериментальная база. Материалы и внешние реплики внесены стендом; "
+                                "сохранённые решения в этой базе сделаны выбранной моделью."})
         return context
 
 # Сохраняем проверенные запись артефактов и аудит провайдера S22.
@@ -112,7 +111,8 @@ def sources():
              if path.is_file() and path.suffix in (".py", ".json")]
     paths.extend(ROOT / path for path in ("pyproject.toml", "docs/evidence/S25-live-design.md",
                                           "docs/COMPLETION.md", "scenarios/personas/curious.toml",
-                                          "docs/evidence/S25-curious-design.md"))
+                                          "docs/evidence/S25-curious-design.md",
+                                          "docs/evidence/S25-interface-design.md"))
     return {str(path.relative_to(ROOT)): sha(path) for path in sorted(paths)}
 
 

@@ -38,7 +38,7 @@ class SeriesTest(unittest.TestCase):
             self.assertEqual(len(matches), 4)
             self.assertEqual({session["before_digest"] for session in matches}, {frozen["history_digest"]})
         request = json.loads((self.output / "sessions/A-1/requests/001.json").read_text())["request"]
-        self.assertIn("экспериментальная история", request["context"][-1]["text"])
+        self.assertIn("экспериментальная база", request["context"][-1]["text"])
         with self.assertRaises(FileExistsError):
             series.run_series(self.output)
 
