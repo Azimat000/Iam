@@ -9,7 +9,7 @@ import sqlite3
 
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.providers.codex.auth import read_auth
-from iam.providers.codex.command import REPO_ROOT
+from iam.providers.codex.command import REPO_ROOT, RESPONSE_JSON_SCHEMA
 from iam.state import StateController, verify
 from iam.storage import Store
 from iam.stubs import Reply, ScriptedProvider, rest
@@ -17,6 +17,7 @@ from integration.answer_audit import record_answer
 from integration import live_series as series
 from integration import typed_intention as typed
 from integration.test_persistent_core import tick, wire
+from iam.world.prospective import ProspectiveCycle, ASSESSMENT, BOUNDARY
 
 VERSION = "s25-intention-probe-1"
 MAX_CALLS = 12
@@ -40,6 +41,14 @@ class DeliberationCycle(series.ExperimentCycle):
         return context
 
 
+class ProspectiveExperimentCycle(ProspectiveCycle, series.ExperimentCycle):
+    """Тот же профиль/опыт, но выполненная дополнительная операция."""
+
+
+class AssessmentOnlyCycle(ProspectiveExperimentCycle):
+    appraisal_instructions = ASSESSMENT + BOUNDARY
+
+
 class ProbeProvider(series.GuardedProvider):
     def propose(self, request):
         if request["purpose"] == "choose_action" and request["limits"].get("attempt", 0):
@@ -52,7 +61,9 @@ def frozen_sources():
     return {**series.sources(), "docs/evidence/S25-intention-probe-design.md":
             series.sha(series.ROOT / "docs/evidence/S25-intention-probe-design.md"),
             "docs/evidence/S25-typed-intention-design.md":
-            series.sha(series.ROOT / "docs/evidence/S25-typed-intention-design.md")}
+            series.sha(series.ROOT / "docs/evidence/S25-typed-intention-design.md"),
+            "docs/evidence/S25-appraisal-design.md":
+            series.sha(series.ROOT / "docs/evidence/S25-appraisal-design.md")}
 
 
 def snapshot(source, destination):
@@ -67,12 +78,12 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
               protocol="original", image="iam-codex:1"):
     if mode not in ("live", "stub") or (mode == "live" and not auth_file):
         raise ValueError("Invalid probe mode or credentials")
-    if protocol not in ("original", "typed"):
+    if protocol not in ("original", "typed", "prospective"):
         raise ValueError("Invalid probe protocol")
-    if protocol == "typed" and mode == "live" and provider_factory is None:
+    if protocol in ("typed", "prospective") and mode == "live" and provider_factory is None:
         import re
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
-            raise ValueError("Typed live requires an immutable audited image ID")
+            raise ValueError("Diagnostic live requires an immutable audited image ID")
     output = Path(output).resolve()
     source = Path(source).resolve()
     if output.exists() or output.is_relative_to(source) or source.is_relative_to(output):
@@ -100,17 +111,23 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                 if StateController(store).state != recorded["state"]:
                     raise ValueError("Source database differs from the recorded live history")
         initial[story] = {"sha256": series.sha(destination), "history_digest": series.state_digest(destination)}
-    version = "s25-typed-intention-1" if protocol == "typed" else VERSION
-    arms = ("baseline", "explicit", "memory_off") if protocol == "typed" else ARMS
+    version = ("s25-prospective-1" if protocol == "prospective" else
+               "s25-typed-intention-1" if protocol == "typed" else VERSION)
+    arms = (("baseline", "assessment_only", "prospective") if protocol == "prospective" else
+            ("baseline", "explicit", "memory_off") if protocol == "typed" else ARMS)
+    max_calls, cell_cap = (24, 4) if protocol == "prospective" else (MAX_CALLS, 2)
     artifacts.write("manifest.json", {"version": version, "mode": mode, "model": series.MODEL,
                     "sources": frozen, "initial": initial, "stories": STORIES,
                     "source_manifest_sha256": series.sha(source / "manifest.json") if source_manifest else None,
                     "protocol": protocol, "arms": arms, "image": image,
-                    "deliberation": None if protocol == "typed" else DELIBERATION,
+                    "response_schema": RESPONSE_JSON_SCHEMA,
+                    "deliberation": DELIBERATION if protocol == "original" else None,
+                    "appraisal_instructions": ProspectiveCycle.appraisal_instructions if protocol == "prospective" else None,
+                    "control_instructions": AssessmentOnlyCycle.appraisal_instructions if protocol == "prospective" else None,
                     "typed_schema": typed.SCHEMA if protocol == "typed" else None,
                     "typed_prompt": typed.PROMPT if protocol == "typed" else None,
-                    "max_decisions": 6, "max_model_calls": MAX_CALLS,
-                    "cell_model_calls": 2, "native_retries": 0, "cycle_retries": 0,
+                    "max_decisions": 6, "max_model_calls": max_calls,
+                    "cell_model_calls": cell_cap, "native_retries": 0, "cycle_retries": 0,
                     "readiness": None, "scope": "Diagnostic only; no continuation/completion claim."}, exclusive=True)
     manifest_sha = series.sha(output / "manifest.json")
     summary = {"version": version, "mode": mode, "status": "running", "model_calls": 0,
@@ -145,7 +162,7 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
 
                     def transport(argv, stdin, timeout, cleanup=None):
                         nonlocal cell_calls
-                        if summary["model_calls"] >= MAX_CALLS or cell_calls >= 2:
+                        if summary["model_calls"] >= max_calls or cell_calls >= cell_cap:
                             raise series.StopSeries("physical_call_cap")
                         use_typed = (protocol == "typed" and arm != "baseline"
                                      and active.get("purpose") == "choose_action")
@@ -176,8 +193,10 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                              ScriptedProvider([Reply((rest(),))]))
                     provider = series.audit.AuditedProvider(ProbeProvider(inner, active), artifacts,
                                                           "cells/" + name, disclose=False)
-                    cycle_type = (series.ExperimentCycle if protocol == "typed" or arm == "baseline"
-                                  else DeliberationCycle)
+                    cycle_type = ((series.ExperimentCycle if arm == "baseline" else AssessmentOnlyCycle
+                                   if arm == "assessment_only" else ProspectiveExperimentCycle)
+                                  if protocol == "prospective" else
+                                  series.ExperimentCycle if protocol == "typed" or arm == "baseline" else DeliberationCycle)
                     session, cycle, _ = wire(ctl, provider=provider, charge=mode == "stub", cycle_type=cycle_type,
                                               max_rerequest=0)
                     active.update(session=session, memory=cycle.memory)
@@ -186,7 +205,7 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                         session.command("stop", "EXPERIMENTAL: закрыть прошлый сеанс")
                     if ctl.session_state != "stopped":
                         raise series.StopSeries("source_session_running")
-                    session.command("start", "EXPERIMENTAL: диагностика замысла", max_calls=2)
+                    session.command("start", "EXPERIMENTAL: диагностика замысла", max_calls=cell_cap)
                     previous = set(ctl.state["intentions"])
                     before_seq = store.last_seq()
                     summary["decisions"] += 1
@@ -223,7 +242,7 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--mode", choices=("stub", "live"), default="stub")
     parser.add_argument("--auth-file")
-    parser.add_argument("--protocol", choices=("original", "typed"), default="original")
+    parser.add_argument("--protocol", choices=("original", "typed", "prospective"), default="original")
     parser.add_argument("--image", default="iam-codex:1")
     args = parser.parse_args()
     summary = run_probe(args.source, args.output, mode=args.mode, auth_file=args.auth_file,
