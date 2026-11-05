@@ -91,8 +91,18 @@ class FormalCase(unittest.TestCase):
                             self.assertEqual(response["provider"]["name"], "formal-core")
                             self.assertTrue(response["proposals"][0]["cites"])
                             appraisal_event = next(s["events"][0] for s in d["report"]["stages"] if "formal" in s["detail"])
-                            retrieval_event = next(s["events"][0] for s in d["report"]["stages"] if s["stage"] == "retrieval")
-                            self.assertIn(retrieval_event, next(g["causes"] for g in d["grounds"] if g["event"] == appraisal_event))
+                            retrieval = next(s for s in d["report"]["stages"] if s["stage"] == "retrieval")
+                            appraisal_causes = next(g["causes"] for g in d["grounds"] if g["event"] == appraisal_event)
+                            if a.trace["switches"]["memory_off"]:
+                                self.assertEqual(retrieval["status"], "skipped")
+                                self.assertEqual(retrieval["detail"], {"count": 0, "reason": "memory_off"})
+                                self.assertEqual(retrieval["events"], [])
+                                self.assertEqual(d["memory"], [])
+                                self.assertFalse(any(e["type"] == "memory.retrieved" for e in a.trace["journal"]))
+                                self.assertFalse(any(c["layer"] == "personal" for c in d["requests"][0]["context"]))
+                            else:
+                                self.assertEqual(retrieval["status"], "ok")
+                                self.assertIn(retrieval["events"][0], appraisal_causes)
                             self.assertIn(appraisal_event, response["proposals"][0]["cites"])
         self.assertEqual(total, 24)
 
