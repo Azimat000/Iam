@@ -81,6 +81,8 @@ def check_request(request, memory):
     blocked = memory._blocked()
     if memory.off:
         blocked |= {row.text for row in memory.ctl.readable_memories()}
+    if memory.motivation_off:
+        blocked |= set(PROFILE["motives"])
     trusted = profile_context(memory)
     untrusted = [item for item in request["context"] if item != trusted]
     if not memory._safe_item(untrusted, blocked=blocked):

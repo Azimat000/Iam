@@ -762,8 +762,12 @@ class StateController:
             if asked is None or asked.payload["request"].get("cycle_id") != request["cycle_id"]:
                 return self._refuse(spec, "reflection_opt_in", "Требуется добровольный выбор в том же цикле")
         retrieval = self.find_event(key="rtv:" + request.get("cycle_id", "") + ":0")
-        if retrieval is not None:
-            spec = replace(spec, causes=(retrieval.event_id,))
+        shown = {item["ref"] for item in request["context"]}
+        used = shown.intersection(retrieval.payload.get("memory_ids", [])) if retrieval is not None else set()
+        if used:
+            origins = tuple(dict.fromkeys(ref for row in self.readable_memories() if row.memory_id in used
+                                          for ref in row.sources if ref.startswith("evt_")))
+            spec = replace(spec, causes=(retrieval.event_id, *origins))
         res = self._record(spec)
         if res.event is not None:
             self._pending.setdefault(request["request_id"], self.clock.monotonic_ms())

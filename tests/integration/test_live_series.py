@@ -277,3 +277,25 @@ class SeriesTest(unittest.TestCase):
                 series.check_request({"context": [forged]}, cycle.memory)
             with self.assertRaisesRegex(series.StopSeries, "hidden_memory_reference"):
                 series.check_request({"context": [{**trusted, "ref": source.memory_id}]}, cycle.memory)
+
+    def test_motivation_off_rejects_initial_motive_cached_as_plain_semantic_memory(self):
+        from iam.state import StateController
+        from iam.storage import Store
+        from integration.test_persistent_core import choose, wire
+        path = self.output.parent / "cached-motive.db"
+        series.initial_database(path, "B")
+        with Store.open(path) as store:
+            ctl = StateController(store)
+            session, cycle, provider = wire(ctl, cycle_type=series.ExperimentCycle)
+            session.command("start", "Кеш начального мотива")
+            note = {"proposal_id": series.new_id("prop"), "kind": "memory_write", "rationale": "Свой мотив",
+                    "cites": [store.get_event(1).event_id], "body": {"draft": {"kind": "semantic",
+                    "origin": "own_hypothesis", "content": {"text": series.PROFILE["motives"][1]}}}}
+            self.assertEqual(choose(cycle, provider, note).outcome, "done")
+            cached, = cycle.memory.records()
+            self.assertNotIn("motivation", cached.content)
+            cycle.memory.motivation_off = True
+            self.assertIn(cached.memory_id, [r.memory_id for r in cycle.memory.records()])
+            with self.assertRaisesRegex(series.StopSeries, "hidden_memory_content"):
+                series.check_request({"context": [{"ref": cached.memory_id, "origin": cached.origin,
+                                                    "layer": cached.layer, "text": cached.text}]}, cycle.memory)

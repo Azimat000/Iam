@@ -26,13 +26,13 @@ from iam.world import CAPABILITIES, READ, WRITE, PersistentWorld
 from iam.world.cycle import LivingCycle
 
 
-def wire(controller, *, provider=None, charge=True, client=None, recipient=None, motivation_off=False, cycle_type=LivingCycle, **cycle_options):
+def wire(controller, *, provider=None, charge=True, client=None, recipient=None, motivation_off=False, cycle_type=LivingCycle, extra_capabilities=(), **cycle_options):
     session = SessionRunner(controller)
     world = PersistentWorld(controller)
     world.initialize()
     status = "available" if client is not None else "unavailable_temporarily"
     telegram = Capability(TELEGRAM_ID, "Telegram", "Сообщения создателю", status)
-    registry = Registry(controller, (telegram, *CAPABILITIES))
+    registry = Registry(controller, (telegram, *CAPABILITIES, *extra_capabilities))
     creator = Bridge(StubCreatorBridge(deliver=False), registry, recipient)
     if client is not None:
         from iam.telegram import CreatorBridge, Receiver, Sender
