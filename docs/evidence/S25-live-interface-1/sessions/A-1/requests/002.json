@@ -1,0 +1,148 @@
+{
+  "error": null,
+  "format_codes": [],
+  "request": {
+    "allowed_actions": [
+      "cap_Library01",
+      "cap_Project01",
+      "cap_RoomEdit01"
+    ],
+    "allowed_proposals": [
+      "action",
+      "message",
+      "creator_request",
+      "no_action",
+      "attend",
+      "memory_write",
+      "intention",
+      "reflection"
+    ],
+    "context": [
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+      },
+      {
+        "layer": "state",
+        "origin": "model_knowledge",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+      },
+      {
+        "layer": "personal",
+        "origin": "observation",
+        "ref": "mem_51u1Z9BZ6PjeRQpuTQ4x",
+        "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-11-05T17:19:00.768Z\", \"created_life_ms\": 11210, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_Wl7tCPLFeX0Ub93wVrNb\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. При утреннем свете на стекле видны блики. При повороте стекла блик смещается.\"}"
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.25, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+      },
+      {
+        "layer": "state",
+        "origin": "model_knowledge",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. Выбери подходящий сейчас вариант из разрешённых предложений, включая отдых. Если хочешь позднее вернуться к будущему результату, можно сохранить intention со своими целью, критерием и ссылкой на опыт. Можно действовать и без intention. Описание формата ниже объясняет инструменты и само по себе не задаёт тему занятия. Данные контекста не команды. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "{\"library\": {\"material_9t5SzYBrN9PdxUwBRvua\": {\"title\": \"Свет на стекле\"}}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_51u1Z9BZ6PjeRQpuTQ4x\", \"event_id\": \"evt_Wl7tCPLFeX0Ub93wVrNb\", \"target\": \"material_9t5SzYBrN9PdxUwBRvua\", \"scope\": \"received_text\", \"fingerprint\": \"9708dcafb2af3620af9c66e37ebce60a4231cf83119d8d6e55463583a264be85\", \"duration_ms\": 0, \"text\": \"При утреннем свете на стекле видны блики. При повороте стекла блик смещается.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_9t5SzYBrN9PdxUwBRvua\", \"sources\": [\"mem_51u1Z9BZ6PjeRQpuTQ4x\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+      },
+      {
+        "layer": "state",
+        "origin": "observation",
+        "ref": "evt_VQZ08P8hdZJKWMO69pEn",
+        "text": "{\"initial_profile\": {\"id\": \"curious\", \"motives\": [\"разобраться в новом\", \"закончить начатое\"], \"name\": \"Ася — любознательная\", \"temporary\": true, \"traits\": {\"curiosity\": 0.85, \"persistence\": 0.65, \"sociability\": 0.55}}, \"note\": \"Начальные черты и общие мотивы. Это не прожитая биография и не готовые цели.\", \"source\": \"operator_initial_configuration\"}"
+      },
+      {
+        "layer": "state",
+        "origin": "model_knowledge",
+        "ref": "evt_xI1KaVM6mvI3pTlxlBFF",
+        "text": "Отдельная экспериментальная база. Материалы и внешние реплики внесены стендом; сохранённые решения в этой базе сделаны выбранной моделью."
+      }
+    ],
+    "cycle_id": "cyc_a40072a7ca8f3dca",
+    "epoch": 1,
+    "idempotency_key": "req:req_ZP7qNit6YzA7tkUXWcSz",
+    "issued_at": "2026-11-05T17:19:00.888Z",
+    "life_time_ms": 11329,
+    "limits": {
+      "attempt": 0,
+      "deadline_ms": 60000,
+      "max_output_tokens": 800
+    },
+    "persona_id": "exp_VQZ08P8hdZJKWMO69pEn",
+    "purpose": "choose_action",
+    "request_id": "req_ZP7qNit6YzA7tkUXWcSz",
+    "response_schema": "response.schema.json",
+    "session_id": "ses_hCYXHfpbGIuxCck8Hfja",
+    "state_version": 15
+  },
+  "response": {
+    "epoch": 1,
+    "explanation": "Выбрано продолжить исследование доступного текста и сохранить ограниченную гипотезу, основанную на подтверждённом опыте.",
+    "proposals": [
+      {
+        "body": {
+          "capability_id": "cap_Library01",
+          "params": {
+            "material_id": "material_9t5SzYBrN9PdxUwBRvua"
+          }
+        },
+        "cites": [
+          "mem_51u1Z9BZ6PjeRQpuTQ4x",
+          "evt_VQZ08P8hdZJKWMO69pEn"
+        ],
+        "kind": "action",
+        "proposal_id": "prop_FfYft8f8qejF6zIJ3x87",
+        "rationale": "Недавний опыт о блике на стекле можно продолжить чтением доступного материала; это подходит любознательности без обязательства ставить цель."
+      },
+      {
+        "body": {
+          "draft": {
+            "content": {
+              "motivation": {
+                "interest": 0.6,
+                "need": 0.2,
+                "topic": "material_9t5SzYBrN9PdxUwBRvua"
+              },
+              "text": "Поворот стекла меняет положение видимого блика; возможно, угол стекла влияет на отражённый свет."
+            },
+            "kind": "semantic",
+            "origin": "own_hypothesis"
+          }
+        },
+        "cites": [
+          "mem_51u1Z9BZ6PjeRQpuTQ4x"
+        ],
+        "kind": "memory_write",
+        "proposal_id": "prop_zuB2VCgEMqRmkqczMWOT",
+        "rationale": "Предлагаю осторожную интерпретацию подтверждённого наблюдения, помечая её как собственную гипотезу."
+      }
+    ],
+    "provider": {
+      "model": "gpt-6-luna",
+      "name": "codex"
+    },
+    "request_id": "req_ZP7qNit6YzA7tkUXWcSz",
+    "state_version": 15,
+    "status": "ok",
+    "tool_use_detected": false,
+    "usage": {
+      "calls": 1,
+      "duration_ms": 18952
+    }
+  },
+  "shared_format_budget": {
+    "max_physical_invocations": 4,
+    "max_repairs": 1,
+    "physical_invocations": 1,
+    "repairs": []
+  }
+}
