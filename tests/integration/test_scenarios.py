@@ -335,6 +335,8 @@ class ScenarioTest(unittest.TestCase):
         self.assertEqual(verify(self.store), [])
 
     def test_reflection_rejects_nested_cycle_and_change_from_single_event(self):
+        self.assertTrue(self.c.intervene("technical_fix", "Исходная тестовая черта",
+                         (Op("traits", "traits", "set", [{"name": "care", "value": 0.5}], True),)).applied)
         source = self.read()
         def reflection(body=None):
             return {"proposal_id": new_id("prop"), "kind": "reflection", "rationale": "Осмыслить",

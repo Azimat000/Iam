@@ -181,3 +181,50 @@ class SeriesTest(unittest.TestCase):
         entry = json.loads((self.output / "sessions/A-1/decisions/01.json").read_text())
         self.assertTrue(any(fault["source"] == "stage" and fault["stage"]["stage"] == "memory_update"
                             for fault in entry["technical_faults"]))
+
+    def test_changed_sources_during_the_last_response_prevent_completed_status(self):
+        changed = {"value": False}
+        original_sources = series.sources
+
+        def current_sources():
+            result = original_sources()
+            return {**result, "changed_at_last_response": "yes"} if changed["value"] else result
+
+        def factory(name, transport):
+            script = ScriptedProvider()
+            class LastChange:
+                name = "scripted"
+                def __init__(self):
+                    self.calls = 0
+                def propose(self, request):
+                    self.calls += 1
+                    if name == "C-memory-2-memory" and self.calls == 2:
+                        changed["value"] = True
+                    script.queue(Reply((rest(),)))
+                    return script.propose(request)
+            return LastChange()
+
+        with patch.object(series, "sources", current_sources):
+            result = series.run_series(self.output, provider_factory=factory)
+        self.assertEqual((result["status"], result["decisions"]), ("stopped", 54))
+        self.assertEqual(result["diagnostic"], "frozen_sources_changed")
+
+    def test_hidden_text_without_a_memory_reference_is_rejected(self):
+        from iam.domain import new_id
+        from iam.state import StateController
+        from iam.storage import Store
+        from integration.test_persistent_core import wire
+
+        with Store.create(self.output.parent / "history.db", new_id("exp")) as store:
+            controller = StateController(store)
+            controller.create_persona()
+            session, cycle, _ = wire(controller)
+            session.command("start", "Опыт для проверки утечки")
+            source = cycle.memory.prepare(kind="semantic", origin="own_hypothesis",
+                         text="Недоступный уникальный опыт", sources=(store.get_event(1).event_id,))
+            self.assertTrue(cycle.memory.write(source).applied)
+            self.assertTrue(cycle.memory.fade(source.memory_id).applied)
+            request = {"context": [{"ref": store.get_event(1).event_id, "origin": "model_knowledge",
+                                     "layer": "state", "text": source.text}]}
+            with self.assertRaisesRegex(series.StopSeries, "hidden_memory_content"):
+                series.check_request(request, cycle.memory)

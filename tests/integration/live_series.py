@@ -310,6 +310,14 @@ def run_series(output, *, mode="stub", auth_file=None, provider_factory=None):
                     if sha(db) != baseline_sha or state_digest(db) != baseline_digest:
                         raise StopSeries("control_baseline_mismatch")
                     run_session(db, story, checkpoint + 1, name, switch=None if variant == "full" else switch)
+        check_frozen()
+        for entry in initial.values():
+            if sha(output / entry["db"]) != entry["sha256"]:
+                raise StopSeries("initial_baseline_changed")
+        for story, checkpoint, _ in PAIRS:
+            record = json.loads((output / f"checkpoints/{story}-{checkpoint}.json").read_text())
+            if sha(output / f"checkpoints/{story}-{checkpoint}.db") != record["sha256"]:
+                raise StopSeries("control_baseline_changed")
         summary["status"] = "completed"
     except Exception as exc:
         summary.update(status="stopped", stop=type(exc).__name__,
