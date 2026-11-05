@@ -1,0 +1,89 @@
+{
+  "scope": "D-078 diagnostic completed; S25 not accepted",
+  "baseline": "d8f5688",
+  "tested_commit": "c4c13ea",
+  "criteria": [
+    {
+      "requirement": "Preserve goal, selected model, seven final criteria, requirements and permanent core",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-invariants.json",
+        "git diff d8f5688 -- src docker requirements.toml docs/COMPLETION.md pyproject.toml (empty)"
+      ]
+    },
+    {
+      "requirement": "Translate only explicit complete object; null never creates an intention",
+      "status": "PASS",
+      "evidence": [
+        "tests/integration/typed_intention.py",
+        "tests/integration/test_typed_intention.py",
+        "S25-typed-intention-targeted.txt"
+      ]
+    },
+    {
+      "requirement": "Preserve shared validation, rights, available own experience, stale guards and action/intention limits",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-targeted.txt",
+        "S25-typed-intention-mechanical.json",
+        "S25-typed-intention-full-check.txt"
+      ]
+    },
+    {
+      "requirement": "Pre-register exact schema/instructions/image and common real A/E, at most 6 decisions/12 calls with zero repairs",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-design.md",
+        "S25-typed-intention-image.json",
+        "external live-matrix-1/manifest.json",
+        "S25-typed-intention-audit.json"
+      ]
+    },
+    {
+      "requirement": "Keep original safe physical answers before conversion and preserve credential handoff",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-audit.json",
+        "S25-typed-intention-targeted.txt",
+        "S25-typed-intention-review.md"
+      ]
+    },
+    {
+      "requirement": "Audit explicit objects, legacy intentions, format validity and core acceptance separately",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-audit.json",
+        "S25-typed-intention-review.md"
+      ]
+    },
+    {
+      "requirement": "Run independent review and main-agent direct checks/full suite",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-review.md",
+        "S25-typed-intention-technical.json",
+        "S25-typed-intention-document-tests.txt"
+      ]
+    },
+    {
+      "requirement": "Stop at negative outcome without new wording/character/horizon experiments",
+      "status": "PASS",
+      "evidence": [
+        "S25-typed-intention-result.md",
+        "docs/state.json S25 blocked"
+      ]
+    },
+    {
+      "requirement": "S25 voluntary intentions followed after restart and completed with confirmed results",
+      "status": "NOT_MET",
+      "evidence": [
+        "S25-typed-intention-audit.json: accepted_intentions=0"
+      ],
+      "consequence": "S26 remains todo; PR28 draft, no merge"
+    }
+  ],
+  "full_tests": 1394,
+  "coverage_modules_passed": 149,
+  "document_tests": 81,
+  "old_negative_results_preserved": true
+}
