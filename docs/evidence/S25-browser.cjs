@@ -41,7 +41,7 @@ async function main() {
           return result.violations.map(({ id, nodes }) => ({ id, nodes: nodes.map(node => node.target) }));
         });
         checks.push({ route: `/${route}`, viewport, status: response.status(), headings, axe });
-        if (['world', 'backups'].includes(route) && width !== 320) {
+        if (['world', 'backups', 'state', 'selfmodel'].includes(route) && width !== 320) {
           await page.screenshot({ path: path.join(output, `${route}-${width}.png`) });
         }
       }
@@ -67,7 +67,7 @@ async function main() {
     await page.getByText(/Копия восстановлена в отдельную базу:/).waitFor();
     const epochAfter = await page.locator('form[action="/actions/backup"] input[name="epoch"]').inputValue();
 
-    const report = { browser: browser.version(), fixture: 'empty demo', checks, errors,
+    const report = { browser: browser.version(), fixture: process.env.IAM_FIXTURE || 'empty demo', checks, errors,
       selfmodelKeyboard: { focused, outline, expanded },
       backups: { created: true, restoredSeparately: true, liveEpochUnchanged: epochBefore === epochAfter } };
     fs.writeFileSync(path.join(output, 'browser.json'), JSON.stringify(report, null, 2) + '\n');

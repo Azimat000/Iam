@@ -1,0 +1,16 @@
+[
+  {
+    "version": "before",
+    "returncode": 1,
+    "stdout": "Can't combine statement coverage data with branch data\n",
+    "stderr": "----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/inorout.py:521: CoverageWarning: Module tools was never imported. (module-not-imported)\n  self.warn(f\"Module {pkg} was never imported.\", slug=\"module-not-imported\")\nTraceback (most recent call last):\n  File \"/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/frozen-final/tools/covcheck.py\", line 183, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/frozen-final/tools/covcheck.py\", line 169, in main\n    tests_rc = run_tests_under_coverage(ROOT, out)\n  File \"/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/frozen-final/tools/covcheck.py\", line 150, in run_tests_under_coverage\n    run(\"combine\", \"-q\", check=True)\n    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/frozen-final/tools/covcheck.py\", line 147, in <lambda>\n    run = lambda cmd, *a, **kw: subprocess.run([*cov, cmd, f\"--rcfile={rc}\", *a], cwd=root, env=env, **kw)  # noqa: E731\n                                ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py\", line 577, in run\n    raise CalledProcessError(retcode, process.args,\n                             output=stdout, stderr=stderr)\nsubprocess.CalledProcessError: Command '['/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/bin/python', '-m', 'coverage', 'combine', '--rcfile=/private/var/folders/7q/6f7d54ks3zz8mx9n9rtc30zc0000gn/T/iam-cov-_l0ubmwj/pyproject.toml', '-q']' returned non-zero exit status 1.\n",
+    "caller_file_unchanged": true
+  },
+  {
+    "version": "after",
+    "returncode": 0,
+    "stdout": "модуль                                         строки    ветви  итог\nsrc/a.py                                       100.0%   100.0%  ok\nМодулей: 1, ниже порога: 0.\n",
+    "stderr": "----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n/Users/azamatsibgatullin/.iam-evidence/s17-close-20261101/venv/lib/python3.13/site-packages/coverage/inorout.py:521: CoverageWarning: Module tools was never imported. (module-not-imported)\n  self.warn(f\"Module {pkg} was never imported.\", slug=\"module-not-imported\")\n",
+    "caller_file_unchanged": true
+  }
+]
