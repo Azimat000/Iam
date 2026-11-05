@@ -20,9 +20,12 @@ from iam.stubs import Reply, ScriptedProvider, rest
 from iam.world.cycle import LivingCycle
 
 from integration.test_persistent_core import tick, wire
+from integration.answer_audit import record_answer
+from iam.providers.codex.auth import read_auth
+from iam.providers.codex.command import REPO_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "s25-series-3-interface"
+VERSION = "s25-series-4-answer-audit"
 PROFILE_PATH = ROOT / "scenarios/personas/curious.toml"
 PROFILE = tomllib.loads(PROFILE_PATH.read_text())
 MODEL = "gpt-6-luna"
@@ -223,7 +226,9 @@ def run_series(output, *, mode="stub", auth_file=None, provider_factory=None):
                 save()
                 try:
                     remaining = (session.config()["max_ms"] - session.usage()["elapsed_ms"]) / 1000
+                    credentials = read_auth(str(auth), REPO_ROOT) if auth is not None and provider_factory is None else None
                     result = subprocess_runner(argv, stdin, max(.001, min(timeout, remaining)), cleanup)
+                    record_answer(artifacts, "sessions/" + name, attempt["index"], result, auth=credentials)
                 except Exception as exc:
                     attempt.update(status="error", error_class=type(exc).__name__)
                     save()
