@@ -16,8 +16,7 @@
               "intention",
               "creator_request",
               "no_action",
-              "reflection",
-              "attend"
+              "reflection"
             ]
           },
           "rationale": {
@@ -45,11 +44,54 @@
     },
     "explanation": {
       "type": "string"
+    },
+    "attention": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "rationale": {
+          "type": "string"
+        },
+        "cites": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+          }
+        },
+        "focus": {
+          "type": "string",
+          "enum": [
+            "activity",
+            "intention",
+            "event",
+            "dialogue",
+            "rest"
+          ]
+        },
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "rationale",
+        "cites",
+        "focus",
+        "ref"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
     "proposals",
-    "explanation"
+    "explanation",
+    "attention"
   ],
   "additionalProperties": false
 }

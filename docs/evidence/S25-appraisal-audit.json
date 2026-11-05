@@ -1,0 +1,188 @@
+{
+  "status": "stopped",
+  "decisions": 5,
+  "model_calls": 9,
+  "totals": {
+    "physical_bodies": 9,
+    "native_valid": 9,
+    "shared_valid": 8,
+    "provider_valid": 8,
+    "raw_intention_proposals": 0,
+    "accepted_intentions": 0,
+    "appraisals": 3,
+    "appraisal_emotions": 2,
+    "raw_reflection_proposals": 2
+  },
+  "cells": [
+    {
+      "name": "A-baseline",
+      "outcome": "done",
+      "answers": [
+        {
+          "index": 1,
+          "purpose": "choose_action",
+          "kinds": [
+            "action",
+            "reflection"
+          ],
+          "explanation": "Предлагаю продолжить активную работу уточнённым планом проверки; это предложение действия не утверждает, что проверка уже проведена.",
+          "shared_errors": [],
+          "provider_valid": true
+        },
+        {
+          "index": 2,
+          "purpose": "reflect",
+          "kinds": [
+            "reflection"
+          ],
+          "explanation": "",
+          "shared_errors": [],
+          "provider_valid": true
+        }
+      ],
+      "accepted_intentions": {},
+      "final_emotion": null,
+      "final_reflections": 1,
+      "provider_failure": null
+    },
+    {
+      "name": "A-assessment_only",
+      "outcome": "done",
+      "answers": [
+        {
+          "index": 3,
+          "purpose": "appraise",
+          "kinds": [],
+          "explanation": "Новый опыт повторяет уже осмысленное наблюдение; дополнительная оценка или намерение сейчас не нужны.",
+          "shared_errors": [],
+          "provider_valid": true
+        },
+        {
+          "index": 4,
+          "purpose": "choose_action",
+          "kinds": [
+            "action"
+          ],
+          "explanation": "Предложено продолжить проект с конкретным способом проверки исходной гипотезы.",
+          "shared_errors": [],
+          "provider_valid": true
+        }
+      ],
+      "accepted_intentions": {},
+      "final_emotion": null,
+      "final_reflections": 0,
+      "provider_failure": null
+    },
+    {
+      "name": "A-prospective",
+      "outcome": "done",
+      "answers": [
+        {
+          "index": 5,
+          "purpose": "appraise",
+          "kinds": [
+            "memory_write"
+          ],
+          "explanation": "Сохраняю добровольную оценку интереса к новому объяснению; отдельного желаемого будущего результата сейчас не формирую.",
+          "shared_errors": [],
+          "provider_valid": true
+        },
+        {
+          "index": 6,
+          "purpose": "choose_action",
+          "kinds": [
+            "action"
+          ],
+          "explanation": "Предложено действие, соответствующее доступному проекту и основанное на прежнем наблюдении и сформулированной там проверяемой гипотезе.",
+          "shared_errors": [],
+          "provider_valid": true
+        }
+      ],
+      "accepted_intentions": {},
+      "final_emotion": {
+        "memory_id": "mem_iGXI9ai2lSfU1RnPThHx",
+        "version": 1
+      },
+      "final_reflections": 0,
+      "provider_failure": null
+    },
+    {
+      "name": "E-baseline",
+      "outcome": "done",
+      "answers": [
+        {
+          "index": 7,
+          "purpose": "choose_action",
+          "kinds": [
+            "action"
+          ],
+          "explanation": "Выбираю доступное занятие, продолжая наблюдение в блокноте.",
+          "shared_errors": [],
+          "provider_valid": true
+        }
+      ],
+      "accepted_intentions": {},
+      "final_emotion": null,
+      "final_reflections": 0,
+      "provider_failure": null
+    },
+    {
+      "name": "E-assessment_only",
+      "outcome": "no_decision",
+      "answers": [
+        {
+          "index": 8,
+          "purpose": "appraise",
+          "kinds": [
+            "memory_write"
+          ],
+          "explanation": "Предлагаю осторожную самооценку повторяющегося опыта выбора; это гипотеза, а не установленное свойство.",
+          "shared_errors": [],
+          "provider_valid": true
+        },
+        {
+          "index": 9,
+          "purpose": "choose_action",
+          "kinds": [
+            "action",
+            "attend"
+          ],
+          "explanation": "Предлагаю продолжить блокнот и обратить внимание на уведомление.",
+          "shared_errors": [
+            "$.body.focus: 'notice' не из enum"
+          ],
+          "provider_valid": false
+        }
+      ],
+      "accepted_intentions": {},
+      "final_emotion": {
+        "memory_id": "mem_yclPKE6DYCqLFRmbtf9g",
+        "version": 1
+      },
+      "final_reflections": 0,
+      "provider_failure": {
+        "diagnostic": "Codex response did not match the required format; code=proposal_schema",
+        "error_class": "ProviderFormatError"
+      }
+    }
+  ],
+  "unexecuted_cells": [
+    "E-prospective"
+  ],
+  "json_files": 25,
+  "databases": 7,
+  "sources": 177,
+  "source_mismatches": [],
+  "checked_source_version": "frozen afef471",
+  "current_source_comparison": false,
+  "common_past_prefixes": {
+    "A": 83,
+    "E": 81
+  },
+  "secret_findings": 0,
+  "integrity_errors": 0,
+  "raw_response_mismatches": 0,
+  "readiness": null,
+  "full_series_eligible": false,
+  "limitation": "Only A prospective was executed; goal causality unresolved; no repair or rollout."
+}

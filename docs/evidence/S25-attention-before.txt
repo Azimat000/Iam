@@ -1,0 +1,195 @@
+======================================================================
+ERROR: test_existing_action_and_attention_preserve_order_and_legacy_reads_remain_available (providers.test_codex_attention.NativeAttentionTest.test_existing_action_and_attention_preserve_order_and_legacy_reads_remain_available)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 55, in test_existing_action_and_attention_preserve_order_and_legacy_reads_remain_available
+    self.assertEqual([item['kind'] for item in _proposals(data)], ['action', 'attend'])
+                                               ~~~~~~~~~~^^^^^^
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/src/iam/providers/codex/provider.py", line 29, in _proposals
+    raise ValueError
+ValueError
+
+======================================================================
+ERROR: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 36, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(_proposals(data), [])
+                     ~~~~~~~~~~^^^^^^
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/src/iam/providers/codex/provider.py", line 29, in _proposals
+    raise ValueError
+ValueError
+
+======================================================================
+FAIL: test_old_opaque_envelope_cannot_advertise_invalid_notice_focus (providers.test_codex_attention.NativeAttentionTest.test_old_opaque_envelope_cannot_advertise_invalid_notice_focus)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 21, in test_old_opaque_envelope_cannot_advertise_invalid_notice_focus
+    self.assertTrue(jsonschema.check(RESPONSE_JSON_SCHEMA, old, Path('.')))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='activity', ref='inp_Notice0001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='activity', ref=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='intention', ref='inp_Notice0001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='intention', ref=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='event', ref='inp_Notice0001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='event', ref=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='dialogue', ref='inp_Notice0001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='dialogue', ref=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='rest', ref='inp_Notice0001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+======================================================================
+FAIL: test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal (providers.test_codex_attention.NativeAttentionTest.test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal) (focus='rest', ref=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_attention.py", line 29, in test_typed_attention_copies_exact_fields_and_null_does_not_create_a_proposal
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$: лишнее поле attention'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'$: лишнее поле attention'
+
+- ['$: лишнее поле attention']
++ []
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.003s
+
+FAILED (failures=11, errors=2)

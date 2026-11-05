@@ -1,6 +1,7 @@
 """Bounded Docker command; credentials and model context travel only over stdin."""
 from __future__ import annotations
 
+import copy
 import re
 import uuid
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ from .auth_session import validate_writeback_path
 
 DEFAULT_MODEL = "gpt-6-luna"
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SYSTEM_PROMPT = (
+LEGACY_SYSTEM_PROMPT = (
     "You are the proposal engine of a digital persona core. You have no tools and cannot act in the world. "
     "Reply with exactly one JSON object containing proposals and explanation. "
     "Each proposal has kind, rationale, cites (context references), and body_json, a JSON-encoded object string. "
@@ -24,7 +25,7 @@ SYSTEM_PROMPT = (
     "Use only allowed_proposals and allowed_actions. Proposals request actions from the core; never claim results. "
     "Do not invent proposal ids. Ground rationale only in the supplied context."
 )
-RESPONSE_JSON_SCHEMA = {
+LEGACY_RESPONSE_JSON_SCHEMA = {
     "type": "object", "properties": {
         "proposals": {"type": "array", "items": {"type": "object", "properties": {
             "kind": {"type": "string", "enum": ["action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"]}, "rationale": {"type": "string"},
@@ -33,6 +34,26 @@ RESPONSE_JSON_SCHEMA = {
         "explanation": {"type": "string"}},
     "required": ["proposals", "explanation"], "additionalProperties": False,
 }
+SYSTEM_PROMPT = LEGACY_SYSTEM_PROMPT.replace(
+    "containing proposals and explanation", "containing proposals, attention and explanation"
+).replace("attend{focus,ref}; ", "") + (
+    " Attention is a separate nullable object, not an item in proposals. "
+    "Use attention=null when no attention switch is proposed. Otherwise it has rationale, cites, "
+    "focus (activity, intention, event, dialogue or rest), and ref (target identifier, or null for no target). "
+    "A visible inp_ notice is an attention target ref, never a focus value or a citation. "
+    "The adapter copies this object to an attend proposal; it does not execute a read."
+)
+RESPONSE_JSON_SCHEMA = copy.deepcopy(LEGACY_RESPONSE_JSON_SCHEMA)
+RESPONSE_JSON_SCHEMA['properties']['proposals']['items']['properties']['kind']['enum'].remove('attend')
+RESPONSE_JSON_SCHEMA['properties']['attention'] = {
+    'type': ['object', 'null'], 'properties': {
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(LEGACY_RESPONSE_JSON_SCHEMA['properties']['proposals']['items']['properties']['cites']),
+        'focus': {'type': 'string', 'enum': ['activity', 'intention', 'event', 'dialogue', 'rest']},
+        'ref': {'type': ['string', 'null'], 'minLength': 1}},
+    'required': ['rationale', 'cites', 'focus', 'ref'], 'additionalProperties': False,
+}
+RESPONSE_JSON_SCHEMA['required'].append('attention')
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 _MEMORY = re.compile(r"([1-9]\d*)([mg])")
 

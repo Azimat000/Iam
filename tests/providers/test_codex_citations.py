@@ -10,8 +10,8 @@ from iam.providers.codex.provider import _proposals
 
 class CitationContractTest(unittest.TestCase):
     def wire(self, cites):
-        return {"proposals": [{"kind": "attend", "rationale": "Видно уведомление, его текст не прочитан",
-                "cites": cites, "body_json": json.dumps({"focus": "dialogue", "ref": "inp_Notice0001"})}],
+        return {"proposals": [], "attention": {"rationale": "Видно уведомление, его текст не прочитан",
+                "cites": cites, "focus": "dialogue", "ref": "inp_Notice0001"},
                 "explanation": "Предлагается обратить внимание на уведомление"}
 
     def test_observed_notice_citation_is_rejected_by_both_schemas(self):

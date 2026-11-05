@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 import time
 
 from iam.domain import jsonschema, new_id
@@ -13,7 +14,7 @@ from ..run import Runner, subprocess_runner
 from .auth import read_auth
 from .auth_session import auth_session
 from .classify import _json, classify
-from .command import DEFAULT_MODEL, REPO_ROOT, SYSTEM_PROMPT, CodexSandboxConfig, docker_run
+from .command import DEFAULT_MODEL, REPO_ROOT, SYSTEM_PROMPT, RESPONSE_JSON_SCHEMA, CodexSandboxConfig, docker_run
 
 
 def build_prompt(request: dict) -> str:
@@ -25,6 +26,18 @@ def build_prompt(request: dict) -> str:
 
 
 def _proposals(data: dict) -> list[dict]:
+    if 'attention' in data:
+        if jsonschema.check(RESPONSE_JSON_SCHEMA, data, Path('.')):
+            raise ValueError
+        proposals = list(data['proposals'])
+        attention = data['attention']
+        if attention is not None:
+            body = {'focus': attention['focus']}
+            if attention['ref'] is not None:
+                body['ref'] = attention['ref']
+            proposals.append({'kind': 'attend', 'rationale': attention['rationale'], 'cites': attention['cites'],
+                              'body_json': json.dumps(body, ensure_ascii=False)})
+        data = {'proposals': proposals, 'explanation': data['explanation']}
     if set(data) != {"proposals", "explanation"} or not isinstance(data["explanation"], str):
         raise ValueError
     if not isinstance(data["proposals"], list):

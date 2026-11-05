@@ -6,7 +6,8 @@ from pathlib import Path
 
 from iam.domain import jsonschema
 from iam.providers.codex.classify import _json, classify
-from iam.providers.codex.command import RESPONSE_JSON_SCHEMA, SYSTEM_PROMPT
+from iam.providers.codex.command import (LEGACY_RESPONSE_JSON_SCHEMA as RESPONSE_JSON_SCHEMA,
+                                        LEGACY_SYSTEM_PROMPT, SYSTEM_PROMPT)
 from iam.providers.codex.provider import _proposals
 from iam.providers.classify import Kind
 from iam.providers.errors import ProviderFormatError
@@ -26,7 +27,7 @@ SCHEMA["properties"]["future_intention"] = {
             "additionalProperties": False}},
      "required": ["rationale", "cites", "body"], "additionalProperties": False}
 SCHEMA["required"].append("future_intention")
-PROMPT = SYSTEM_PROMPT + (
+PROMPT = LEGACY_SYSTEM_PROMPT + (
     " This experimental response also has future_intention, either null or an explicitly chosen "
     "future intention object with rationale, cites and body. Its body has op=create, intention_id, "
     "text, criterion, project_id and operation (read, write or move), with the same meanings and "

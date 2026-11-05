@@ -377,9 +377,16 @@ class CommandTests(unittest.TestCase):
         self.assertFalse(proposal["additionalProperties"])
         self.assertEqual(set(proposal["required"]), set(proposal["properties"]))
         self.assertEqual(set(RESPONSE_JSON_SCHEMA["required"]), set(RESPONSE_JSON_SCHEMA["properties"]))
-        self.assertEqual(set(proposal["properties"]["kind"]["enum"]),
+        self.assertEqual(set(proposal["properties"]["kind"]["enum"]) | {"attend"},
                          {"action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"})
         self.assertEqual(proposal["properties"]["body_json"], {"type": "string"})
+        attention = RESPONSE_JSON_SCHEMA["properties"]["attention"]
+        self.assertEqual(attention["type"], ["object", "null"])
+        self.assertEqual(set(attention["required"]), set(attention["properties"]))
+        self.assertFalse(attention["additionalProperties"])
+        self.assertEqual(attention["properties"]["focus"]["enum"],
+                         ["activity", "intention", "event", "dialogue", "rest"])
+        self.assertNotIn("attend", proposal["properties"]["kind"]["enum"])
 
 
 class AuthTests(unittest.TestCase):
