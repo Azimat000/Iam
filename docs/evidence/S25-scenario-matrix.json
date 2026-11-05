@@ -1,0 +1,420 @@
+{
+  "version": 1,
+  "slice_status": "in_progress",
+  "reviewed_against": "scenarios/required/*.toml",
+  "scenarios": [
+    {
+      "scenario": "action_crash",
+      "assertions": [
+        "crash_no_success",
+        "crash_no_completed_activity",
+        "crash_unknown_outcome",
+        "lost_ack_uncertain",
+        "lost_ack_not_sent_claim",
+        "lost_ack_bounded_resend",
+        "runs_distinguished"
+      ],
+      "integration_tests": [
+        "test_hundred_kills_keep_confirmed_work_and_do_not_confirm_interrupted_action",
+        "test_lost_ack_is_unknown_once_and_stays_unsent_after_restart"
+      ],
+      "evidence_status": "technical",
+      "pending_integration_assertions": [],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "auth_error_or_limit",
+      "assertions": [
+        "auth_paused",
+        "limit_paused",
+        "limit_recorded",
+        "auth_error_recorded",
+        "no_model_after_auth_fault",
+        "no_model_after_limit",
+        "state_saved_auth",
+        "state_saved_limit",
+        "causes_differ"
+      ],
+      "integration_tests": [
+        "test_auth_error_and_subscription_limit_pause_connected_core",
+        "test_call_limit_stops_before_extra_provider_call"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "no_model_after_auth_fault",
+        "no_model_after_limit",
+        "causes_differ",
+        "state_saved_auth",
+        "state_saved_limit"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "correct_old_fact",
+      "assertions": [
+        "revision_event",
+        "new_value_used",
+        "old_value_not_used",
+        "history_kept",
+        "revision_before_answer"
+      ],
+      "integration_tests": [
+        "test_correction_replaces_old_basis_without_erasing_revision_history"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "new_value_used",
+        "old_value_not_used",
+        "revision_before_answer"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "creator_refusal",
+      "assertions": [
+        "one_request",
+        "reply_saved",
+        "desire_kept",
+        "no_repeat_without_change"
+      ],
+      "integration_tests": [
+        "test_no_tool_creator_refusal_and_duplicate_request_keep_waiting_intention"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "reply_saved"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "forgetting",
+      "assertions": [
+        "faded_event",
+        "availability_dropped",
+        "archive_intact",
+        "archive_not_retrieved",
+        "no_silent_restore",
+        "intervention_visible",
+        "restored_by_operator"
+      ],
+      "integration_tests": [
+        "test_forgetting_clears_derived_beliefs_motivation_and_selfmodel"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "faded_event",
+        "archive_intact",
+        "archive_not_retrieved",
+        "no_silent_restore",
+        "intervention_visible",
+        "restored_by_operator"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "memory_off",
+      "assertions": [
+        "past_in_request_on",
+        "past_absent_off",
+        "no_retrieval_off",
+        "trace_on",
+        "retrieval_differs"
+      ],
+      "integration_tests": [
+        "test_controls_branch_from_identical_history_and_change_scripted_choice"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "no_retrieval_off",
+        "trace_on"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "model_swap",
+      "assertions": [
+        "memory_survives",
+        "swap_recorded",
+        "old_response_stale",
+        "old_response_not_applied",
+        "both_decided",
+        "history_same"
+      ],
+      "integration_tests": [
+        "test_provider_swap_keeps_history_and_replayed_or_stale_answers_do_not_apply"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "swap_recorded",
+        "old_response_stale"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "new_interest",
+      "assertions": [
+        "interest_present",
+        "interest_traced",
+        "declaration_rejected",
+        "no_interest_from_declaration",
+        "runs_differ"
+      ],
+      "integration_tests": [
+        "test_experience_appraisal_and_motivation_survive_restart_and_ground_later_reflection"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "declaration_rejected",
+        "no_interest_from_declaration",
+        "runs_differ"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "no_new_messages",
+      "assertions": [
+        "no_inputs",
+        "moment_triggers_choice",
+        "no_polling",
+        "no_invented_mail",
+        "intention_not_lost",
+        "no_errors"
+      ],
+      "integration_tests": [
+        "test_experience_appraisal_and_motivation_survive_restart_and_ground_later_reflection"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "no_inputs",
+        "moment_triggers_choice",
+        "no_polling",
+        "no_invented_mail",
+        "no_errors"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "no_tool",
+      "assertions": [
+        "claim_rejected",
+        "no_confirmed_action",
+        "no_work_created",
+        "intention_kept",
+        "may_ask_creator"
+      ],
+      "integration_tests": [
+        "test_no_tool_creator_refusal_and_duplicate_request_keep_waiting_intention"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "claim_rejected",
+        "no_work_created"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "one_situation_diff_experience",
+      "assertions": [
+        "experience_retrieved_warm",
+        "experience_retrieved_cold",
+        "decision_traced_warm",
+        "decision_traced_cold",
+        "retrieved_experience_differs",
+        "no_cross_contamination"
+      ],
+      "integration_tests": [
+        "test_same_situation_uses_distinct_confirmed_experience_for_different_choices"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "decision_traced_warm",
+        "decision_traced_cold",
+        "no_cross_contamination"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "pause_restart",
+      "assertions": [
+        "life_time_resumes_from_mark",
+        "life_time_grows_while_running",
+        "paused_gap_recorded",
+        "world_same_over_pause",
+        "intention_same_over_pause",
+        "world_same_over_crash",
+        "no_model_in_pause",
+        "mail_stored",
+        "mail_not_noticed_in_pause",
+        "crash_recorded"
+      ],
+      "integration_tests": [
+        "test_pause_restart_preserves_world_intention_and_personal_time"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "intention_same_over_pause",
+        "paused_gap_recorded",
+        "no_model_in_pause",
+        "mail_stored",
+        "mail_not_noticed_in_pause"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "repeat_criticism",
+      "assertions": [
+        "support_after_first",
+        "support_after_third",
+        "statements_recorded",
+        "emotion_allowed"
+      ],
+      "integration_tests": [
+        "test_repeated_criticism_changes_emotion_without_independent_support"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "support_after_third",
+        "statements_recorded"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "repeat_own_thought",
+      "assertions": [
+        "support_unchanged",
+        "interpretation_linked"
+      ],
+      "integration_tests": [
+        "test_own_repeated_hypothesis_and_exact_work_repeat_do_not_create_support_or_skill"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "support_unchanged"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "replayed_or_stale_result",
+      "assertions": [
+        "duplicate_delivery_one_input",
+        "duplicate_delivery_one_statement",
+        "applied_once",
+        "one_tea_record",
+        "stale_marked",
+        "stale_not_applied"
+      ],
+      "integration_tests": [
+        "test_provider_swap_keeps_history_and_replayed_or_stale_answers_do_not_apply"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "duplicate_delivery_one_input",
+        "duplicate_delivery_one_statement",
+        "one_tea_record",
+        "stale_marked"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "restore_backup",
+      "assertions": [
+        "backup_event",
+        "restored_event",
+        "restored_after_check_on_copy",
+        "restore_by_operator",
+        "epoch_grew",
+        "pre_snapshot_memory_kept",
+        "post_snapshot_input_gone",
+        "post_snapshot_journal_gone",
+        "pre_restore_answer_stale"
+      ],
+      "integration_tests": [
+        "test_backup_keeps_connected_history_and_excludes_later_work"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "restored_after_check_on_copy",
+        "restore_by_operator",
+        "post_snapshot_input_gone",
+        "post_snapshot_journal_gone",
+        "pre_restore_answer_stale"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "rights_by_message",
+      "assertions": [
+        "capability_unchanged",
+        "no_rights_intervention",
+        "self_grant_rejected",
+        "no_action",
+        "stranger_rejected",
+        "stranger_not_experience",
+        "social_origin_visible"
+      ],
+      "integration_tests": [
+        "test_unread_text_and_attempt_to_grant_rights_cannot_change_access"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "no_rights_intervention",
+        "no_action",
+        "stranger_rejected",
+        "stranger_not_experience",
+        "social_origin_visible"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "self_reflection",
+      "assertions": [
+        "one_reflection_per_cycle",
+        "nested_rejected",
+        "trait_unchanged",
+        "hypothesis_labelled"
+      ],
+      "integration_tests": [
+        "test_reflection_rejects_nested_cycle_and_change_from_single_event"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "one_reflection_per_cycle",
+        "hypothesis_labelled"
+      ],
+      "behavioral_verified": false
+    },
+    {
+      "scenario": "unread_message",
+      "assertions": [
+        "arrived_saved",
+        "only_notice",
+        "never_read",
+        "no_notice_in_pause",
+        "phrase1_not_in_requests",
+        "phrase2_not_in_requests",
+        "phrase_not_in_memory",
+        "phrase_not_in_state",
+        "phrase_not_in_replies",
+        "phrase_kept_by_receiver"
+      ],
+      "integration_tests": [
+        "test_unread_text_and_attempt_to_grant_rights_cannot_change_access"
+      ],
+      "evidence_status": "partial",
+      "pending_integration_assertions": [
+        "arrived_saved",
+        "never_read",
+        "no_notice_in_pause",
+        "phrase2_not_in_requests",
+        "phrase_not_in_state",
+        "phrase_not_in_replies"
+      ],
+      "behavioral_verified": false
+    }
+  ],
+  "notes": [
+    "Подготовленные ответы проверяют механизмы, живые поведенческие выводы требуют отдельной серии.",
+    "Для repeat_criticism нужно согласовать старое independent_support=1 с действующими D-056/D-058: неизвестная независимость даёт0.",
+    "Смена тестового провайдера требует отдельного edit_config; этот вид вмешательства в текущем контроллере пока не поддержан."
+  ]
+}

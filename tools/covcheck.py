@@ -143,7 +143,8 @@ def run_tests_under_coverage(root: Path, out_json: Path) -> int:
     rc = str(root / "pyproject.toml")
     cov = [sys.executable, "-m", "coverage"]
     # Если сам covcheck запущен под чужим замером (его тесты), внешний замер не должен вмешиваться.
-    env = {k: v for k, v in os.environ.items() if not k.startswith("COVERAGE_PROCESS_")}
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith("COVERAGE_PROCESS_") and k != "COVERAGE_FILE"}
     run = lambda cmd, *a, **kw: subprocess.run([*cov, cmd, f"--rcfile={rc}", *a], cwd=root, env=env, **kw)  # noqa: E731
     run("erase", check=True)
     tests = run("run", "-p", "-m", "unittest", "discover", "-s", "tests", "-q")

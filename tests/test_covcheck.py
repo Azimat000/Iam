@@ -158,6 +158,22 @@ class FullRunTest(Base):
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
         self.assertIn("НИЖЕ ПОРОГА", p.stdout)
 
+    def test_nested_measurement_preserves_callers_coverage_file(self):
+        from coverage import CoverageData
+
+        self.make_project("self.assertEqual(a.f(1), 1)\nself.assertEqual(a.f(0), 2)\n")
+        external = self.root / "caller-data"
+        foreign = Path(str(external) + ".foreign")
+        data = CoverageData(basename=str(foreign))
+        data.add_lines({str(self.root / "src/a.py"): {1}})
+        data.write()
+        before = foreign.read_bytes()
+        with mock.patch.dict(os.environ, {"COVERAGE_FILE": str(external)}):
+            result = self.run_tool()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(foreign.read_bytes(), before)
+        self.assertFalse(external.exists())
+
     def test_failing_tests_invalidate_measurement(self):
         self.make_project("self.assertEqual(a.f(1), 1)\nself.assertEqual(a.f(0), 2)\nself.fail('упал')\n")
         p = self.run_tool()
