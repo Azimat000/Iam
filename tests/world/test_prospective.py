@@ -231,6 +231,34 @@ class ProspectiveTest(LivingCase):
         self.assertFalse(self.c.state['intentions'])
         self.assertEqual(verify(self.c.store), [])
 
+    def test_forbidden_appraisal_done_has_no_assessor_calls_but_valid_choice_done_has_two(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        result = self.write('Свет ложится на ладонь.\nСвет хранит тепло огня.')
+        self.enable()
+        forbidden = self.transition('done', result=result)
+        self.assertIs(self.cycle.provider.inner, self.p)
+        self.assertIs(self.cycle.provider.intentions, self.cycle.intentions)
+        scanner = self.cycle.provider.scanner
+        before = len(self.p.calls)
+        report = self.run_reply(self.interpretation(result), forbidden, replies=(Reply((rest(),)),))
+        self.assertEqual(len(self.p.calls) - before, 2)
+        self.assertEqual(report.outcome, 'done')
+        self.assertFalse(any(q['allowed_proposals'] == ['no_action'] for q in self.p.calls[before:]))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'active')
+        stage = next(row for row in report.stages if row.stage == 'experience_appraisal')
+        self.assertEqual(stage.detail['status'], 'partial')
+        self.assertEqual(stage.detail['rejected'][forbidden['proposal_id']], 'appraisal_create_only')
+        before = len(self.p.calls)
+        report = self.run_reply(self.transition('done', result=result), replies=(
+            self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(report.outcome, 'done')
+        self.assertEqual(len(self.p.calls) - before, 3)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+        self.assertTrue(self.c.state['intentions']['my_goal']['completion']['passed'])
+        self.assertIs(self.cycle.provider.scanner, scanner)
+        self.assertEqual(verify(self.c.store), [])
+
     def test_second_goal_in_same_cycle_is_rejected_by_request_scope(self):
         source = self.read(); self.enable()
         other = self.goal(source, iid='other')

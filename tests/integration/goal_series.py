@@ -27,7 +27,9 @@ DESIGN = 'docs/evidence/S25-post-partial-design.md'
 
 
 def sources():
-    return {**probe.frozen_sources(), DESIGN: probe.series.sha(probe.series.ROOT / DESIGN)}
+    repair='docs/evidence/S25-completion-precheck-design.md'
+    return {**probe.frozen_sources(), DESIGN: probe.series.sha(probe.series.ROOT / DESIGN),
+            repair:probe.series.sha(probe.series.ROOT/repair)}
 
 
 def load(root, name):

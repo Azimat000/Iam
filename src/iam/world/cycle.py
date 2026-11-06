@@ -66,6 +66,8 @@ class WorldMemory(PersistentMemory):
 
 
 class LivingCycle(Cycle):
+    completion_provider_type = CompletionProvider
+
     def __init__(self, controller, provider, memory, world, capabilities, creator, *, motivation_off=False, **kwargs):
         super().__init__(controller, provider, memory, world, capabilities, creator,
                          allowed_proposals=(*DEFAULT_ALLOWED, 'memory_write', 'intention', 'reflection'), **kwargs)
@@ -73,7 +75,7 @@ class LivingCycle(Cycle):
         self.intentions = Intentions(memory, world)
         world.intentions = self.intentions
         self.motivation = Motivation(memory, self.intentions, off=motivation_off)
-        self.provider = CompletionProvider(provider, self.intentions)
+        self.provider = self.completion_provider_type(provider, self.intentions)
         self.fallback = make_kind_handlers(capabilities)['action']
         controller.register_kind('action', self._action)
         controller.register_kind('message', self._action)

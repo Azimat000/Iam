@@ -83,10 +83,13 @@ class CompletionProvider:
         self.name = getattr(provider, 'name', 'completion')
         self.scanner = SecretScanner(use_env=True)
 
+    def may_review(self, request):
+        return True
+
     def propose(self, request):
         started = time.monotonic()
         response = self.inner.propose(request)
-        if not valid_response(response, request):
+        if not valid_response(response, request) or not self.may_review(request):
             return response
         for pr in response['proposals']:
             if not (pr['kind'] == 'intention' and pr['body'].get('op') == 'transition'

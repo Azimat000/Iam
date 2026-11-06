@@ -2,6 +2,7 @@
 import hashlib
 import json
 from iam.cycle.validator import tool_use_signs
+from iam.intentions.completion import CompletionProvider
 from iam.state import EventSpec, KindDecision, Violation
 from .cycle import LivingCycle
 
@@ -26,7 +27,14 @@ BOUNDARY = (
 )
 
 
+class AppraisalCompletionProvider(CompletionProvider):
+    def may_review(self, request):
+        # Это предварительная проверка расхода, не применение/удаление предложения.
+        return request['purpose'] != 'appraise'
+
+
 class ProspectiveCycle(LivingCycle):
+    completion_provider_type = AppraisalCompletionProvider
     appraisal_instructions = ASSESSMENT + PROSPECTION + BOUNDARY
 
     def __init__(self, *args, **kwargs):
