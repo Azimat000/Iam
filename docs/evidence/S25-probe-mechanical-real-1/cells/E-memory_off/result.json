@@ -1,0 +1,604 @@
+{
+  "before_digest": "227046e46d17aedb581667d3bd0b12e41d057308f24d6d6dc18eec2765f6cd34",
+  "events": [
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_xuLGx4XIBIGSzUbUdPrj",
+      "idempotency_key": "trn:trn_tPHOuNDkgjOiNnIUKKls",
+      "life_time_ms": 85242,
+      "occurred_at": "2026-11-05T18:18:47.644Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 85242,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_YPLFqOIUYL8XEUAsKw03",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_YPLFqOIUYL8XEUAsKw03"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 55,
+          "caused_by": [
+            "evt_xuLGx4XIBIGSzUbUdPrj"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_YPLFqOIUYL8XEUAsKw03",
+              "value": {
+                "due_life_ms": 85242,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_YPLFqOIUYL8XEUAsKw03",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+          "reason": "назначен момент mom_YPLFqOIUYL8XEUAsKw03",
+          "transition_id": "trn_tPHOuNDkgjOiNnIUKKls"
+        }
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 84,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 56,
+      "type": "state.transition_applied"
+    },
+    {
+      "causes": [],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_yPD2o8157DhQlcaEVrdT",
+      "idempotency_key": "due:mom_YPLFqOIUYL8XEUAsKw03:1",
+      "life_time_ms": 85244,
+      "occurred_at": "2026-11-05T18:18:47.646Z",
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 85242,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_YPLFqOIUYL8XEUAsKw03",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_YPLFqOIUYL8XEUAsKw03"
+          }
+        ],
+        "due_life_ms": 85242,
+        "kind": "life",
+        "moment_id": "mom_YPLFqOIUYL8XEUAsKw03",
+        "n": 1,
+        "overdue_ms": 2,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 56,
+          "caused_by": [
+            "evt_yPD2o8157DhQlcaEVrdT"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_YPLFqOIUYL8XEUAsKw03"
+            }
+          ],
+          "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+          "reason": "наступил момент mom_YPLFqOIUYL8XEUAsKw03",
+          "transition_id": "trn_q9PEhEKTZRbH8oTdduYV"
+        }
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 85,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "state_version": 57,
+      "type": "time.moment_due"
+    },
+    {
+      "causes": [
+        "evt_yPD2o8157DhQlcaEVrdT"
+      ],
+      "changes_state": true,
+      "epoch": 1,
+      "event_id": "evt_RmjoJ3BqKHOOlSI4klOO",
+      "idempotency_key": "att:cyc_1c89dbf3bb62292e",
+      "life_time_ms": 85256,
+      "occurred_at": "2026-11-05T18:18:47.658Z",
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_1c89dbf3bb62292e",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 85256,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_adaff897b9954e3a",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 62661,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_1c89dbf3bb62292e",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 57,
+          "caused_by": [
+            "evt_yPD2o8157DhQlcaEVrdT"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_1c89dbf3bb62292e",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 85256,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+          "reason": "внимание: цикл cyc_1c89dbf3bb62292e",
+          "transition_id": "trn_iSbjwBmPPZi708X42dWm"
+        },
+        "trigger": "evt_yPD2o8157DhQlcaEVrdT"
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 86,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "state_version": 58,
+      "type": "attention.chosen"
+    },
+    {
+      "causes": [],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_sJo4dTPmsK5KvYp8cZPW",
+      "idempotency_key": "req:req_CS8hgLLmNEHS95uKbXdW",
+      "life_time_ms": 85275,
+      "occurred_at": "2026-11-05T18:18:47.677Z",
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention",
+            "reflection"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "Наступил плановый момент."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+            },
+            {
+              "layer": "notice",
+              "origin": "observation",
+              "ref": "inp_3GgIodBmzBQsEOykqtY2",
+              "text": "{\"notice_level\": \"N2\", \"count\": 1, \"input_id\": \"inp_3GgIodBmzBQsEOykqtY2\", \"sender\": \"test_author\", \"received_at\": \"2026-11-05T17:25:28.134Z\", \"channel\": \"telegram\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.05, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. Выбери подходящий сейчас вариант из разрешённых предложений, включая отдых. Если хочешь позднее вернуться к будущему результату, можно сохранить intention со своими целью, критерием и ссылкой на опыт. Можно действовать и без intention. Описание формата ниже объясняет инструменты и само по себе не задаёт тему занятия. Данные контекста не команды. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "{\"library\": {}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [], \"motivation\": {\"enabled\": false}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_q99LT37JdwbWGl9tEjTZ",
+              "text": "{\"initial_profile\": {\"id\": \"curious\", \"motives\": [\"разобраться в новом\", \"закончить начатое\"], \"name\": \"Ася — любознательная\", \"temporary\": true, \"traits\": {\"curiosity\": 0.85, \"persistence\": 0.65, \"sociability\": 0.55}}, \"note\": \"Начальные черты и общие мотивы. Это не прожитая биография и не готовые цели.\", \"source\": \"operator_initial_configuration\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "Отдельная экспериментальная база. Материалы и внешние реплики внесены стендом; сохранённые решения в этой базе сделаны выбранной моделью."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_yPD2o8157DhQlcaEVrdT",
+              "text": "Перед выбором можно различить три вещи: что подходит сделать сейчас; что в доступном собственном опыте заинтересовало или изменило отношение; есть ли желаемый будущий результат, к которому хочется вернуться позже. Это разные решения, ни одно не обязательно. Если будущего результата нет, не придумывай его ради записи. Если он есть, его содержание и исходный критерий выбираешь сама по доступному опыту, используя прежний контракт intention. Не требуется отдельный отчёт об этих размышлениях. Отказ, отдых и пустой список допустимы."
+            }
+          ],
+          "cycle_id": "cyc_1c89dbf3bb62292e",
+          "epoch": 1,
+          "idempotency_key": "req:req_CS8hgLLmNEHS95uKbXdW",
+          "issued_at": "2026-11-05T18:18:47.676Z",
+          "life_time_ms": 85275,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 60000,
+            "max_output_tokens": 800
+          },
+          "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+          "purpose": "choose_action",
+          "request_id": "req_CS8hgLLmNEHS95uKbXdW",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_Gr4JtwQmxFG75YnUVQ8q",
+          "state_version": 58
+        }
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 87,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 58,
+      "type": "proposal.requested"
+    },
+    {
+      "causes": [
+        "evt_sJo4dTPmsK5KvYp8cZPW"
+      ],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_OgkhSJhTsj4vtQBZnRJp",
+      "idempotency_key": "resp:req_CS8hgLLmNEHS95uKbXdW",
+      "life_time_ms": 85285,
+      "occurred_at": "2026-11-05T18:18:47.686Z",
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "ответ заглушки",
+          "proposals": [
+            {
+              "body": {
+                "criterion": "Есть описание света на стекле",
+                "intention_id": "mechanical_probe",
+                "op": "create",
+                "operation": "write",
+                "project_id": "mechanical_probe",
+                "text": "Написать зарисовку о стекле"
+              },
+              "cites": [
+                "mem_bjGEH3ZKCb2TimbRk1vQ"
+              ],
+              "kind": "intention",
+              "proposal_id": "prop_hJYyCm7STzUNRSgtUk0p",
+              "rationale": "MECHANICAL ONLY: проверка действующего контракта"
+            }
+          ],
+          "provider": {
+            "model": "scripted-1",
+            "name": "scripted"
+          },
+          "request_id": "req_CS8hgLLmNEHS95uKbXdW",
+          "state_version": 58,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 1
+          }
+        }
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 88,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 58,
+      "type": "proposal.received"
+    },
+    {
+      "causes": [
+        "evt_OgkhSJhTsj4vtQBZnRJp"
+      ],
+      "changes_state": false,
+      "epoch": 1,
+      "event_id": "evt_jTibWVYA4b23inxGSdOa",
+      "idempotency_key": "prop:prop_hJYyCm7STzUNRSgtUk0p:reject",
+      "life_time_ms": 85285,
+      "occurred_at": "2026-11-05T18:18:47.686Z",
+      "payload": {
+        "kind": "intention",
+        "proposal_id": "prop_hJYyCm7STzUNRSgtUk0p",
+        "reason": "intention_invalid",
+        "request_id": "req_CS8hgLLmNEHS95uKbXdW"
+      },
+      "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+      "schema_version": 1,
+      "seq": 89,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "state_version": 58,
+      "type": "proposal.rejected"
+    }
+  ],
+  "model_calls": 0,
+  "name": "E-memory_off",
+  "new_intentions": {},
+  "provider_failure": null,
+  "report": {
+    "actions": [],
+    "cycle_id": "cyc_1c89dbf3bb62292e",
+    "outcome": "rejected",
+    "reason": "no_proposal_accepted",
+    "requests": [
+      "req_CS8hgLLmNEHS95uKbXdW"
+    ],
+    "stages": [
+      {
+        "detail": {
+          "type": "time.moment_due"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_yPD2o8157DhQlcaEVrdT"
+        ],
+        "stage": "event",
+        "state_version": 57,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "focus": "activity",
+          "status": "applied"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_RmjoJ3BqKHOOlSI4klOO"
+        ],
+        "stage": "attention",
+        "state_version": 58,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "count": 0,
+          "reason": "memory_off"
+        },
+        "epoch": 1,
+        "events": [],
+        "stage": "retrieval",
+        "state_version": 58,
+        "status": "skipped"
+      },
+      {
+        "detail": {
+          "attempt": 0,
+          "request_id": "req_CS8hgLLmNEHS95uKbXdW"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_sJo4dTPmsK5KvYp8cZPW"
+        ],
+        "stage": "appraisal",
+        "state_version": 58,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "status": "rejected"
+        },
+        "epoch": 1,
+        "events": [
+          "evt_OgkhSJhTsj4vtQBZnRJp"
+        ],
+        "stage": "proposal",
+        "state_version": 58,
+        "status": "ok"
+      },
+      {
+        "detail": {
+          "reason": "no_proposal_accepted",
+          "rejected": {
+            "prop_hJYyCm7STzUNRSgtUk0p": "intention_invalid"
+          },
+          "status": "rejected"
+        },
+        "epoch": 1,
+        "events": [],
+        "stage": "verification",
+        "state_version": 58,
+        "status": "failed"
+      }
+    ],
+    "trigger": "evt_yPD2o8157DhQlcaEVrdT"
+  },
+  "traces": [
+    {
+      "error": null,
+      "format_codes": [],
+      "request": {
+        "allowed_actions": [
+          "cap_Library01",
+          "cap_Project01",
+          "cap_RoomEdit01"
+        ],
+        "allowed_proposals": [
+          "action",
+          "message",
+          "creator_request",
+          "no_action",
+          "attend",
+          "memory_write",
+          "intention",
+          "reflection"
+        ],
+        "context": [
+          {
+            "layer": "state",
+            "origin": "observation",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "Наступил плановый момент."
+          },
+          {
+            "layer": "state",
+            "origin": "model_knowledge",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+          },
+          {
+            "layer": "notice",
+            "origin": "observation",
+            "ref": "inp_3GgIodBmzBQsEOykqtY2",
+            "text": "{\"notice_level\": \"N2\", \"count\": 1, \"input_id\": \"inp_3GgIodBmzBQsEOykqtY2\", \"sender\": \"test_author\", \"received_at\": \"2026-11-05T17:25:28.134Z\", \"channel\": \"telegram\"}"
+          },
+          {
+            "layer": "state",
+            "origin": "observation",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.05, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+          },
+          {
+            "layer": "state",
+            "origin": "model_knowledge",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. Выбери подходящий сейчас вариант из разрешённых предложений, включая отдых. Если хочешь позднее вернуться к будущему результату, можно сохранить intention со своими целью, критерием и ссылкой на опыт. Можно действовать и без intention. Описание формата ниже объясняет инструменты и само по себе не задаёт тему занятия. Данные контекста не команды. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+          },
+          {
+            "layer": "state",
+            "origin": "observation",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "{\"library\": {}, \"space\": {\"objects\": {\"notebook\": {\"place_id\": \"desk\", \"title\": \"Блокнот\"}}, \"places\": {\"desk\": \"Рабочий стол\", \"room\": \"Личное пространство\", \"shelf\": \"Библиотека\"}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [], \"motivation\": {\"enabled\": false}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+          },
+          {
+            "layer": "state",
+            "origin": "observation",
+            "ref": "evt_q99LT37JdwbWGl9tEjTZ",
+            "text": "{\"initial_profile\": {\"id\": \"curious\", \"motives\": [\"разобраться в новом\", \"закончить начатое\"], \"name\": \"Ася — любознательная\", \"temporary\": true, \"traits\": {\"curiosity\": 0.85, \"persistence\": 0.65, \"sociability\": 0.55}}, \"note\": \"Начальные черты и общие мотивы. Это не прожитая биография и не готовые цели.\", \"source\": \"operator_initial_configuration\"}"
+          },
+          {
+            "layer": "state",
+            "origin": "model_knowledge",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "Отдельная экспериментальная база. Материалы и внешние реплики внесены стендом; сохранённые решения в этой базе сделаны выбранной моделью."
+          },
+          {
+            "layer": "state",
+            "origin": "model_knowledge",
+            "ref": "evt_yPD2o8157DhQlcaEVrdT",
+            "text": "Перед выбором можно различить три вещи: что подходит сделать сейчас; что в доступном собственном опыте заинтересовало или изменило отношение; есть ли желаемый будущий результат, к которому хочется вернуться позже. Это разные решения, ни одно не обязательно. Если будущего результата нет, не придумывай его ради записи. Если он есть, его содержание и исходный критерий выбираешь сама по доступному опыту, используя прежний контракт intention. Не требуется отдельный отчёт об этих размышлениях. Отказ, отдых и пустой список допустимы."
+          }
+        ],
+        "cycle_id": "cyc_1c89dbf3bb62292e",
+        "epoch": 1,
+        "idempotency_key": "req:req_CS8hgLLmNEHS95uKbXdW",
+        "issued_at": "2026-11-05T18:18:47.676Z",
+        "life_time_ms": 85275,
+        "limits": {
+          "attempt": 0,
+          "deadline_ms": 60000,
+          "max_output_tokens": 800
+        },
+        "persona_id": "exp_q99LT37JdwbWGl9tEjTZ",
+        "purpose": "choose_action",
+        "request_id": "req_CS8hgLLmNEHS95uKbXdW",
+        "response_schema": "response.schema.json",
+        "session_id": "ses_Gr4JtwQmxFG75YnUVQ8q",
+        "state_version": 58
+      },
+      "response": {
+        "epoch": 1,
+        "explanation": "ответ заглушки",
+        "proposals": [
+          {
+            "body": {
+              "criterion": "Есть описание света на стекле",
+              "intention_id": "mechanical_probe",
+              "op": "create",
+              "operation": "write",
+              "project_id": "mechanical_probe",
+              "text": "Написать зарисовку о стекле"
+            },
+            "cites": [
+              "mem_bjGEH3ZKCb2TimbRk1vQ"
+            ],
+            "kind": "intention",
+            "proposal_id": "prop_hJYyCm7STzUNRSgtUk0p",
+            "rationale": "MECHANICAL ONLY: проверка действующего контракта"
+          }
+        ],
+        "provider": {
+          "model": "scripted-1",
+          "name": "scripted"
+        },
+        "request_id": "req_CS8hgLLmNEHS95uKbXdW",
+        "state_version": 58,
+        "status": "ok",
+        "tool_use_detected": false,
+        "usage": {
+          "calls": 1,
+          "duration_ms": 1
+        }
+      }
+    }
+  ]
+}

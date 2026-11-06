@@ -122,6 +122,9 @@ class SessionRunner:
             name = inner.name
 
             def propose(self, request):
+                selected = owner.ctl.state["preferences"].get("provider_config")
+                if selected is not None and selected != {"name": inner.name, "model": getattr(inner, "model", None)}:
+                    raise ProviderError("Подключённый поставщик не соответствует выбранной конфигурации")
                 owner.request_id = request["request_id"]
                 if charge:
                     owner.charge()
