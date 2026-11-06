@@ -81,7 +81,9 @@ def frozen_sources():
             "docs/evidence/S25-project-view-design.md":
             series.sha(series.ROOT / "docs/evidence/S25-project-view-design.md"),
             "docs/evidence/S25-options-design.md":
-            series.sha(series.ROOT / "docs/evidence/S25-options-design.md")}
+            series.sha(series.ROOT / "docs/evidence/S25-options-design.md"),
+            "docs/evidence/S25-memory-format-design.md":
+            series.sha(series.ROOT / "docs/evidence/S25-memory-format-design.md")}
 
 
 def snapshot(source, destination):

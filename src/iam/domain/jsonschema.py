@@ -1,7 +1,7 @@
 """Мини-проверка JSON Schema (подмножество draft 2020-12), только стандартная библиотека.
 
 Поддержано: type, enum, const, required, properties, additionalProperties(false), items, minItems,
-uniqueItems, minLength, maxLength, minimum, maximum, pattern, allOf, if/then, not, $ref на файл рядом.
+uniqueItems, minLength, maxLength, minimum, maximum, pattern, allOf, anyOf, if/then, not, $ref на файл рядом.
 Неизвестное ключевое слово — ошибка (чтобы схема не «молча» ничего не проверяла).
 Перенесено из tests/schema_lite.py (S02) в пакет в S04; tests/schema_lite.py теперь реэкспорт.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 
 KNOWN = {"$schema", "$id", "title", "description", "type", "enum", "const", "required", "properties",
          "additionalProperties", "items", "minItems", "uniqueItems", "minLength", "maxLength", "minimum",
-         "maximum", "pattern", "allOf", "if", "then", "not", "$ref"}
+         "maximum", "pattern", "allOf", "anyOf", "if", "then", "not", "$ref"}
 TYPES = {"string": str, "object": dict, "array": list, "boolean": bool, "null": type(None)}
 
 
@@ -81,6 +81,8 @@ def check(schema: dict, value, base: Path, path: str = "$") -> list[str]:
                 errs += check(schema["items"], x, base, f"{path}[{i}]")
     for sub in schema.get("allOf", []):
         errs += check(sub, value, base, path)
+    if "anyOf" in schema and not any(not check(sub, value, base, path) for sub in schema["anyOf"]):
+        errs.append(f"{path}: не подходит ни один вариант anyOf")
     if "if" in schema and not check(schema["if"], value, base, path):
         if "then" in schema:
             errs += check(schema["then"], value, base, path)

@@ -4,42 +4,113 @@
     "proposals": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "action",
-              "message",
-              "state_change",
-              "memory_write",
-              "intention",
-              "creator_request",
-              "no_action",
-              "reflection"
-            ]
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "action",
+                  "message",
+                  "state_change",
+                  "intention",
+                  "creator_request",
+                  "no_action",
+                  "reflection"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "cites": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+                }
+              },
+              "body_json": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "rationale",
+              "cites",
+              "body_json"
+            ],
+            "additionalProperties": false
           },
-          "rationale": {
-            "type": "string"
-          },
-          "cites": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
-            }
-          },
-          "body_json": {
-            "type": "string"
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "memory_write"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "cites": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+                }
+              },
+              "draft": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "sensory",
+                      "working",
+                      "episodic",
+                      "semantic",
+                      "autobiographical",
+                      "emotional_associative",
+                      "procedural",
+                      "social",
+                      "prospective"
+                    ]
+                  },
+                  "origin": {
+                    "type": "string",
+                    "enum": [
+                      "observation",
+                      "model_knowledge",
+                      "stated_by_other",
+                      "own_hypothesis",
+                      "imagination",
+                      "simulation_event",
+                      "model_explanation"
+                    ]
+                  },
+                  "content_json": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "origin",
+                  "content_json"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "rationale",
+              "cites",
+              "draft"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "kind",
-          "rationale",
-          "cites",
-          "body_json"
-        ],
-        "additionalProperties": false
+        ]
       }
     },
     "explanation": {

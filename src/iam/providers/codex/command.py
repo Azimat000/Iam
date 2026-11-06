@@ -54,6 +54,31 @@ RESPONSE_JSON_SCHEMA['properties']['attention'] = {
     'required': ['rationale', 'cites', 'focus', 'ref'], 'additionalProperties': False,
 }
 RESPONSE_JSON_SCHEMA['required'].append('attention')
+# Исторический wire3 читается строго по прежнему контракту, без ремонта его тел.
+WIRE3_RESPONSE_JSON_SCHEMA = copy.deepcopy(RESPONSE_JSON_SCHEMA)
+general = copy.deepcopy(RESPONSE_JSON_SCHEMA['properties']['proposals']['items'])
+general['properties']['kind']['enum'].remove('memory_write')
+memory = {
+    'type': 'object', 'properties': {
+        'kind': {'type': 'string', 'enum': ['memory_write']},
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(general['properties']['cites']),
+        'draft': {'type': 'object', 'properties': {
+            'kind': {'type': 'string', 'enum': ['sensory', 'working', 'episodic', 'semantic',
+                     'autobiographical', 'emotional_associative', 'procedural', 'social', 'prospective']},
+            'origin': {'type': 'string', 'enum': ['observation', 'model_knowledge', 'stated_by_other',
+                       'own_hypothesis', 'imagination', 'simulation_event', 'model_explanation']},
+            'content_json': {'type': 'string'}},
+            'required': ['kind', 'origin', 'content_json'], 'additionalProperties': False}},
+    'required': ['kind', 'rationale', 'cites', 'draft'], 'additionalProperties': False,
+}
+RESPONSE_JSON_SCHEMA['properties']['proposals']['items'] = {'anyOf': [general, memory]}
+SYSTEM_PROMPT += (
+    ' For memory_write only, use the explicit draft field instead of body_json. '
+    'draft has kind, origin and content_json, a JSON-encoded content object following the supplied memory instructions. '
+    'The adapter copies these fields into the existing body.draft, parsing content_json into draft.content. '
+    'Other proposals still use body_json. Keep proposals in your chosen order; no memory write is required.'
+)
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 _MEMORY = re.compile(r"([1-9]\d*)([mg])")
 

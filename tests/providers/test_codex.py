@@ -373,11 +373,11 @@ class CommandTests(unittest.TestCase):
 
     def test_wire_schema_is_strict_and_has_all_shared_kinds(self):
         self.assertFalse(RESPONSE_JSON_SCHEMA["additionalProperties"])
-        proposal = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]
+        proposal, memory = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]["anyOf"]
         self.assertFalse(proposal["additionalProperties"])
         self.assertEqual(set(proposal["required"]), set(proposal["properties"]))
         self.assertEqual(set(RESPONSE_JSON_SCHEMA["required"]), set(RESPONSE_JSON_SCHEMA["properties"]))
-        self.assertEqual(set(proposal["properties"]["kind"]["enum"]) | {"attend"},
+        self.assertEqual(set(proposal["properties"]["kind"]["enum"]) | set(memory["properties"]["kind"]["enum"]) | {"attend"},
                          {"action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"})
         self.assertEqual(proposal["properties"]["body_json"], {"type": "string"})
         attention = RESPONSE_JSON_SCHEMA["properties"]["attention"]
@@ -387,6 +387,12 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(attention["properties"]["focus"]["enum"],
                          ["activity", "intention", "event", "dialogue", "rest"])
         self.assertNotIn("attend", proposal["properties"]["kind"]["enum"])
+        self.assertNotIn("memory_write", proposal["properties"]["kind"]["enum"])
+        self.assertEqual(set(memory["required"]),set(memory["properties"]))
+        self.assertFalse(memory["additionalProperties"])
+        draft=memory["properties"]["draft"]
+        self.assertEqual(set(draft["required"]),set(draft["properties"]))
+        self.assertFalse(draft["additionalProperties"])
 
 
 class AuthTests(unittest.TestCase):
