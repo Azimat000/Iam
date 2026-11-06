@@ -241,6 +241,11 @@ class ProspectiveTest(LivingCase):
             report = self.cycle.run(self.due())
         self.assertEqual(report.reason, 'appraisal_request_rejected')
         self.assertEqual(len(self.p.calls), 1)
+        from iam.world.cycle import LivingCycle
+        self.rebuild(LivingCycle)
+        self.write('Новое основание после отказа записи')
+        self.enable()
+        before = len(self.p.calls)
         original = self.c.record_event
         def fail_marker(spec, **kwargs):
             if spec.type == 'proposal.assessed': return SimpleNamespace(event=None)
@@ -248,4 +253,13 @@ class ProspectiveTest(LivingCase):
         with patch.object(self.c, 'record_event', fail_marker):
             report = self.cycle.run(self.due())
         self.assertEqual(report.reason, 'appraisal_reservation_rejected')
-        self.assertEqual(len(self.p.calls), 1)
+        self.assertEqual(len(self.p.calls), before)
+
+    def test_failed_preparation_never_sends_commit_or_retries_the_same_basis(self):
+        self.read(); self.enable()
+        with patch.object(self.cycle,'_prepare_appraisal',side_effect=RuntimeError('prepare')):
+            report=self.cycle.run(self.due())
+        self.assertEqual(report.reason,'appraisal_preparation_error')
+        self.assertEqual(len(self.p.calls),1)
+        self.assertEqual(self.run_reply(rest()).outcome,'done')
+        self.assertEqual(self.p.calls[-1]['purpose'],'choose_action')

@@ -18,6 +18,7 @@ from integration import live_series as series
 from integration import typed_intention as typed
 from integration.test_persistent_core import tick, wire
 from iam.world.prospective import ProspectiveCycle, ASSESSMENT, BOUNDARY
+from iam.world.options import OptionsCycle, GENERATOR
 
 VERSION = "s25-intention-probe-1"
 MAX_CALLS = 12
@@ -45,6 +46,14 @@ class ProspectiveExperimentCycle(ProspectiveCycle, series.ExperimentCycle):
     """Тот же профиль/опыт, но выполненная дополнительная операция."""
 
 
+class OptionsExperimentCycle(OptionsCycle, series.ExperimentCycle):
+    """Раздельный поиск вариантов и фактическое решение с прежним профилем."""
+
+
+class HiddenOptionsCycle(OptionsExperimentCycle):
+    expose_options = False
+
+
 class AssessmentOnlyCycle(ProspectiveExperimentCycle):
     appraisal_instructions = ASSESSMENT + BOUNDARY
 
@@ -70,7 +79,9 @@ def frozen_sources():
             "docs/evidence/S25-appraisal-design.md":
             series.sha(series.ROOT / "docs/evidence/S25-appraisal-design.md"),
             "docs/evidence/S25-project-view-design.md":
-            series.sha(series.ROOT / "docs/evidence/S25-project-view-design.md")}
+            series.sha(series.ROOT / "docs/evidence/S25-project-view-design.md"),
+            "docs/evidence/S25-options-design.md":
+            series.sha(series.ROOT / "docs/evidence/S25-options-design.md")}
 
 
 def snapshot(source, destination):
@@ -85,9 +96,9 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
               protocol="original", image="iam-codex:1"):
     if mode not in ("live", "stub") or (mode == "live" and not auth_file):
         raise ValueError("Invalid probe mode or credentials")
-    if protocol not in ("original", "typed", "prospective", "project_view"):
+    if protocol not in ("original", "typed", "prospective", "project_view", "options"):
         raise ValueError("Invalid probe protocol")
-    if protocol in ("typed", "prospective", "project_view") and mode == "live" and provider_factory is None:
+    if protocol in ("typed", "prospective", "project_view", "options") and mode == "live" and provider_factory is None:
         import re
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
             raise ValueError("Diagnostic live requires an immutable audited image ID")
@@ -118,13 +129,15 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                 if StateController(store).state != recorded["state"]:
                     raise ValueError("Source database differs from the recorded live history")
         initial[story] = {"sha256": series.sha(destination), "history_digest": series.state_digest(destination)}
-    version = ("s25-project-view-1" if protocol == "project_view" else
+    version = ("s25-options-1" if protocol == "options" else
+               "s25-project-view-1" if protocol == "project_view" else
                "s25-prospective-1" if protocol == "prospective" else
                "s25-typed-intention-1" if protocol == "typed" else VERSION)
-    arms = (("legacy_view", "correct_view") if protocol == "project_view" else
+    arms = (("options_hidden", "options_visible") if protocol == "options" else
+            ("legacy_view", "correct_view") if protocol == "project_view" else
             ("baseline", "assessment_only", "prospective") if protocol == "prospective" else
             ("baseline", "explicit", "memory_off") if protocol == "typed" else ARMS)
-    max_calls, cell_cap = ((16, 4) if protocol == "project_view" else
+    max_calls, cell_cap = ((16, 4) if protocol in ("project_view", "options") else
                            (24, 4) if protocol == "prospective" else (MAX_CALLS, 2))
     artifacts.write("manifest.json", {"version": version, "mode": mode, "model": series.MODEL,
                     "sources": frozen, "initial": initial, "stories": STORIES,
@@ -132,11 +145,15 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                     "protocol": protocol, "arms": arms, "image": image,
                     "response_schema": RESPONSE_JSON_SCHEMA,
                     "deliberation": DELIBERATION if protocol == "original" else None,
-                    "appraisal_instructions": ProspectiveCycle.appraisal_instructions if protocol in ("prospective", "project_view") else None,
+                    "appraisal_instructions": ProspectiveCycle.appraisal_instructions if protocol in ("prospective", "project_view", "options") else None,
                     "control_instructions": AssessmentOnlyCycle.appraisal_instructions if protocol == "prospective" else None,
                     "typed_schema": typed.SCHEMA if protocol == "typed" else None,
                     "typed_prompt": typed.PROMPT if protocol == "typed" else None,
-                    "max_decisions": 6, "max_model_calls": max_calls,
+                    "option_search": {"instructions": GENERATOR, "max_options": OptionsCycle.max_options,
+                                      "max_option_chars": OptionsCycle.max_option_chars,
+                                      "buffer_chars": OptionsCycle.option_buffer_chars,
+                                      "candidate_is_commitment": False} if protocol == "options" else None,
+                    "max_decisions": len(STORIES) * len(arms), "max_model_calls": max_calls,
                     "cell_model_calls": cell_cap, "native_retries": 0, "cycle_retries": 0,
                     "readiness": None, "scope": "Diagnostic only; no continuation/completion claim."}, exclusive=True)
     manifest_sha = series.sha(output / "manifest.json")
@@ -203,7 +220,9 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                              ScriptedProvider([Reply((rest(),))]))
                     provider = series.audit.AuditedProvider(ProbeProvider(inner, active), artifacts,
                                                           "cells/" + name, disclose=False)
-                    cycle_type = ((LegacyProjectViewCycle if arm == "legacy_view" else ProspectiveExperimentCycle)
+                    cycle_type = ((HiddenOptionsCycle if arm == "options_hidden" else OptionsExperimentCycle)
+                                  if protocol == "options" else
+                                  (LegacyProjectViewCycle if arm == "legacy_view" else ProspectiveExperimentCycle)
                                   if protocol == "project_view" else
                                   (series.ExperimentCycle if arm == "baseline" else AssessmentOnlyCycle
                                    if arm == "assessment_only" else ProspectiveExperimentCycle)
@@ -254,7 +273,7 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--mode", choices=("stub", "live"), default="stub")
     parser.add_argument("--auth-file")
-    parser.add_argument("--protocol", choices=("original", "typed", "prospective", "project_view"), default="original")
+    parser.add_argument("--protocol", choices=("original", "typed", "prospective", "project_view", "options"), default="original")
     parser.add_argument("--image", default="iam-codex:1")
     args = parser.parse_args()
     summary = run_probe(args.source, args.output, mode=args.mode, auth_file=args.auth_file,

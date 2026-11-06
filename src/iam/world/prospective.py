@@ -60,6 +60,9 @@ class ProspectiveCycle(LivingCycle):
         digest = hashlib.sha256(f'experience-appraisal:{row.memory_id}:{row.version}'.encode()).hexdigest()[:32]
         return 'assess:req_' + digest
 
+    def _prepare_appraisal(self, request, bases):
+        return request
+
     def _appraise_experience(self, rep, trigger, focus, records):
         if self.memory.off or self.motivation.off:
             self._stage(rep, 'experience_appraisal', 'skipped', detail={'reason': 'disabled'})
@@ -81,11 +84,6 @@ class ProspectiveCycle(LivingCycle):
                           'прежний опыт может быть дополнительным основанием.'})
         request = self._request(rep.cycle_id, context, 0, None, purpose='appraise')
         request['allowed_proposals'] = ['memory_write', 'intention']
-        sent = self.ctl.record_request(request)
-        if sent.event is None:
-            self._end(rep, 'no_decision', 'appraisal_request_rejected')
-            return False
-        rep.requests.append(request['request_id'])
         # Резервируем основания до I/O: сбой/перезапуск не запускает подбор целей заново.
         for row in bases:
             marker = self.ctl.record_event(EventSpec('proposal.assessed', self._source_key(row), {
@@ -94,6 +92,18 @@ class ProspectiveCycle(LivingCycle):
             if marker.event is None:
                 self._end(rep, 'no_decision', 'appraisal_reservation_rejected')
                 return False
+        try:
+            request = self._prepare_appraisal(request, bases)
+        except Exception as error:
+            self.record_fault('experience_preparation_error', request['request_id'], {'error': type(error).__name__})
+            self._stage(rep, 'experience_appraisal', 'failed', detail={'error': type(error).__name__})
+            self._end(rep, 'no_decision', 'appraisal_preparation_error')
+            return False
+        sent = self.ctl.record_request(request)
+        if sent.event is None:
+            self._end(rep, 'no_decision', 'appraisal_request_rejected')
+            return False
+        rep.requests.append(request['request_id'])
         try:
             response = self.provider.propose(request)
         except Exception as error:
