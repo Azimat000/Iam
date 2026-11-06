@@ -130,6 +130,15 @@ class LivingCycle(Cycle):
         self._schedule_intentions()
         return super().run(trigger, round_=round_)
 
+    def _project_view(self, value):
+        # Наличие редактируемого текста не означает выбранного будущего обязательства.
+        result = {key: item for key, item in value.items() if key != 'status'}
+        status = value.get('status', 'active')
+        result['can_edit'] = status == 'active'
+        if status != 'active':
+            result['closed_as'] = status
+        return result
+
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
         state = self.world.state
@@ -147,7 +156,7 @@ class LivingCycle(Cycle):
         goals = {} if self.motivation.off else self.intentions.visible()
         catalog = {'library': {key: {'title': value['title']} for key, value in list(state.get('library', {}).items())[:30]},
                    'space': state.get('space', {}),
-                   'projects': {key: value for key, value in state.get('projects', {}).items()
+                   'projects': {key: self._project_view(value) for key, value in state.get('projects', {}).items()
                                 if any(item['event_id'] == state.get('works', {}).get(value['latest_work'], {}).get('event_id')
                                        for item in results) and self.memory._safe_item(value)},
                    'intentions': goals, 'world_results': results[:3], 'motivation': self.motivation.signals(records)}

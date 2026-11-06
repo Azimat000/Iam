@@ -49,6 +49,11 @@ class AssessmentOnlyCycle(ProspectiveExperimentCycle):
     appraisal_instructions = ASSESSMENT + BOUNDARY
 
 
+class LegacyProjectViewCycle(ProspectiveExperimentCycle):
+    def _project_view(self, value):
+        return value
+
+
 class ProbeProvider(series.GuardedProvider):
     def propose(self, request):
         if request["purpose"] == "choose_action" and request["limits"].get("attempt", 0):
@@ -63,7 +68,9 @@ def frozen_sources():
             "docs/evidence/S25-typed-intention-design.md":
             series.sha(series.ROOT / "docs/evidence/S25-typed-intention-design.md"),
             "docs/evidence/S25-appraisal-design.md":
-            series.sha(series.ROOT / "docs/evidence/S25-appraisal-design.md")}
+            series.sha(series.ROOT / "docs/evidence/S25-appraisal-design.md"),
+            "docs/evidence/S25-project-view-design.md":
+            series.sha(series.ROOT / "docs/evidence/S25-project-view-design.md")}
 
 
 def snapshot(source, destination):
@@ -78,9 +85,9 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
               protocol="original", image="iam-codex:1"):
     if mode not in ("live", "stub") or (mode == "live" and not auth_file):
         raise ValueError("Invalid probe mode or credentials")
-    if protocol not in ("original", "typed", "prospective"):
+    if protocol not in ("original", "typed", "prospective", "project_view"):
         raise ValueError("Invalid probe protocol")
-    if protocol in ("typed", "prospective") and mode == "live" and provider_factory is None:
+    if protocol in ("typed", "prospective", "project_view") and mode == "live" and provider_factory is None:
         import re
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
             raise ValueError("Diagnostic live requires an immutable audited image ID")
@@ -111,18 +118,21 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                 if StateController(store).state != recorded["state"]:
                     raise ValueError("Source database differs from the recorded live history")
         initial[story] = {"sha256": series.sha(destination), "history_digest": series.state_digest(destination)}
-    version = ("s25-prospective-1" if protocol == "prospective" else
+    version = ("s25-project-view-1" if protocol == "project_view" else
+               "s25-prospective-1" if protocol == "prospective" else
                "s25-typed-intention-1" if protocol == "typed" else VERSION)
-    arms = (("baseline", "assessment_only", "prospective") if protocol == "prospective" else
+    arms = (("legacy_view", "correct_view") if protocol == "project_view" else
+            ("baseline", "assessment_only", "prospective") if protocol == "prospective" else
             ("baseline", "explicit", "memory_off") if protocol == "typed" else ARMS)
-    max_calls, cell_cap = (24, 4) if protocol == "prospective" else (MAX_CALLS, 2)
+    max_calls, cell_cap = ((16, 4) if protocol == "project_view" else
+                           (24, 4) if protocol == "prospective" else (MAX_CALLS, 2))
     artifacts.write("manifest.json", {"version": version, "mode": mode, "model": series.MODEL,
                     "sources": frozen, "initial": initial, "stories": STORIES,
                     "source_manifest_sha256": series.sha(source / "manifest.json") if source_manifest else None,
                     "protocol": protocol, "arms": arms, "image": image,
                     "response_schema": RESPONSE_JSON_SCHEMA,
                     "deliberation": DELIBERATION if protocol == "original" else None,
-                    "appraisal_instructions": ProspectiveCycle.appraisal_instructions if protocol == "prospective" else None,
+                    "appraisal_instructions": ProspectiveCycle.appraisal_instructions if protocol in ("prospective", "project_view") else None,
                     "control_instructions": AssessmentOnlyCycle.appraisal_instructions if protocol == "prospective" else None,
                     "typed_schema": typed.SCHEMA if protocol == "typed" else None,
                     "typed_prompt": typed.PROMPT if protocol == "typed" else None,
@@ -193,7 +203,9 @@ def run_probe(source, output, *, mode="stub", auth_file=None, provider_factory=N
                              ScriptedProvider([Reply((rest(),))]))
                     provider = series.audit.AuditedProvider(ProbeProvider(inner, active), artifacts,
                                                           "cells/" + name, disclose=False)
-                    cycle_type = ((series.ExperimentCycle if arm == "baseline" else AssessmentOnlyCycle
+                    cycle_type = ((LegacyProjectViewCycle if arm == "legacy_view" else ProspectiveExperimentCycle)
+                                  if protocol == "project_view" else
+                                  (series.ExperimentCycle if arm == "baseline" else AssessmentOnlyCycle
                                    if arm == "assessment_only" else ProspectiveExperimentCycle)
                                   if protocol == "prospective" else
                                   series.ExperimentCycle if protocol == "typed" or arm == "baseline" else DeliberationCycle)
@@ -242,7 +254,7 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--mode", choices=("stub", "live"), default="stub")
     parser.add_argument("--auth-file")
-    parser.add_argument("--protocol", choices=("original", "typed", "prospective"), default="original")
+    parser.add_argument("--protocol", choices=("original", "typed", "prospective", "project_view"), default="original")
     parser.add_argument("--image", default="iam-codex:1")
     args = parser.parse_args()
     summary = run_probe(args.source, args.output, mode=args.mode, auth_file=args.auth_file,
