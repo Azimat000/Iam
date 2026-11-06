@@ -1,0 +1,106 @@
+{
+  "scope": "D-081–D-086; current user request",
+  "user_goal_achieved": false,
+  "s25_accepted": false,
+  "s26_started": false,
+  "criteria": [
+    {
+      "requirement": "Проверить исправленный формат живьём",
+      "status": "PASS_WITH_FIXTURE_LIMITATION",
+      "evidence": [
+        "S25-goal-cause-audit.json",
+        "S25-goal-continuation-audit.json"
+      ],
+      "finding": "Все 14 ответов нового draft-формата прошли native/shared; E — 6/6. Непустой attention допустим, но строгий fixture с cites=[] не совпал; исходный отказ сохранён."
+    },
+    {
+      "requirement": "Завершить второй случай E",
+      "status": "PASS",
+      "evidence": [
+        "S25-goal-cause-audit.json"
+      ],
+      "finding": "Все три ветви E исполнены на 630b748: 3 решения / 6 вызовов, целей нет."
+    },
+    {
+      "requirement": "Установить и устранить причину отсутствия собственных целей",
+      "status": "NOT_FULLY_MET",
+      "evidence": [
+        "S25-goal-cause-result.md"
+      ],
+      "finding": "Раздельный поиск и выбор дали одну явную принятую цель в A-visible; остальные ветви — 0. Причина всех прежних нулей и устойчивость не доказаны."
+    },
+    {
+      "requirement": "Изменить устройство без автоматически назначенных целей",
+      "status": "PASS_FOR_DIAGNOSTIC_SCOPE",
+      "evidence": [
+        "src/iam/world/options.py",
+        "tests/world/test_options.py",
+        "S25-goal-cause-review.md"
+      ],
+      "finding": "Кандидаты не применяются; полный create выбирает модель, StateController проверяет настоящие источники. Runtime не переключён без двух отдельных историй."
+    },
+    {
+      "requirement": "Сохранить цель проекта и условия приёмки",
+      "status": "PASS",
+      "evidence": [
+        "S25-goal-cause-invariants.json"
+      ],
+      "finding": "61 файл условий, общих схем, защит и Runtime не изменён. В PLAN меняется только служебная строка 354; цель и семь критериев прежние."
+    },
+    {
+      "requirement": "Сохранить модель,источники,права,версии,общийслот,сроки,бюджет",
+      "status": "PASS_FOR_TESTED_SCOPE",
+      "evidence": [
+        "S25-goal-cause-invariants.json",
+        "tests/world/test_options.py",
+        "tests/world/test_prospective.py",
+        "S25-goal-cause-audit.json"
+      ],
+      "finding": "gpt-6-luna и профиль прежние. Фактически 13 решений / 33 обращения. Предложение не считается принятием, отказы сохранены."
+    },
+    {
+      "requirement": "Добровольная цель и её сохранение после нового процесса",
+      "status": "PASS_ONE_STORY",
+      "evidence": [
+        "S25-goal-cause-audit.json",
+        "S25-goal-continuation-audit.json"
+      ],
+      "finding": "Один create принят в A-visible; новый CLI полностью восстановил active-цель, критерий и источники."
+    },
+    {
+      "requirement": "Позднее продолжение и подходящее завершение",
+      "status": "NOT_MET",
+      "evidence": [
+        "S25-goal-continuation-audit.json",
+        "S25-goal-cause-result.md"
+      ],
+      "finding": "После нового запуска нет действий и done. Partial остановил выбор; D-086 исправлен локально, живого повтора нет. Второй сеанс не исполнялся."
+    },
+    {
+      "requirement": "Две отдельные истории с целями и остальной минимум S25",
+      "status": "NOT_MET",
+      "evidence": [
+        "docs/COMPLETION.md",
+        "S25-goal-cause-audit.json"
+      ],
+      "finding": "Есть только одна история с целью. Полная серия нового маршрута 54/216 не открыта; Runtime прежний, S26 не начат."
+    },
+    {
+      "requirement": "Сохранить прошлые свидетельства и честный аудит",
+      "status": "PASS_WITH_DISCLOSED_DEVIATION",
+      "evidence": [
+        "S25-audit-observer-note.md",
+        "S25-goal-cause-audit.json"
+      ],
+      "finding": "Raw и result не переписаны. Незапланированная аудиторская crash-pause seq96 в старой неудачной базе раскрыта, сохранена и не приписывается модели."
+    },
+    {
+      "requirement": "Полный технический прогон после последней правки",
+      "status": "PASS",
+      "evidence": [
+        "S25-goal-cause-technical.json"
+      ],
+      "finding": "Первичный 986ea1a прерван с exit130 и не считается успешным. Исправленный 6c7609b: 1455 тестов / 758.476 с PASS, пропусков 0, 151 порог покрытия выполнен, шесть изменённых модулей 100% строк и ветвей."
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "primary": {
+    "commit": "986ea1a3bdb0236a8ad2fa22703b49c83bb221fc",
+    "status": "interrupted_after_reproduced_partial_defect",
+    "exit_code": 130,
+    "completed_tests": null,
+    "passed": false,
+    "log": "S25-goal-cause-primary-interrupted.txt"
+  },
+  "corrective_1": {
+    "commit": "6c7609b429787778ab35e0fccd27c991140cac14",
+    "command": "PYTHONPATH=src <venv-python> tools/covcheck.py",
+    "exit_code": 0,
+    "tests": 1455,
+    "duration_s": 758.476,
+    "skipped": 0,
+    "modules": 151,
+    "below_threshold": 0,
+    "passed": true,
+    "changed_modules_100_lines_and_branches": [
+      "src/iam/domain/jsonschema.py",
+      "src/iam/providers/codex/command.py",
+      "src/iam/providers/codex/provider.py",
+      "src/iam/world/cycle.py",
+      "src/iam/world/options.py",
+      "src/iam/world/prospective.py"
+    ],
+    "log": "S25-goal-cause-full-check.txt",
+    "log_sha256": "2b05af8bd47240a7a228054ca03688dd9cbd997a90987e3379f6b35cb0047376"
+  },
+  "budget": {
+    "primary": 1,
+    "corrective_runs_used": 1,
+    "corrective_runs_max": 2
+  },
+  "live_after_D086": 0,
+  "user_goal_achieved": false,
+  "post_documentation": {
+    "command": "PYTHONPATH=src:tests <venv-python> -m unittest test_reqs test_memory_tool -q",
+    "tests": 81,
+    "duration_s": 10.705,
+    "exit_code": 0,
+    "passed": true,
+    "log": "S25-goal-cause-post-doc-check.txt",
+    "validators": [
+      "memory check",
+      "reqs validate:226",
+      "scenarios validate:33/required19",
+      "reqs coverage --check",
+      "git diff --check"
+    ]
+  }
+}
