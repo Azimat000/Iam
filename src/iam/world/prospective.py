@@ -123,7 +123,7 @@ class ProspectiveCycle(LivingCycle):
         proposals = response.get('proposals') if isinstance(response, dict) else None
         declined = (result.status == 'rejected' and result.reason == 'no_proposal_accepted'
                     and proposals == [])
-        ok = declined or result.status == 'applied'
+        ok = declined or result.status in ('applied', 'partial')
         accepted = set(result.accepted)
         self._appraised_intention = any(pr['kind'] == 'intention' and pr['proposal_id'] in accepted
                                        for pr in (proposals or []))

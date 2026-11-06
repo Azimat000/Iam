@@ -197,6 +197,40 @@ class ProspectiveTest(LivingCase):
         self.assertEqual(self.run_reply(self.transition('abandoned')).outcome, 'no_decision')
         self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'active')
 
+    def test_partial_conflicting_appraisals_keep_first_and_continue_real_action(self):
+        source = self.read(); self.enable()
+        first = self.interpretation(source, motivation=True)
+        first['body']['draft']['content']['text'] = 'FIRST_ACCEPTED_APPRAISAL'
+        second = copy.deepcopy(first)
+        second['proposal_id'] = new_id('prop')
+        second['body']['draft']['content']['text'] = 'SECOND_REJECTED_APPRAISAL'
+        second['body']['draft']['content']['motivation']['interest'] = .9
+        report = self.run_reply(first, second, replies=(Reply((act(WRITE, {
+            'project_id': 'poem', 'title': 'Работа', 'text': 'Поздняя запись после оценки'}),)),))
+        self.assertEqual(report.outcome, 'done')
+        self.assertEqual(report.actions[0].status, 'confirmed')
+        appraisal = next(stage for stage in report.stages if stage.stage == 'experience_appraisal')
+        self.assertEqual(appraisal.detail['status'], 'partial')
+        self.assertEqual(appraisal.detail['rejected'], {second['proposal_id']: 'conflicts_with_accepted'})
+        choice = self.p.calls[-1]
+        self.assertIn('FIRST_ACCEPTED_APPRAISAL', json.dumps(choice['context']))
+        self.assertNotIn('SECOND_REJECTED_APPRAISAL', json.dumps(choice['context']))
+        self.assertFalse(self.c.state['intentions'])
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_partial_memory_and_rejected_goal_never_invents_or_spends_goal_slot(self):
+        source = self.read(); self.enable()
+        rejected = self.transition('active')
+        rejected['cites'] = [source.memory_id]
+        report = self.run_reply(self.interpretation(source), rejected, replies=(Reply((rest(),)),))
+        self.assertEqual(report.outcome, 'done')
+        appraisal = next(stage for stage in report.stages if stage.stage == 'experience_appraisal')
+        self.assertEqual(appraisal.detail['status'], 'partial')
+        self.assertIn(rejected['proposal_id'], appraisal.detail['rejected'])
+        self.assertIn('intention', self.p.calls[-1]['allowed_proposals'])
+        self.assertFalse(self.c.state['intentions'])
+        self.assertEqual(verify(self.c.store), [])
+
     def test_second_goal_in_same_cycle_is_rejected_by_request_scope(self):
         source = self.read(); self.enable()
         other = self.goal(source, iid='other')
