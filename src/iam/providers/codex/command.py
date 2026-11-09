@@ -72,12 +72,24 @@ memory = {
             'required': ['kind', 'origin', 'content_json'], 'additionalProperties': False}},
     'required': ['kind', 'rationale', 'cites', 'draft'], 'additionalProperties': False,
 }
-RESPONSE_JSON_SCHEMA['properties']['proposals']['items'] = {'anyOf': [general, memory]}
+project_write = {
+    'type': 'object', 'properties': {
+        'kind': {'type': 'string', 'enum': ['project_write']},
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(general['properties']['cites']),
+        'project_id': {'type': 'string'}, 'title': {'type': 'string'}, 'text': {'type': 'string'}},
+    'required': ['kind', 'rationale', 'cites', 'project_id', 'title', 'text'], 'additionalProperties': False,
+}
+RESPONSE_JSON_SCHEMA['properties']['proposals']['items'] = {'anyOf': [general, memory, project_write]}
 SYSTEM_PROMPT += (
     ' For memory_write only, use the explicit draft field instead of body_json. '
     'draft has kind, origin and content_json, a JSON-encoded content object following the supplied memory instructions. '
     'The adapter copies these fields into the existing body.draft, parsing content_json into draft.content. '
-    'Other proposals still use body_json. Keep proposals in your chosen order; no memory write is required.'
+    ' Keep proposals in your chosen order; no memory write is required.'
+    ' When you choose a project text write, use the native wire kind project_write, with project_id, title and text '
+    'as separate fields beside rationale and cites, without body_json. This is just the encoding of an action '
+    'with cap_Project01 and those three params, so use it only when action and cap_Project01 are allowed. '
+    'Other actions, including a project status change, still use body_json.'
 )
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 _MEMORY = re.compile(r"([1-9]\d*)([mg])")

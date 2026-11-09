@@ -26,6 +26,7 @@ from integration.live_series import MODEL, ROOT, ExperimentCycle, StopSeries, au
 from integration.test_persistent_core import tick, wire
 
 DESIGN = ROOT / 'docs/evidence/S25-project-affordance-design.md'
+PROJECT_WRITE_IMAGE = 'sha256:2ae05eaf599a5f14fb55c04398a85f96c72cf97140b72365882e1868d0c39b2e'
 BRANCHES = ('e-library', 'independent', 'e-legacy', 'e-empty')
 SESSIONS, DECISIONS, PER_DECISION = 3, 2, 4
 SESSION_MS = 1_800_000
@@ -196,12 +197,15 @@ def check_frozen(root, manifest, summary):
 
 def run_session(root, branch, number, auth):
     manifest, summary = load(root, 'manifest.json'), load(root, 'summary.json')
+    image = PROJECT_WRITE_IMAGE if manifest['version'] == 'D-100' else IMAGE
+    if manifest['image'] != image:
+        raise StopSeries('unexpected_worker_image')
     output = artifacts(root, auth)
     check_frozen(root, manifest, summary)
     if (summary['status'] != 'running' or (manifest['mode'] == 'live') != bool(auth)
             or (branch, number) != next_session(summary['sessions'], manifest['branches'], manifest.get('sessions', SESSIONS))):
         raise StopSeries('unexpected_worker')
-    decisions = manifest['decisions_per_session']
+    decisions = manifest.get('branch_decisions', {}).get(branch, manifest['decisions_per_session'])
     per_decision = manifest['calls_per_decision']
     session_calls = manifest.get('session_call_cap', decisions * per_decision)
     name = f'{branch}-{number}'
@@ -258,7 +262,7 @@ def run_session(root, branch, number, auth):
                 return result
 
             if auth:
-                inner = CodexProvider(transport, CodexSandboxConfig(auth_file=str(auth), image=IMAGE,
+                inner = CodexProvider(transport, CodexSandboxConfig(auth_file=str(auth), image=image,
                                       persist_auth_updates=True), model=MODEL, timeout_s=60, max_format_retries=0)
             else:
                 def stub(request):
@@ -277,7 +281,9 @@ def run_session(root, branch, number, auth):
             cycle.memory.off = switch == 'memory'
             active.update(memory=cycle.memory, world=cycle.world)
             if number == 1 and (ctl.session_state == 'paused'
-                                or (manifest['version'] == 'D-096' and ctl.session_state == 'running')):
+                                or (ctl.session_state == 'running' and
+                                    (manifest['version'] == 'D-096'
+                                     or branch in manifest.get('interrupted_branches', ())))):
                 session.command('stop', 'EXPERIMENTAL: закрыть прошлый сеанс')
             if ctl.session_state != 'stopped':
                 raise StopSeries('unexpected_session_state')

@@ -283,6 +283,30 @@ class ProspectiveTest(LivingCase):
         self.assertIs(self.cycle.provider.scanner, scanner)
         self.assertEqual(verify(self.c.store), [])
 
+    def test_invalid_optional_evaluations_do_not_cancel_choice(self):
+        from iam.world.cycle import LivingCycle
+
+        for expected in ('intention_invalid', 'motivation_invalid'):
+            with self.subTest(reason=expected):
+                self.rebuild(LivingCycle)
+                source = self.write('Новое наблюдение', project=expected)
+                self.enable()
+                if expected == 'intention_invalid':
+                    rejected = self.goal(source)
+                    del rejected['body']['criterion']
+                else:
+                    rejected = self.interpretation(source, motivation=True)
+                    rejected['body']['draft']['content']['motivation']['interest'] = 2
+                self.assertEqual(self.run_reply(rejected, replies=(Reply((rest(),)),)).outcome, 'done')
+                self.assertEqual(self.p.calls[-1]['purpose'], 'choose_action')
+                event = next(event for event in self.c.store.events()
+                             if event.payload.get('proposal_id') == rejected['proposal_id']
+                             and event.type == 'proposal.rejected')
+                self.assertEqual(event.payload['reason'], expected)
+                self.assertFalse(self.c.state['intentions'])
+                self.assertFalse(self.c.state['preferences'].get('s22'))
+                self.assertEqual(verify(self.c.store), [])
+
     def test_duplicate_open_goal_is_rejected_without_cancelling_late_choice(self):
         source = self.read()
         self.assertEqual(self.run_reply(self.goal(source)).outcome, 'done')

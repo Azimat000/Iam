@@ -17,6 +17,8 @@ from . import READ, WRITE, MOVE, PROJECT_KEY_PATTERN
 PROJECT_CREATION = (
     f'Если сама решишь создать работу, выбери новый project_id ({PROJECT_KEY_PATTERN}); '
     'пустой список projects этому не мешает. Для продолжения видимой работы используй её project_id. '
+    'Если сама выбираешь выполнить открытое намерение, его project_id указан в intentions, '
+    'даже если проекта ещё нет в projects. Можно выбрать другую работу или отдых. '
     'В intention/create с operation:write можно указать выбранный ключ будущей работы, даже до первой записи. '
 )
 

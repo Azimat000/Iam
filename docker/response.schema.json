@@ -109,6 +109,45 @@
               "draft"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "project_write"
+                ]
+              },
+              "rationale": {
+                "type": "string"
+              },
+              "cites": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"
+                }
+              },
+              "project_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "rationale",
+              "cites",
+              "project_id",
+              "title",
+              "text"
+            ],
+            "additionalProperties": false
           }
         ]
       }

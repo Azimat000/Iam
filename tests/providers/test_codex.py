@@ -394,7 +394,7 @@ class CommandTests(unittest.TestCase):
 
     def test_wire_schema_is_strict_and_has_all_shared_kinds(self):
         self.assertFalse(RESPONSE_JSON_SCHEMA["additionalProperties"])
-        proposal, memory = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]["anyOf"]
+        proposal, memory, project = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]["anyOf"]
         self.assertFalse(proposal["additionalProperties"])
         self.assertEqual(set(proposal["required"]), set(proposal["properties"]))
         self.assertEqual(set(RESPONSE_JSON_SCHEMA["required"]), set(RESPONSE_JSON_SCHEMA["properties"]))
@@ -414,6 +414,12 @@ class CommandTests(unittest.TestCase):
         draft=memory["properties"]["draft"]
         self.assertEqual(set(draft["required"]),set(draft["properties"]))
         self.assertFalse(draft["additionalProperties"])
+        self.assertEqual(set(project["required"]), {"kind", "rationale", "cites", "project_id", "title", "text"})
+        self.assertEqual(set(project["required"]), set(project["properties"]))
+        self.assertEqual(project["properties"]["kind"], {"type": "string", "enum": ["project_write"]})
+        for field in ("project_id", "title", "text"):
+            self.assertEqual(project["properties"][field], {"type": "string"})
+        self.assertFalse(project["additionalProperties"])
 
 
 class AuthTests(unittest.TestCase):

@@ -134,10 +134,10 @@ class ProspectiveCycle(LivingCycle):
         proposals = response.get('proposals') if isinstance(response, dict) else None
         none_accepted = result.status == 'rejected' and result.reason == 'no_proposal_accepted'
         declined = none_accepted and proposals == []
-        # Отклонённый переход или копия уже открытой цели не отменяют обычный выбор.
+        # Отказы в необязательной оценке не принимают её записи и не отменяют обычный выбор.
         rejected_codes = set(result.rejected.values())
         recoverable = none_accepted and bool(rejected_codes) and rejected_codes <= {
-            'appraisal_create_only', 'intention_duplicate',
+            'appraisal_create_only', 'intention_duplicate', 'intention_invalid', 'motivation_invalid',
         }
         ok = declined or recoverable or result.status in ('applied', 'partial')
         accepted = set(result.accepted)

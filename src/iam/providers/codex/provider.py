@@ -39,6 +39,11 @@ def _proposals(data: dict) -> list[dict]:
                                   'content': _json(draft['content_json'])}}
                 item = {key: item[key] for key in ('kind', 'rationale', 'cites')}
                 item['body_json'] = json.dumps(body, ensure_ascii=False)
+            if item['kind'] == 'project_write':
+                body = {'capability_id': 'cap_Project01',
+                        'params': {key: item[key] for key in ('project_id', 'title', 'text')}}
+                item = {'kind': 'action', 'rationale': item['rationale'], 'cites': item['cites'],
+                        'body_json': json.dumps(body, ensure_ascii=False)}
             proposals.append(item)
         attention = data['attention']
         if attention is not None:
