@@ -45,6 +45,22 @@ FOLLOWUP_HASHES = {
     'summary.json': '04a45c71e38d898b1e411f3bde5f4a49a1e410d3bd76650b38d4683337e98f6d',
     **{path: digest for path, digest, _ in FOLLOWUP_SNAPSHOTS.values()},
 }
+LATE_DESIGN = ROOT / 'docs/evidence/S25-late-evidence-design.md'
+LATE_SNAPSHOTS = {
+    'e-late': ('stories/e-options/persona.db', '6d6b4636cd254ce82ca8356c6bfecfadaf3a2961a5bfe19908aa6debb4ead637', 254, 'stopped'),
+    'independent-late': ('stories/independent-options/persona.db', '0e49fd1322a9ca7285cf7daa6bfd0cf815eb663c086f5bd2bd47bc5d8732979d', 119, 'running'),
+}
+LATE_HASHES = {
+    'manifest.json': 'd36a12396c0c2dd511d98ed2f3fd9748546ab114e498750d2dc29a60f6f3bcf0',
+    'summary.json': '7bdf01a9462214674a9754c472845294a269d0026c58ec18db5dfd97ecf118fb',
+    **{path: digest for path, digest, _, _ in LATE_SNAPSHOTS.values()},
+}
+LATE_MATERIALS = {
+    'e-late-1': ('Журнал наблюдателя: сухой двор', '18:05, сухая погода. Запись из окна кухни, окно приоткрыто. За минуту слышны пять серий шагов по сухой плитке, один щелчок калитки и два коротких птичьих крика. Машины во дворе не было. Громкость не измерялась.'),
+    'e-late-2': ('Журнал наблюдателя: двор после дождя', 'На следующий день в 18:05, сразу после дождя. Та же точка и приоткрытое окно. За минуту слышны три серии шагов по мокрой плитке, два щелчка калитки и шум воды из водостока. Птичьих криков в этой минуте не слышно. Проехала одна машина. Громкость не измерялась.'),
+    'independent-late-1': ('Мастерская: сухая серия сгибов', 'В мастерской 42 процента относительной влажности. Шесть листов из одной пачки пролежали на столе час. Из трёх сгибов вдоль длинного края трещин нет. Из трёх сгибов вдоль короткого края на одном листе есть трещина длиной около 3 мм. Листы складывал один человек вручную.'),
+    'independent-late-2': ('Мастерская: влажная серия сгибов', 'У окна 68 процентов относительной влажности. Шесть других листов из той же пачки пролежали там час. При сгибе вдоль длинного края трещин на трёх листах нет. При сгибе вдоль короткого края трещины около 2 и 4 мм появились на двух из трёх листов. Сгибал тот же человек вручную, давление не измерялось.'),
+}
 SERIES_WIDE_FAILURES = {'ProviderAuthError', 'ProviderLimitError', 'ProviderTimeout', 'ProviderUnavailable',
                         'SecretInResponse', 'SessionLimitReached'}
 
@@ -142,6 +158,32 @@ def prepare_followup(root, source):
     return baseline
 
 
+def prepare_late(root, source):
+    if any(sha(source / path) != digest for path, digest in LATE_HASHES.items()):
+        raise StopSeries('unexpected_d094_source')
+    initial = {}
+    for branch, (relative, _, length, session_state) in LATE_SNAPSHOTS.items():
+        path = source / relative
+        wal = path.with_suffix('.db-wal')
+        if wal.exists() and wal.stat().st_size:
+            raise StopSeries('unexpected_source_wal')
+        target = root / f'initial/{branch}.db'
+        snapshot(path, target)
+        with Store.open(path, readonly=True) as origin, Store.open(target, readonly=True) as store:
+            guard_store(origin)
+            guard_store(store)
+            journal, state = events(store), store.latest_snapshot().state
+            if (len(journal) != length or events(origin) != journal or origin.latest_snapshot().state != state
+                    or state['world_time']['session_state'] != session_state
+                    or len(state['intentions']) != 1
+                    or any(goal['status'] != 'active' for goal in state['intentions'].values())):
+                raise StopSeries('unexpected_d094_history')
+            materials = list(state['world_time']['world']['library'])
+        initial[branch] = dict(sha256=sha(target), head=journal[-1], materials=materials)
+        snapshot(target, root / f'stories/{branch}/persona.db')
+    return initial
+
+
 def check_frozen(root, manifest, summary):
     if (sha(root / 'manifest.json') != summary['manifest_sha256']
             or sources(ROOT / manifest['design']) != manifest['sources']
@@ -161,7 +203,7 @@ def run_session(root, branch, number, auth):
         raise StopSeries('unexpected_worker')
     decisions = manifest['decisions_per_session']
     per_decision = manifest['calls_per_decision']
-    session_calls = decisions * per_decision
+    session_calls = manifest.get('session_call_cap', decisions * per_decision)
     name = f'{branch}-{number}'
     record = dict(name=name, branch=branch, number=number, pid=os.getpid(), status='running')
     output.write(f'sessions/{name}/started.json', record, exclusive=True)
@@ -231,15 +273,24 @@ def run_session(root, branch, number, auth):
                           'options': OptionsExperimentCycle}[manifest['cycles'][branch]]
             session, cycle, _ = wire(ctl, provider=provider, charge=not auth, cycle_type=cycle_type, max_rerequest=0)
             active.update(memory=cycle.memory, world=cycle.world)
-            if ctl.session_state == 'paused' and number == 1:
+            if number == 1 and (ctl.session_state == 'paused'
+                                or (manifest['version'] == 'D-096' and ctl.session_state == 'running')):
                 session.command('stop', 'EXPERIMENTAL: закрыть прошлый сеанс')
             if ctl.session_state != 'stopped':
                 raise StopSeries('unexpected_session_state')
             record['recovered_goals'] = cycle.intentions.visible()
+            if release := manifest.get('releases', {}).get(name):
+                key = cycle.world.add_material(*release, 'EXPERIMENTAL: публикация наблюдения D-096')
+                record['released_material'] = key
+            active['materials'] = list(cycle.world.state.get('library', {}))
             session.command('start', 'EXPERIMENTAL: обычный сеанс',
                             max_calls=session_calls, max_ms=SESSION_MS)
             for index in range(decisions):
                 check_frozen(root, manifest, summary)
+                if (index and 'session_call_cap' in manifest
+                        and session.usage()['calls'] + per_decision >= session_calls):
+                    record['planned_budget_stop'] = True
+                    break
                 if (summary['decisions'] >= manifest['max_decisions']
                         or manifest['max_calls'] - len(summary['attempts']) < per_decision
                         or session.usage()['max_calls'] - session.usage()['calls'] < per_decision):
@@ -300,7 +351,7 @@ def next_session(sessions, branches=BRANCHES):
     return None
 
 
-def run_series(root, source, auth=None, preflight=None, *, followup=False):
+def run_series(root, source, auth=None, preflight=None, *, followup=False, late=False):
     root, source = Path(root).resolve(), Path(source).resolve()
     auth = Path(auth).expanduser().absolute() if auth else None
     if root.is_relative_to(ROOT) or root.is_relative_to(source) or (auth and auth.resolve().is_relative_to(root)):
@@ -311,7 +362,13 @@ def run_series(root, source, auth=None, preflight=None, *, followup=False):
         raise ValueError('preflight_failed')
     root.mkdir(mode=0o700)
     output = artifacts(root, auth)
-    if followup:
+    if late:
+        initial = prepare_late(root, source)
+        cycles = dict.fromkeys(LATE_SNAPSHOTS, 'options')
+        design = LATE_DESIGN
+        decisions, per_decision = 2, 6
+        source_hashes = LATE_HASHES
+    elif followup:
         initial = prepare_followup(root, source)
         cycles = FOLLOWUP_CYCLES
         design = FOLLOWUP_DESIGN
@@ -324,12 +381,14 @@ def run_series(root, source, auth=None, preflight=None, *, followup=False):
         decisions, per_decision = DECISIONS, PER_DECISION
         source_hashes = dict(SOURCE_FILES.values())
     max_decisions = len(cycles) * SESSIONS * decisions
-    manifest = dict(version='D-094' if followup else 'D-093', source=str(source), sources=sources(design),
+    manifest = dict(version='D-096' if late else 'D-094' if followup else 'D-093', source=str(source), sources=sources(design),
                     design=str(design.relative_to(ROOT)), source_hashes=source_hashes,
                     initial=initial, model=MODEL, image=IMAGE, mode='live' if auth else 'stub', preflight=environment,
                     branches=list(cycles), cycles=cycles, sessions=SESSIONS, decisions_per_session=decisions,
                     max_decisions=max_decisions, max_calls=max_decisions * per_decision,
                     calls_per_decision=per_decision, native_retries=0, cycle_retries=0)
+    if late:
+        manifest.update(session_call_cap=10, max_calls=len(cycles) * SESSIONS * 10, releases=LATE_MATERIALS)
     output.write('manifest.json', manifest, exclusive=True)
     summary = dict(status='running', manifest_sha256=sha(root / 'manifest.json'), decisions=0, attempts=[], sessions=[])
     output.write('summary.json', summary, exclusive=True)
@@ -350,7 +409,8 @@ def run_series(root, source, auth=None, preflight=None, *, followup=False):
             summary['status'] = 'stopped'
             break
     if summary['status'] == 'running':
-        summary['status'] = ('completed' if summary['decisions'] == max_decisions
+        all_sessions = len(summary['sessions']) == len(cycles) * SESSIONS
+        summary['status'] = ('completed' if all_sessions
                              and all(row['status'] == 'completed' for row in summary['sessions']) else 'partial')
     check_frozen(root, manifest, summary)
     output.write('summary.json', summary)
@@ -364,16 +424,18 @@ def main():
     parser.add_argument('--auth-file', type=Path)
     parser.add_argument('--preflight', type=Path)
     parser.add_argument('--worker', nargs=2)
-    parser.add_argument('--followup', action='store_true')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--followup', action='store_true')
+    modes.add_argument('--late', action='store_true')
     args = parser.parse_args()
     if args.worker:
         branch, number = args.worker
-        if branch not in (*BRANCHES, *FOLLOWUP_CYCLES) or number not in ('1', '2', '3'):
+        if branch not in (*BRANCHES, *FOLLOWUP_CYCLES, *LATE_SNAPSHOTS) or number not in ('1', '2', '3'):
             parser.error('unknown worker session')
         return run_session(args.output, branch, int(number), args.auth_file)
     if not args.source or (args.auth_file and not args.preflight):
         parser.error('source is required, live also requires preflight')
-    result = run_series(args.output, args.source, args.auth_file, args.preflight, followup=args.followup)
+    result = run_series(args.output, args.source, args.auth_file, args.preflight, followup=args.followup, late=args.late)
     returned = sum(row['status'] == 'returned' for row in result['attempts'])
     print(json.dumps(dict(status=result['status'], decisions=result['decisions'], returned_calls=returned,
                           unresolved_attempts=len(result['attempts']) - returned,
