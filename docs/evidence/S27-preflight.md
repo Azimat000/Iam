@@ -1,0 +1,62 @@
+# Подготовка к первому ручному сеансу Iam
+
+Проверка 10 ноября 2026 года. S26 принят, постоянная история «Общительная» создана. Команда `memory.py start S27` ожидаемо остановилась на G02 и G09. Настоящие обращения к Codex и Telegram в ходе этой подготовки не выполнялись.
+
+## G02. Проверка Telegram на Mac
+
+1. В Telegram откройте официальный [@BotFather](https://t.me/BotFather), отправьте `/newbot` и создайте отдельного бота для Iam. Откройте личный диалог с новым ботом, нажмите **Start** и отправьте ему `iam-g02-setup`. Токен из BotFather понадобится в Терминале. Для этого бота во время проверки должен работать только один приёмник. [Руководство Telegram по созданию бота](https://core.telegram.org/bots/tutorial).
+2. В Терминале Mac вставьте блок целиком. Введите токен в скрытую строку. Блок получает ваш числовой ID по проверочному сообщению и запускает штатную проверку в отдельной папке. Когда появится приглашение, отправьте боту `iam-g02-second`. Режим `--send-test` отправляет одно заранее заданное сообщение в этот же личный диалог.
+
+```zsh
+(
+  cd "$HOME/.iam-evidence/s25-integration-20261105/workspace" || exit 1
+  umask 077
+  read -rs 'TELEGRAM_BOT_TOKEN?Вставьте токен бота: ' || exit 1
+  printf '\n'
+  export TELEGRAM_BOT_TOKEN
+  TELEGRAM_USER_ID=$(PYTHONPATH=src python3 - <<'PY'
+from iam.telegram import Client, TelegramError
+
+try:
+    updates = Client(timeout=0).call("getUpdates", {"timeout": 0})
+except (ValueError, TelegramError):
+    raise SystemExit("Не удалось опросить бота. Проверьте токен, сеть и другие приёмники.") from None
+
+senders = set()
+for update in updates:
+    message = update.get("message", {})
+    sender, chat = message.get("from", {}), message.get("chat", {})
+    user_id = sender.get("id")
+    if (message.get("text") == "iam-g02-setup" and sender.get("is_bot") is False
+            and chat.get("type") == "private" and chat.get("id") == user_id
+            and type(user_id) is int and user_id > 0):
+        senders.add(user_id)
+
+if len(senders) != 1:
+    raise SystemExit("Отправьте iam-g02-setup в личный диалог с новым ботом и повторите команду.")
+print(senders.pop())
+PY
+  ) || exit 1
+  export TELEGRAM_USER_ID
+  iam_check_dir="$HOME/.local/share/iam/telegram-check"
+  python3 -u scripts/telegram/verify.py \
+    --data-dir "$iam_check_dir" --polls 2 --send-test || exit 1
+  read -r 'iam_check_restart?Нажмите Enter, чтобы проверить повторный запуск: ' || exit 1
+  python3 -u scripts/telegram/verify.py --data-dir "$iam_check_dir" --polls 1
+)
+```
+
+3. Сверьте число сохранённых новых сообщений с тем, что отправили в личный чат. В диалоге должно прийти «Iam: проверка отправки Telegram.», в Терминале появиться исход `confirmed`. Если исход неизвестен, сначала сверьте диалог. Новый запуск с `--send-test` отправляет ещё одно сообщение.
+4. На приглашении повторного запуска можно проверить чужой аккаунт и группу. Отправьте тестовый текст боту из другого аккаунта и команду `/start@имя_бота` из тестовой группы с добавленным ботом. После этого нажмите Enter. При повторном запуске число новых сохранённых сообщений должно быть 0, а число непрочитанных остаться прежним. Передайте строки «Новых сохранено» и «Исход тестовой отправки», подтвердите получение ответа и укажите, какие чужие сообщения отправили. Токен и ID для отчёта не нужны. [Правила получения сообщений ботом](https://core.telegram.org/bots/faq#what-messages-will-my-bot-get).
+
+ID ищется через запрос без `offset`: он не подтверждает получение. Штатный скрипт затем сохраняет входящие в отдельную экспериментальную базу и подтверждает их Telegram. Сеанс постоянной личности при этом остаётся остановленным. [Инструкция S09](../../scripts/telegram/README.md) · [Telegram Bot API](https://core.telegram.org/bots/api#getupdates).
+
+## G09. Что Iam передаёт Codex
+
+Изолированный контейнер запускает Codex CLI с учётной записью ChatGPT. На вход модели подаются задача, отобранные фрагменты контекста с их источниками, допустимые действия и предел длины ответа. Контекст может включать характер, текущие занятия, относящиеся к делу воспоминания и тексты уже прочитанных сообщений Telegram. До чтения передаётся сигнал о новом сообщении без его текста. Файлы базы и резервные копии остаются на Mac. Iam не передаёт Telegram-токен в контейнер. Данные для входа используются самим CLI для авторизации и не включаются в текст задания. [Формирование запроса](../../src/iam/providers/codex/provider.py) · [Запуск контейнера](../../docker/launch.cjs) · [Контекст выбора](../../src/iam/cycle/cycle.py) · [Контекст мира](../../src/iam/world/cycle.py).
+
+- В личных планах ChatGPT Free, Plus и Pro использование данных для обучения по умолчанию включено. В учётной записи, через которую входит Iam, откройте **Settings → Data Controls** и проверьте **Improve the model for everyone**. Если хотите исключить новые задачи Codex из обучения, выключите этот переключатель. Для дополнительного контекста из окружений Codex действует отдельная настройка **Include environments**. Отправка оценки ответа через интерфейс может разрешить использование связанной беседы для обучения даже после отключения. [Настройки данных ChatGPT](https://help.openai.com/en/articles/7730893-data-controls-in-chatgpt) · [Настройки Codex](https://chatgpt.com/codex/cloud/settings/general) · [Исключение для оценки ответа](https://help.openai.com/en/articles/5722486-how-do-i-opt-out-of-my-content-being-used-to-improve-model-performance).
+- OpenAI может хранить полученные данные для работы и безопасности сервиса и исполнения закона. Точный срок хранения отдельного запроса локального Codex CLI с входом через личную подписку в официальных источниках не указан. Документированное удаление чатов Codex в приложении ChatGPT и условия API относятся к своим способам работы. [Политика конфиденциальности](https://openai.com/policies/privacy-policy/) · [Удаление чатов Codex](https://help.openai.com/en/articles/20001333-archiving-and-deleting-codex-chats-in-the-chatgpt-app) · [Условия хранения в API](https://developers.openai.com/api/docs/guides/your-data).
+- OpenAI документирует `codex exec` для автоматизированных задач и вход в таких задачах через сохранённую авторизацию ChatGPT. Для этой авторизации действуют условия ChatGPT, включая правила использования аккаунта и лимиты сервиса. [Автоматизация через Codex CLI](https://developers.openai.com/codex/noninteractive/) · [Подписка и условия использования Codex](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan).
+
+Настройки учётной записи проверяет владелец. Для G09 нужно подтвердить выбранный режим и согласие на передачу описанных фрагментов в Codex.
