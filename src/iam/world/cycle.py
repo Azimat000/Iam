@@ -11,6 +11,7 @@ from iam.intentions.completion import CompletionProvider
 from iam.memory import PersistentMemory
 from iam.metacognition import Reflection
 from iam.motivation import Motivation
+from iam.persona.context import character_context
 from iam.state import EventSpec, KindDecision, Violation
 from . import READ, WRITE, MOVE, PROJECT_KEY_PATTERN
 
@@ -194,6 +195,7 @@ class LivingCycle(Cycle):
             )
         context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
                            'text': self.reflection.guidance(context)})
+        context.extend(character_context(self.ctl, self.memory))
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
