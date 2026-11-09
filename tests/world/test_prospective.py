@@ -194,7 +194,8 @@ class ProspectiveTest(LivingCase):
         from iam.world.cycle import LivingCycle
         self.rebuild(LivingCycle)
         self.write('Другой самостоятельный опыт'); self.enable()
-        self.assertEqual(self.run_reply(self.transition('abandoned')).outcome, 'no_decision')
+        self.assertEqual(self.run_reply(self.transition('abandoned'), replies=(Reply((rest(),)),)).outcome, 'done')
+        self.assertEqual(self.p.calls[-1]['purpose'], 'choose_action')
         self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'active')
 
     def test_partial_conflicting_appraisals_keep_first_and_continue_real_action(self):
@@ -229,6 +230,29 @@ class ProspectiveTest(LivingCase):
         self.assertIn(rejected['proposal_id'], appraisal.detail['rejected'])
         self.assertIn('intention', self.p.calls[-1]['allowed_proposals'])
         self.assertFalse(self.c.state['intentions'])
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_rejected_appraisal_transition_does_not_cancel_fresh_choice(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        result = self.write('Свет ложится на ладонь. Свет хранит тепло огня.')
+        self.enable()
+        forbidden = self.transition('done', result=result)
+        chosen = self.transition('done', result=result)
+        before = len(self.p.calls)
+        report = self.run_reply(forbidden, replies=(Reply((chosen,)), self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(report.outcome, 'done')
+        appraisal = next(row for row in report.stages if row.stage == 'experience_appraisal')
+        self.assertEqual(appraisal.detail['status'], 'rejected')
+        self.assertEqual(appraisal.detail['rejected'], {forbidden['proposal_id']: 'appraisal_create_only'})
+        calls = self.p.calls[before:]
+        self.assertEqual([query['purpose'] for query in calls], ['appraise', 'choose_action', 'appraise', 'appraise'])
+        self.assertNotIn('no_action', calls[0]['allowed_proposals'])
+        self.assertEqual([query['allowed_proposals'] for query in calls[2:]], [['no_action'], ['no_action']])
+        accepted = {event.payload['proposal_id'] for event in self.c.store.events() if event.type == 'proposal.accepted'}
+        self.assertNotIn(forbidden['proposal_id'], accepted)
+        self.assertIn(chosen['proposal_id'], accepted)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
         self.assertEqual(verify(self.c.store), [])
 
     def test_forbidden_appraisal_done_has_no_assessor_calls_but_valid_choice_done_has_two(self):

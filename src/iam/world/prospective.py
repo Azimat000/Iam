@@ -129,9 +129,11 @@ class ProspectiveCycle(LivingCycle):
             self.intentions.grants.clear()
             self.intentions.reviews.clear()
         proposals = response.get('proposals') if isinstance(response, dict) else None
-        declined = (result.status == 'rejected' and result.reason == 'no_proposal_accepted'
-                    and proposals == [])
-        ok = declined or result.status in ('applied', 'partial')
+        none_accepted = result.status == 'rejected' and result.reason == 'no_proposal_accepted'
+        declined = none_accepted and proposals == []
+        # Переход отклонён, но его можно заново выбрать в обычной фазе.
+        phase_rejected = none_accepted and set(result.rejected.values()) == {'appraisal_create_only'}
+        ok = declined or phase_rejected or result.status in ('applied', 'partial')
         accepted = set(result.accepted)
         self._appraised_intention = any(pr['kind'] == 'intention' and pr['proposal_id'] in accepted
                                        for pr in (proposals or []))
