@@ -8,7 +8,8 @@ from iam.state import KindDecision, Violation
 
 GUIDANCE = (
     'Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. '
-    'Например, если хочешь осмыслить, как собственный опыт отразился на твоих чувствах, интересах или выборе. '
+    'Тогда после обычного выбора будет отдельный запрос, в котором можно осмыслить подтверждённый результат. '
+    'Например, если хочешь понять, как собственный опыт и чувства повлияли на интерес к выбранному делу. '
     'Это отдельное предложение, оно не требуется для выполнения действия.'
 )
 INSTRUCTIONS = (
@@ -18,6 +19,8 @@ INSTRUCTIONS = (
     'cites — только ссылки mem_ или evt_ из пакета. Для stable_change добавь trait (имя существующей черты) '
     'и delta (от -0.05 до 0.05), а в cites укажи независимые подтверждённые результаты разных действий. '
     'Для history/observation текст должен точно совпадать с полем episode одного из следов. '
+    'Если осмысливаешь связь чувств, интереса и своего выбора, отдели наблюдения от своей интерпретации. '
+    'Ссылайся на те записи и действия, на которых действительно основан вывод. '
     'События внутри созданной истории — вымысел. Твои объяснения будут сохранены как объяснения модели.'
 )
 
@@ -142,7 +145,7 @@ class Reflection:
             text += " Доступное прежнее объяснение модели: " + json.dumps(latest, ensure_ascii=False)
         return text
 
-    def run(self, cycle, report, parent, accepted, response):
+    def run(self, cycle, report, parent, accepted, response, motives):
         if self.running or self.ctl.session_state != "running" or self.model.memory.off:
             return
         rows = self.model.records()
@@ -150,30 +153,37 @@ class Reflection:
                    and item["layer"] in ("personal", "interpretation")
                    and self.model.memory._safe_item(item)]
         # Новая эмоциональная оценка и результат появляются после основного запроса.
-        additions = [action.memory_id for action in report.actions]
+        additions = [*motives, *(action.memory_id for action in report.actions)]
         emotion = self.ctl.state["affect"].get("emotion", {})
         additions.append(emotion.get("memory_id") if isinstance(emotion, dict) else None)
         seen = {item["ref"] for item in context}
         for mid in additions:
             if mid in rows and mid not in seen:
                 row = rows[mid]
-                data = row.content.get("emotion")
-                description = json.dumps(data, ensure_ascii=False) if data is not None else row.text
-                context.append({"ref": row.memory_id, "origin": row.origin, "layer": row.layer, "text": description[:1000]})
+                description = json.dumps({"text": row.text[:400], "sources": list(row.sources)}, ensure_ascii=False)
+                context.append({"ref": row.memory_id, "origin": row.origin, "layer": row.layer, "text": description})
                 seen.add(row.memory_id)
         state = self.ctl.state
         for index, item in enumerate(context):
             episode = self._episode(rows[item["ref"]], state)
             if episode is not None:
-                context[index] = {**item, "text": json.dumps({"episode": episode}, ensure_ascii=False)}
-        selected = [(pr["kind"], accepted[pr["proposal_id"]]) for pr in response["proposals"]
+                context[index] = {**item, "text": json.dumps({"episode": episode, "experience": rows[item["ref"]].text[:400]},
+                                                                ensure_ascii=False)}
+        selected = [(pr, accepted[pr["proposal_id"]]) for pr in response["proposals"]
                     if pr["proposal_id"] in accepted]
-        for kind, ref in selected:
+        for proposal, ref in selected:
+            kind = proposal["kind"]
             if kind != "reflection":
-                context.append({"ref": ref, "origin": "observation", "layer": "state", "text": f"Выбран вариант: {kind}."})
+                summary = {"rationale": proposal["rationale"][:512], "cites": [
+                    cite for cite in proposal["cites"] if cite in seen
+                ]}
+                text = f"Выбран вариант: {kind}."
+                if self.model.memory._safe_item(summary):
+                    text += " " + json.dumps(summary, ensure_ascii=False)
+                context.append({"ref": ref, "origin": "observation", "layer": "state", "text": text})
         if not context:
             return
-        ref = next(ref for kind, ref in selected if kind == "reflection")
+        ref = next(ref for proposal, ref in selected if proposal["kind"] == "reflection")
         traits = json.dumps(self.ctl.state["traits"].get("traits", []), ensure_ascii=False)
         guidance = INSTRUCTIONS + (" Текущие черты: " + traits if self.model.memory._safe_item(traits) else "")
         context.append({"ref": ref, "origin": "model_knowledge", "layer": "state", "text": guidance})

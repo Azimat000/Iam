@@ -70,7 +70,8 @@ class OptionsCycle(ProspectiveCycle):
                     self.intentions.checked(proposal,context)
                     option = {key:copy.deepcopy(proposal[key]) for key in ('rationale','cites','body')}
                     if (len(json.dumps(option,ensure_ascii=False)) > self.max_option_chars
-                            or option['body']['intention_id'] in used_ids):
+                            or option['body']['intention_id'] in used_ids
+                            or not self.memory._safe_item(option)):
                         raise ValueError('option_bound')
                     used_ids.add(option['body']['intention_id'])
                     audit['candidates'].append(option)

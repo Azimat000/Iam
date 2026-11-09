@@ -9,6 +9,7 @@ from iam.domain import new_id
 from iam.interfaces import ProviderError
 from iam.state import verify
 from iam.stubs import Reply, rest
+from iam.world.cycle import LivingCycle
 from iam.world.options import OptionsCycle
 from world.helpers import LivingCase
 
@@ -121,6 +122,21 @@ class OptionsTest(LivingCase):
                 self.assertEqual(len(audit['rejected']), 1)
                 self.assertEqual(len(audit['candidates']), int(mode == 'duplicate'))
                 self.assertFalse(self.c.state['intentions'])
+
+    def test_candidate_cannot_return_forgotten_text_or_reference_in_its_description(self):
+        self.rebuild(LivingCycle)
+        hidden = self.write("Это содержание закрытой записи.", project="private")
+        self.assertTrue(self.m.fade(hidden.memory_id, availability=0, detail=0).applied)
+        self.rebuild(OptionsCycle)
+        self.req["state_version"] = self.c.state_version
+        text_leak = self.goal(self.source, iid="text_leak", text=hidden.text)
+        ref_leak = self.goal(self.source, iid="ref_leak")
+        ref_leak["rationale"] = hidden.memory_id
+        valid = self.goal(self.source, iid="allowed")
+        request = self.prepare(Reply((text_leak, ref_leak, valid)))
+        options = json.loads(request["context"][-1]["text"])["options"]
+        self.assertEqual([o["body"]["intention_id"] for o in options], ["allowed"])
+        self.assertEqual(set(self.audit()["rejected"]), {text_leak["proposal_id"], ref_leak["proposal_id"]})
 
     def test_invalid_echo_tools_secret_or_count_never_reaches_commit(self):
         for mode in ('malformed','stale','tools','secret','many'):

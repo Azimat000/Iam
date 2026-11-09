@@ -311,6 +311,34 @@ class PersistentCoreTest(unittest.TestCase):
             self.assertIn(work.memory_id, saved["refs"])
             self.assertEqual(verify(store), [])
 
+    def test_panel_with_one_call_left_spends_it_on_the_ordinary_choice(self):
+        from unittest.mock import patch
+
+        from iam.panel.runtime import Runtime
+        from iam.providers.codex.fake import FakeCodex, reply
+
+        proposal = rest("Пауза")
+        del proposal["proposal_id"]
+        fake = FakeCodex([reply([proposal])])
+        rt = Runtime(self.path, interval=0.01)
+        with patch("iam.panel.runtime.subprocess_runner", fake):
+            rt.start()
+            try:
+                rt.submit("command", "start", "Проверка бюджета", max_calls=1).result(5)
+                rt.decide = lambda: tick(rt.cycle)
+                report = rt.submit("decide").result(5)
+                self.assertEqual(report.outcome, "done")
+                view = rt.submit("view").result(5)
+                self.assertEqual(view["usage"]["calls"], 1)
+                self.assertEqual(len(fake.calls), 1)
+                request, = [e["payload"]["request"] for e in view["events"]
+                            if e["type"] == "proposal.requested" and
+                            e["payload"]["request"]["session_id"] == view["session_id"]]
+                self.assertEqual(request["purpose"], "choose_action")
+                self.assertTrue(any(self.read_memory == item["ref"] for item in request["context"]))
+            finally:
+                rt.close()
+
     def test_backup_keeps_connected_history_and_excludes_later_work(self):
         with Store.open(self.path) as store:
             ctl = StateController(store)

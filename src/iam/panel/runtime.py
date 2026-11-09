@@ -12,13 +12,14 @@ from iam.backup import create_backup, default_backup_dir, list_backups, open_for
 from iam.backup.scan import SecretScanner
 from iam.capabilities import Registry, TELEGRAM_ID
 from iam.creator_bridge import Bridge, Requests
-from iam.cycle import Cycle, Runner
+from iam.cycle import Runner
 from iam.cycle.cycle import DEFAULT_ALLOWED
 from iam.domain import new_id
 from iam.interfaces import Capability
 from iam.memory import PersistentMemory
 from iam.world import PersistentWorld, CAPABILITIES
 from iam.world.cycle import LivingCycle
+from iam.world.options import OptionsCycle
 from iam.social import SocialMemory
 from iam.providers import CodexProvider, CodexSandboxConfig, subprocess_runner
 from iam.session import SessionConflict, SessionRunner
@@ -115,10 +116,19 @@ class Runtime:
             world = Sender(self.ctl, client, [self.telegram_user])
             creator = CreatorBridge(self.receiver, world, self.telegram_user)
         if self.demo:
+            cycle_type, cycle_options = LivingCycle, {}
             provider = ScriptedProvider([lambda request: Reply(proposals=(rest("Демонстрация: действий нет."),))] * 100,
                                         name="demo")
         else:
             provider = CodexProvider(self._model_run, CodexSandboxConfig(auth_file=self.auth_file))
+            appraisal_calls = 2 * (1 + provider.max_format_retries)
+
+            def can_appraise():
+                usage = self.session.usage()
+                # Поиск и оценка не должны потратить последний вызов обычного выбора.
+                return usage["max_calls"] - usage["calls"] > appraisal_calls
+
+            cycle_type, cycle_options = OptionsCycle, {"can_appraise": can_appraise}
         provider = self.session.provider(provider, charge=self.demo)
         world = PersistentWorld(self.ctl, external=world)
         world.initialize()
@@ -127,7 +137,7 @@ class Runtime:
         self.caps = Registry(self.ctl, (telegram, *CAPABILITIES))
         self.requests = Requests(self.ctl)
         creator = Bridge(creator, self.caps, self.telegram_user)
-        self.cycle = LivingCycle(self.ctl, provider, SocialMemory(self.ctl), world, self.caps, creator)
+        self.cycle = cycle_type(self.ctl, provider, SocialMemory(self.ctl), world, self.caps, creator, **cycle_options)
         self.cycle.perception.on_read = self.ctl.record_creator_reply
         self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
 

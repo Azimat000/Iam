@@ -1,8 +1,9 @@
 import copy
+import json
 
 from iam.domain import new_id
 from iam.intentions.completion import CompletionProvider
-from iam.stubs import Reply, ScriptedProvider, change, rest
+from iam.stubs import Reply, ScriptedProvider, act, change, rest
 from state.helpers import set_
 from world.helpers import LivingCase
 
@@ -131,19 +132,24 @@ class ReflectionTest(LivingCase):
         self.assertEqual(len(self.run_reply(reflect()).requests), 1)
 
     def test_choice_trace_new_result_forgetting_and_reopen(self):
-        from iam.stubs import StubCreatorBridge, act
+        from iam.stubs import StubCreatorBridge
         from iam.world import READ, PersistentWorld
         from iam.world.cycle import LivingCycle, WorldMemory
 
+        choice = act(READ, {"material_id": self.material}, rationale="Хочу увидеть пример")
         def answer(request):
             result, chosen, instructions = request["context"]
             self.assertTrue(result["ref"].startswith("mem_"))
-            self.assertEqual(chosen["text"], "Выбран вариант: action.")
+            episode = json.loads(result["text"])
+            self.assertEqual(episode["episode"], "Прочитан материал.")
+            self.assertIn("Снег тает у окна", episode["experience"])
+            self.assertEqual(json.loads(chosen["text"].split(". ", 1)[1]),
+                             {"rationale": choice["rationale"], "cites": []})
             self.assertEqual(self.c.find_event(event_id=chosen["ref"]).payload["kind"], "action")
             self.assertEqual(instructions["origin"], "model_knowledge")
             return Reply((reflect({"part": "history", "level": "observation", "text": "Прочитан материал."},
                                   [result["ref"], chosen["ref"]]),))
-        report = self.run_reply(act(READ, {"material_id": self.material}), reflect(), replies=(answer,))
+        report = self.run_reply(choice, reflect(), replies=(answer,))
         entry, = self.history()
         self.assertTrue(entry["traces"])
         self.assertEqual(set(entry["refs"]), {report.actions[0].memory_id})
@@ -155,6 +161,36 @@ class ReflectionTest(LivingCase):
         self.assertEqual(reopened.record_request(self.p.calls[-1]).status, "duplicate")
         self.assertTrue(other.memory.fade(report.actions[0].memory_id, availability=0, detail=0).applied)
         self.assertFalse(other.reflection.model.view()["history"])
+
+    def test_choice_and_new_motivation_reach_reflection_with_visible_sources(self):
+        from iam.world import WRITE
+
+        previous = self.read()
+        private = self.write("Текст уже забыт", project="old_project")
+        self.assertTrue(self.m.fade(private.memory_id, availability=0, detail=0).applied)
+        motivation = {"proposal_id": new_id("prop"), "kind": "memory_write", "rationale": private.text,
+                      "cites": [previous.memory_id], "body": {"draft": {
+                          "kind": "semantic", "origin": "own_hypothesis", "content": {
+                              "text": "Мне хочется продолжить наблюдение за светом",
+                              "motivation": {"topic": "light", "interest": 0.8, "need": 0.2},
+                          }}}}
+        choice = act(WRITE, {"project_id": "light", "title": "Свет", "text": "Свет изменился."},
+                     rationale="Хочу сопоставить наблюдения", cites=[previous.memory_id])
+
+        def answer(request):
+            context = {item["ref"]: item["text"] for item in request["context"]}
+            ref = self.c.state["preferences"]["s22"]["light"]["memory_id"]
+            self.assertEqual(json.loads(context[ref])["sources"], [previous.memory_id])
+            self.assertNotIn(private.text, " ".join(context.values()))
+            self.assertIn("Выбран вариант: memory_write.", context.values())
+            accepted = self.c.find_event(key=f"prop:{choice['proposal_id']}:accept")
+            self.assertEqual(json.loads(context[accepted.event_id].split(". ", 1)[1])["cites"], [previous.memory_id])
+            return Reply((reflect({"part": "values_view", "level": "hypothesis",
+                                   "text": "В наблюдении за светом мне важно сравнение."}, [ref, accepted.event_id]),))
+
+        report = self.run_reply(motivation, choice, reflect(), replies=(answer,))
+        self.assertEqual(report.actions[0].status, "confirmed")
+        self.assertEqual(len(self.history()), 1)
 
     def test_unsolicited_request_and_raw_state_change(self):
         standalone = self.cycle._request("cyc_NoOptIn00", [], 0, None, purpose="reflect")

@@ -72,9 +72,12 @@ class Experience:
         pointer = raw['affect'].get('emotion')
         r = self._record(pointer, rows)
         if r is not None and 'emotion' in r.content:
-            result.append({'ref': r.memory_id, 'origin': r.origin, 'layer': 'interpretation',
-                           'text': json.dumps({'emotion': current(r.content['emotion'], self.ctl.life_time_ms),
-                                              'sources': list(r.sources)}, ensure_ascii=False)})
+            packet = {'emotion': current(r.content['emotion'], self.ctl.life_time_ms), 'sources': list(r.sources)}
+            with_description = {**packet, 'text': r.text}
+            detail = json.dumps(with_description, ensure_ascii=False)
+            if len(detail) > self.memory.text_limit or not self.memory._safe_item(with_description):
+                detail = json.dumps(packet, ensure_ascii=False)
+            result.append({'ref': r.memory_id, 'origin': r.origin, 'layer': 'interpretation', 'text': detail})
         for value in list(raw['beliefs'].values())[-4:]:
             r = self._record(value, rows)
             if r is not None and r.content.get('interpretation', {}).get('kind') == 'belief':

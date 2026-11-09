@@ -47,7 +47,10 @@ GUIDANCE = (
     'Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. '
     'Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,'
     'content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, '
-    'cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом.'
+    'cites:видимые mem_ опыта. Если на интерес повлияла доступная эмоциональная оценка, '
+    'укажи её вместе с непосредственным опытом. В обосновании выбора назови, что повлияло на него, '
+    'и укажи эти основания в cites, если они есть в отдельных блоках запроса. '
+    'Это самооценка, не объективное измерение. Число записей/версий не является успехом.'
     ' После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём '
     'memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; '
     'cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи.'
@@ -207,7 +210,9 @@ class LivingCycle(Cycle):
             parent = self.ctl.find_event(key=f"req:{response['request_id']}").payload["request"]
             accepted = {event.payload["proposal_id"]: event.event_id for event in result.transition.events
                         if event.type == "proposal.accepted"}
-            self.reflection.run(self, rep, parent, accepted, response)
+            motives = [change["path"] for change in result.transition.changes
+                       if change["group"] == "memory" and "motivation" in change["after"]["content"]]
+            self.reflection.run(self, rep, parent, accepted, response, motives)
 
     def _settle(self, aid, kind, outcome, attempted_id, common):
         event_id = new_id('evt')
