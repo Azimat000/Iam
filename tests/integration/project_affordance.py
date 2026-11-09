@@ -199,7 +199,7 @@ def run_session(root, branch, number, auth):
     output = artifacts(root, auth)
     check_frozen(root, manifest, summary)
     if (summary['status'] != 'running' or (manifest['mode'] == 'live') != bool(auth)
-            or (branch, number) != next_session(summary['sessions'], manifest['branches'])):
+            or (branch, number) != next_session(summary['sessions'], manifest['branches'], manifest.get('sessions', SESSIONS))):
         raise StopSeries('unexpected_worker')
     decisions = manifest['decisions_per_session']
     per_decision = manifest['calls_per_decision']
@@ -271,7 +271,10 @@ def run_session(root, branch, number, auth):
             provider = audit.AuditedProvider(PairProvider(inner, active), output, f'sessions/{name}', disclose=False)
             cycle_type = {'legacy': LegacyGuidanceCycle, 'direct': ExperimentCycle,
                           'options': OptionsExperimentCycle}[manifest['cycles'][branch]]
-            session, cycle, _ = wire(ctl, provider=provider, charge=not auth, cycle_type=cycle_type, max_rerequest=0)
+            switch = manifest.get('switches', {}).get(branch)
+            session, cycle, _ = wire(ctl, provider=provider, charge=not auth, cycle_type=cycle_type,
+                                     motivation_off=switch == 'motivation', max_rerequest=0)
+            cycle.memory.off = switch == 'memory'
             active.update(memory=cycle.memory, world=cycle.world)
             if number == 1 and (ctl.session_state == 'paused'
                                 or (manifest['version'] == 'D-096' and ctl.session_state == 'running')):
@@ -280,7 +283,7 @@ def run_session(root, branch, number, auth):
                 raise StopSeries('unexpected_session_state')
             record['recovered_goals'] = cycle.intentions.visible()
             if release := manifest.get('releases', {}).get(name):
-                key = cycle.world.add_material(*release, 'EXPERIMENTAL: публикация наблюдения D-096')
+                key = cycle.world.add_material(*release, f"EXPERIMENTAL: публикация наблюдения {manifest['version']}")
                 record['released_material'] = key
             active['materials'] = list(cycle.world.state.get('library', {}))
             session.command('start', 'EXPERIMENTAL: обычный сеанс',
@@ -327,6 +330,14 @@ def run_session(root, branch, number, auth):
             record.update(status='completed', head=events(store)[-1], usage=session.usage())
             output.write(f'sessions/{name}/final.json', dict(
                 record=record, state=ctl.state, memories=[row.to_dict() for row in cycle.memory.records()]), exclusive=True)
+        if number == manifest.get('checkpoint_session') and branch in manifest.get('checkpoint_branches', []):
+            checkpoint = root / f'checkpoints/{branch}.db'
+            snapshot(path, checkpoint)
+            with Store.open(checkpoint, readonly=True) as stored:
+                guard_store(stored)
+                if events(stored)[-1] != record['head']:
+                    raise StopSeries('checkpoint_head_changed')
+            record['checkpoint_sha256'] = sha(checkpoint)
         check_frozen(root, manifest, summary)
     except DecisionStopped:
         record.update(status='branch_stopped', reason='technical_cycle_failure')
@@ -338,11 +349,11 @@ def run_session(root, branch, number, auth):
     return 0 if record['status'] == 'completed' else 1
 
 
-def next_session(sessions, branches=BRANCHES):
+def next_session(sessions, branches=BRANCHES, session_count=SESSIONS):
     if not sessions:
         return branches[0], 1
     last = sessions[-1]
-    if last['status'] == 'completed' and last['number'] < SESSIONS:
+    if last['status'] == 'completed' and last['number'] < session_count:
         return last['branch'], last['number'] + 1
     if last['status'] in ('completed', 'branch_stopped'):
         index = branches.index(last['branch']) + 1
@@ -394,7 +405,7 @@ def run_series(root, source, auth=None, preflight=None, *, followup=False, late=
     output.write('summary.json', summary, exclusive=True)
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join(str(ROOT / part) for part in ('src', 'tests')),
            'PYTHONDONTWRITEBYTECODE': '1'}
-    while scheduled := next_session(summary['sessions'], manifest['branches']):
+    while scheduled := next_session(summary['sessions'], manifest['branches'], manifest.get('sessions', SESSIONS)):
         branch, number = scheduled
         args = [sys.executable, '-m', 'integration.project_affordance', '--output', str(root),
                 '--worker', branch, str(number)]
