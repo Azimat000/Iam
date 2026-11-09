@@ -69,9 +69,27 @@ class EmotionTest(ExperienceCase):
         self.provider.queue(Reply((rest(),)))
         self.assertEqual(self.cycle.run(e).outcome, 'done')
         context = self.provider.calls[-1]['context']
-        self.assertTrue(any('"emotion"' in c['text'] for c in context))
+        emotional, = [json.loads(c['text']) for c in context if c['ref'] == high.memory_id]
+        self.assertEqual(emotional['text'], high.text)
+        self.assertEqual(emotional['sources'], list(high.sources))
+        self.m.text_limit = len(json.dumps({k:v for k,v in emotional.items() if k != 'text'}, ensure_ascii=False))
+        limited, = self.m.experience.context()
+        self.assertNotIn('text', json.loads(limited['text']))
         self.assertIn('"regulation": 1', json.dumps(context, ensure_ascii=False).replace('\\"', '"'))
         self.assertEqual(self.c.state['affect']['emotion']['memory_id'], high.memory_id)
+
+    def test_emotion_does_not_return_forgotten_details_from_its_explanation(self):
+        hidden = self.source('Подробность "исключена" из доступа')
+        visible = self.source('Новое наблюдение')
+        spec = dict(valence=0.4, arousal=0.5, relevance=0.7, regulation=0.5)
+        proposal = self.draft('appraisal', spec, (visible,), text=hidden.text)
+        self.assertEqual(self.apply(proposal).status, 'applied')
+        self.assertTrue(self.m.fade(hidden.memory_id).applied)
+        item, = self.m.experience.context()
+        packet = json.loads(item['text'])
+        self.assertEqual(packet['sources'], [visible.memory_id])
+        self.assertIn('emotion', packet)
+        self.assertNotIn('text', packet)
 
     def test_past_emotion_is_explicit_cited_input(self):
         a = self.emotion(self.source())

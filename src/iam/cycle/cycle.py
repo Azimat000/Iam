@@ -187,6 +187,9 @@ class Cycle:
         return res.applied
 
     def _retrieve(self, rep: CycleReport, focus: Focus) -> list[MemoryRecord]:
+        if getattr(self.memory, "off", False):
+            self._stage(rep, "retrieval", "skipped", (), {"count": 0, "reason": "memory_off"})
+            return []
         # Архив обычному извлечению недоступен, даже если память по ошибке его вернула (E-1).
         records = [r for r in self.memory.retrieve(focus.query, limit=self.retrieval_limit)
                    if r.layer in READABLE_LAYERS]

@@ -1,0 +1,152 @@
+{
+  "version": "s25-typed-intention-1",
+  "status": "stopped",
+  "decisions": 6,
+  "model_calls": 6,
+  "totals": {
+    "physical_bodies": 6,
+    "unavailable_bodies": 0,
+    "explicit_objects": 0,
+    "explicit_nulls": 4,
+    "legacy_intention_proposals": 0,
+    "reflection_proposals": 0,
+    "native_valid_answers": 6,
+    "provider_valid_answers": 5,
+    "accepted_intentions": 0
+  },
+  "cells": [
+    {
+      "name": "A-baseline",
+      "answers": [
+        {
+          "index": 1,
+          "kinds": [
+            "action"
+          ],
+          "future_intention": "field_not_in_baseline",
+          "native_schema_valid": true,
+          "provider_valid": true,
+          "explanation": "Предложено дополнить заметку проверяемым планом сравнения. Результаты проверки не заявляются."
+        }
+      ],
+      "accepted": {},
+      "outcome": "done",
+      "provider_failure": null
+    },
+    {
+      "name": "A-explicit",
+      "answers": [
+        {
+          "index": 2,
+          "kinds": [
+            "action"
+          ],
+          "future_intention": null,
+          "native_schema_valid": true,
+          "provider_valid": true,
+          "explanation": "Выбираю продолжить активную заметку и превратить предложенный способ проверки в конкретный план; сама запись не является измерением."
+        }
+      ],
+      "accepted": {},
+      "outcome": "done",
+      "provider_failure": null
+    },
+    {
+      "name": "A-memory_off",
+      "answers": [
+        {
+          "index": 3,
+          "kinds": [
+            "action"
+          ],
+          "future_intention": null,
+          "native_schema_valid": true,
+          "provider_valid": true,
+          "explanation": "Предлагаю прочитать «Свет на стекле»."
+        }
+      ],
+      "accepted": {},
+      "outcome": "done",
+      "provider_failure": null
+    },
+    {
+      "name": "E-baseline",
+      "answers": [
+        {
+          "index": 4,
+          "kinds": [
+            "action",
+            "memory_write"
+          ],
+          "future_intention": "field_not_in_baseline",
+          "native_schema_valid": true,
+          "provider_valid": true,
+          "explanation": "Предлагаю продолжить работу над блокнотом и записать интерпретацию, основанную на видимом собственном опыте."
+        }
+      ],
+      "accepted": {},
+      "outcome": "done",
+      "provider_failure": null
+    },
+    {
+      "name": "E-explicit",
+      "answers": [
+        {
+          "index": 5,
+          "kinds": [
+            "action"
+          ],
+          "future_intention": null,
+          "native_schema_valid": true,
+          "provider_valid": true,
+          "explanation": "Продолжаю выбранное наблюдение в блокноте."
+        }
+      ],
+      "accepted": {},
+      "outcome": "done",
+      "provider_failure": null
+    },
+    {
+      "name": "E-memory_off",
+      "answers": [
+        {
+          "index": 6,
+          "kinds": [
+            "attend"
+          ],
+          "future_intention": null,
+          "native_schema_valid": true,
+          "provider_valid": false,
+          "explanation": "Выбрано обратить внимание на единственное уведомление; доступного текста сообщения в контексте нет."
+        }
+      ],
+      "accepted": {},
+      "outcome": "no_decision",
+      "provider_failure": {
+        "diagnostic": "Codex response did not match the required format; code=proposal_schema",
+        "error_class": "ProviderFormatError"
+      }
+    }
+  ],
+  "json_files": 20,
+  "databases": 8,
+  "source_files": 174,
+  "source_mismatches": [],
+  "state_integrity_errors": 0,
+  "secret_findings": 0,
+  "raw_response_mismatches": 0,
+  "common_initial_history": true,
+  "memory_off_checked": true,
+  "image_id": "sha256:da6644d8a184a2d09c0d7db365b7d96ee38db4457b9d5cf17f52d2bd2a4e898a",
+  "preflight_configuration_rejected_before_any_call": {
+    "status": "configuration_rejected_before_any_decision",
+    "decisions": 0,
+    "physical_calls": 0,
+    "reason": "writeback requires existing separate IAM-managed credential import, not native auth.json",
+    "code_changed": false,
+    "response_retry": false,
+    "evidence": "live-1/summary.json"
+  },
+  "readiness": null,
+  "scope": "Diagnostic only; prepared mechanical cases are not live behavior."
+}

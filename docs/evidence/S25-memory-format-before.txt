@@ -1,0 +1,30 @@
+======================================================================
+FAIL: test_explicit_draft_copies_content_sources_and_order_without_extra_fields (providers.test_codex_memory.NativeMemoryTest.test_explicit_draft_copies_content_sources_and_order_without_extra_fields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_memory.py", line 30, in test_explicit_draft_copies_content_sources_and_order_without_extra_fields
+    self.assertEqual(jsonschema.check(RESPONSE_JSON_SCHEMA,data,Path('.')),[])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['$.proposals[1]: нет обязательного поля b[42 chars]aft'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'$.proposals[1]: нет обязательного поля body_json'
+
++ []
+- ['$.proposals[1]: нет обязательного поля body_json',
+-  '$.proposals[1]: лишнее поле draft']
+
+======================================================================
+FAIL: test_observed_flat_memory_body_is_not_accepted_as_native_or_shared (providers.test_codex_memory.NativeMemoryTest.test_observed_flat_memory_body_is_not_accepted_as_native_or_shared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/azamatsibgatullin/.iam-evidence/s25-integration-20261105/workspace/tests/providers/test_codex_memory.py", line 22, in test_observed_flat_memory_body_is_not_accepted_as_native_or_shared
+    self.assertTrue(jsonschema.check(RESPONSE_JSON_SCHEMA,observed,Path('.')))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+FAILED (failures=2)

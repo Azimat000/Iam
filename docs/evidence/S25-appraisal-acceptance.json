@@ -1,0 +1,113 @@
+{
+  "scope": "D-079/D-080; user goal remains unresolved",
+  "criteria": [
+    {
+      "requirement": "Установить и исправить причину отсутствия собственных целей",
+      "status": "NOT_MET",
+      "evidence": "D-079:0intention в9raw, новый prospective толькоA, Eнеисполнена; причина не доказана"
+    },
+    {
+      "requirement": "Сохранить цель,модель,семь критериев и приёмку",
+      "status": "PASS",
+      "evidence": [
+        "S25-appraisal-invariants.json",
+        "requirements.toml и docs/COMPLETION.md без изменений"
+      ]
+    },
+    {
+      "requirement": "Выявить фактический маршрут оценки опыта",
+      "status": "PASS",
+      "evidence": [
+        "S25-appraisal-architecture.md",
+        "S25-appraisal-review.md"
+      ]
+    },
+    {
+      "requirement": "Отдельно выполнить оценку без принуждения к цели",
+      "status": "PASS_FOR_TESTED_SCOPE",
+      "evidence": [
+        "src/iam/world/prospective.py",
+        "S25-appraisal-targeted.txt",
+        "S25-appraisal-audit.json"
+      ],
+      "limitation": "Не включено в Runtime; преимущества по целям не показано"
+    },
+    {
+      "requirement": "Сохранить source/version/rights/late-done/budget/restart guards",
+      "status": "PASS_LOCAL",
+      "evidence": [
+        "tests/world/test_prospective.py",
+        "tests/integration/test_prospective_probe.py",
+        "S25-appraisal-review.md"
+      ]
+    },
+    {
+      "requirement": "Передать принятую оценку в следующее решение",
+      "status": "PASS",
+      "evidence": [
+        "S25-appraisal-audit.json",
+        "S25-appraisal-review.md",
+        "tests/world/test_prospective.py generic/motivation/revised belief"
+      ]
+    },
+    {
+      "requirement": "Проверить причинность на одинаковом прошлом с равным числом вызовов",
+      "status": "INCOMPLETE",
+      "evidence": [
+        "S25-appraisal-audit.json"
+      ],
+      "limitation": "5решений/9вызовов, остановка E-assessment_only; E-prospective не выполнена"
+    },
+    {
+      "requirement": "Исправить подтверждённый native/shared focusnotice",
+      "status": "PASS_LOCAL",
+      "evidence": [
+        "S25-attention-before.txt",
+        "S25-attention-after.txt",
+        "S25-attention-review.md",
+        "S25-attention-image.json"
+      ],
+      "limitation": "Новый подписочный native-маршрут живым вызовом не проверен"
+    },
+    {
+      "requirement": "Сохранить исходные ответы, отрицательные результаты и контроль границ",
+      "status": "PASS",
+      "evidence": [
+        "S25-appraisal-audit.json",
+        "S25-appraisal-result.md"
+      ]
+    },
+    {
+      "requirement": "Полная техническая проверка кода с покрытием",
+      "status": "PASS",
+      "evidence": [
+        "S25-appraisal-full-check.txt",
+        "S25-attention-full-check.txt",
+        "S25-appraisal-technical.json",
+        "S25-appraisal-code-match.json"
+      ],
+      "primary": "afef4711414/904.521с PASS,150порогов",
+      "final": "280d5c81418/799.732с PASS,150порогов,0пропусков"
+    },
+    {
+      "requirement": "Пройти поведенческий минимумS25 и начатьS26 только после него",
+      "status": "NOT_MET",
+      "evidence": "0принятых целей, позднее продолжение/завершение не проверены; S26не начат"
+    }
+  ],
+  "new_live_calls_after_stop": 0,
+  "full_live_series_started": 0,
+  "permanent_persona_started": false,
+  "document_checks": {
+    "tests": 81,
+    "status": "PASS",
+    "memory": "PASS",
+    "requirements": 226,
+    "scenarios": 33,
+    "required_scenarios": 19,
+    "plan_map": "current"
+  },
+  "S25_status": "blocked",
+  "S26_status": "todo",
+  "user_goal_achieved": false
+}

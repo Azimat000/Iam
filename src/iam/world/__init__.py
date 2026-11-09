@@ -9,6 +9,7 @@ from iam.interfaces import ActionOutcome, Capability
 READ = 'cap_Library01'
 WRITE = 'cap_Project01'
 MOVE = 'cap_RoomEdit01'
+PROJECT_KEY_PATTERN = r'[A-Za-z0-9_-]{1,64}'
 CAPABILITIES = (
     Capability(READ, 'Чтение библиотеки', 'params: material_id'),
     Capability(WRITE, 'Собственные работы', 'params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned'),
@@ -17,7 +18,7 @@ CAPABILITIES = (
 
 
 def identifier(value):
-    return isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,64}', value) is not None
+    return isinstance(value, str) and re.fullmatch(PROJECT_KEY_PATTERN, value) is not None
 
 
 def text(value, limit=8000):
@@ -136,6 +137,8 @@ class PersistentWorld:
             if 'to_status' in p:
                 ops.append(Op('world_time', 'world.projects.' + target + '.status', 'set', p['to_status'], True))
             else:
+                previous = state.get('projects', {}).get(target, {}).get('latest_work')
+                receipt['previous_fingerprint'] = state.get('works', {}).get(previous, {}).get('fingerprint')
                 work = {'title': p['title'], 'text': p['text'], 'fingerprint': receipt['fingerprint'],
                         'event_id': event_id, 'action_id': aid}
                 ops += [Op('world_time', 'world.works.' + aid, 'set', work, True),

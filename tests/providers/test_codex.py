@@ -261,6 +261,27 @@ class ProviderTests(unittest.TestCase):
 
 
 class ClassifierTests(unittest.TestCase):
+    def test_fixed_tool_categories_preserve_fail_closed_policy_without_raw_metadata(self):
+        from iam.providers.codex.classify import tool_use_categories
+        cases = [
+            (item('command_execution', command='PRIVATE_COMMAND'), ('known_tool_item',)),
+            (item('PRIVATE_UNKNOWN_TYPE'), ('unknown_item_type',)),
+            (item(['PRIVATE_MALFORMED_TYPE']), ('unknown_item_type',)),
+            ({'type': 'private.tool.started', 'secret': 'PRIVATE_TOKEN'}, ('event_type_pattern',)),
+            ({'type': 'item.tool', 'item': {'type': 'web_search'}}, ('known_tool_item', 'event_type_pattern')),
+        ]
+        for event, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(tool_use_categories(event), expected)
+                run = RunResult(1, json.dumps(event) + '\ninvalid raw', 'PRIVATE_STDERR', timed_out=True)
+                result = classify(run)
+                self.assertEqual(result.kind, Kind.TOOL_USE)
+                self.assertEqual(result.envelope, {'tool_use_categories': sorted(expected)})
+                self.assertNotIn('PRIVATE', repr(result))
+        for event in ({}, {'type': None}, {'type': 1}, {'type': 'item.completed'}, item(),
+                      item('reasoning'), {'type': 'iam.auth.updated', 'auth': {'tokens': {'access_token': 'PRIVATE'}}}):
+            self.assertEqual(tool_use_categories(event), ())
+
     def test_success_and_passive_item_lifecycle(self):
         self.assertEqual(classify(fake.reply([])).kind, Kind.OK)
         result = sequence({"type": "item.started", "item": {"id": "r", "type": "reasoning", "status": "in_progress"}},
@@ -373,13 +394,32 @@ class CommandTests(unittest.TestCase):
 
     def test_wire_schema_is_strict_and_has_all_shared_kinds(self):
         self.assertFalse(RESPONSE_JSON_SCHEMA["additionalProperties"])
-        proposal = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]
+        proposal, memory, project = RESPONSE_JSON_SCHEMA["properties"]["proposals"]["items"]["anyOf"]
         self.assertFalse(proposal["additionalProperties"])
         self.assertEqual(set(proposal["required"]), set(proposal["properties"]))
         self.assertEqual(set(RESPONSE_JSON_SCHEMA["required"]), set(RESPONSE_JSON_SCHEMA["properties"]))
-        self.assertEqual(set(proposal["properties"]["kind"]["enum"]),
+        self.assertEqual(set(proposal["properties"]["kind"]["enum"]) | set(memory["properties"]["kind"]["enum"]) | {"attend"},
                          {"action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"})
         self.assertEqual(proposal["properties"]["body_json"], {"type": "string"})
+        attention = RESPONSE_JSON_SCHEMA["properties"]["attention"]
+        self.assertEqual(attention["type"], ["object", "null"])
+        self.assertEqual(set(attention["required"]), set(attention["properties"]))
+        self.assertFalse(attention["additionalProperties"])
+        self.assertEqual(attention["properties"]["focus"]["enum"],
+                         ["activity", "intention", "event", "dialogue", "rest"])
+        self.assertNotIn("attend", proposal["properties"]["kind"]["enum"])
+        self.assertNotIn("memory_write", proposal["properties"]["kind"]["enum"])
+        self.assertEqual(set(memory["required"]),set(memory["properties"]))
+        self.assertFalse(memory["additionalProperties"])
+        draft=memory["properties"]["draft"]
+        self.assertEqual(set(draft["required"]),set(draft["properties"]))
+        self.assertFalse(draft["additionalProperties"])
+        self.assertEqual(set(project["required"]), {"kind", "rationale", "cites", "project_id", "title", "text"})
+        self.assertEqual(set(project["required"]), set(project["properties"]))
+        self.assertEqual(project["properties"]["kind"], {"type": "string", "enum": ["project_write"]})
+        for field in ("project_id", "title", "text"):
+            self.assertEqual(project["properties"][field], {"type": "string"})
+        self.assertFalse(project["additionalProperties"])
 
 
 class AuthTests(unittest.TestCase):

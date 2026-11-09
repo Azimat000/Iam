@@ -59,26 +59,26 @@ id = "support_after_first"
 kind = "state"
 path = "beliefs.text_structure_weak.independent_support"
 op = "eq"
-value = 1
+value = 0
 after = "form_belief"
-explain = "После первого сообщения у убеждения text_structure_weak одно независимое основание (источник один)."
+explain = "После первого сообщения у убеждения text_structure_weak ноль подтверждённых независимых оснований: один источник с неизвестной независимостью."
 
 [[assert]]
 id = "support_after_third"
 kind = "state"
 path = "beliefs.text_structure_weak.independent_support"
 op = "eq"
-value = 1
+value = 0
 after = "read3"
-explain = "После двух повторов независимых оснований по-прежнему одно: повторы и пересказы той же группы источника не считаются новыми."
+explain = "После двух повторов независимых оснований по-прежнему ноль: повторы и пересказы той же группы источника не считаются новыми."
 
 [[assert]]
 id = "statements_recorded"
 kind = "event"
 type = "memory.recorded"
-where = { claim_kind = "statement_made" }
+where = { origin = "stated_by_other", claim_kind = "fact_claim" }
 min = 3
-explain = "Каждый повтор записан как факт сообщения (а не как истина), поэтому история сообщений полная."
+explain = "Каждый прочитанный повтор записан как утверждение другого человека со ссылкой на input.read; это не подтверждение истинности."
 
 [[assert]]
 id = "emotion_allowed"

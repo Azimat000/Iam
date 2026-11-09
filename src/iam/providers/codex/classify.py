@@ -33,8 +33,25 @@ def _json(text: str):
     return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid_constant)
 
 
+def tool_use_categories(event: dict) -> tuple[str, ...]:
+    """Fixed reasons only; never return event names, commands or credential contents."""
+    kind = event.get('type')
+    if not isinstance(kind, str):
+        return ()
+    categories = []
+    if kind.startswith('item.'):
+        item = event.get('item')
+        # Unknown items remain forbidden; naming a category does not grant permission.
+        if isinstance(item, dict) and item.get('type') not in ('agent_message', 'reasoning'):
+            known = ('command_execution', 'file_change', 'mcp_tool_call', 'web_search', 'todo_list')
+            categories.append('known_tool_item' if item.get('type') in known else 'unknown_item_type')
+    if re.search(r'tool|command|mcp|web|file_change', kind, re.I):
+        categories.append('event_type_pattern')
+    return tuple(categories)
+
+
 def classify(run: RunResult) -> Classified:
-    events, malformed, tool = [], False, False
+    events, malformed, categories = [], False, set()
     for line in run.stdout.splitlines():
         if not line.strip():
             continue
@@ -46,16 +63,11 @@ def classify(run: RunResult) -> Classified:
             malformed = True
             continue
         events.append(event)
-        if event.get("type", "").startswith("item."):
-            item = event.get("item")
-            # New/unknown item types are capabilities until explicitly audited as passive.
-            if isinstance(item, dict) and item.get("type") not in ("agent_message", "reasoning"):
-                tool = True
-        if re.search(r'tool|command|mcp|web|file_change', str(event.get("type", "")), re.I):
-            tool = True
+        categories.update(tool_use_categories(event))
     # An attempted tool is never hidden by a later failure, timeout, or malformed output.
-    if tool:
-        return Classified(Kind.TOOL_USE, "Codex attempted a tool")
+    if categories:
+        return Classified(Kind.TOOL_USE, "Codex attempted a tool",
+                          envelope={'tool_use_categories': sorted(categories)})
     if run.timed_out:
         return Classified(Kind.TIMEOUT, "Codex exceeded its deadline")
     for event in events:

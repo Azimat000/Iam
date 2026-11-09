@@ -7,6 +7,109 @@ from world.helpers import LivingCase
 
 
 class IntentionTest(LivingCase):
+    def restart_living_cycle(self):
+        from iam.world import PersistentWorld
+        from iam.world.cycle import LivingCycle, WorldMemory
+        from iam.stubs import StubCreatorBridge
+        self.c.pause_session('operator')
+        self.c = self.reopen(self.c)
+        self.world = PersistentWorld(self.c)
+        self.m = WorldMemory(self.c)
+        self.cycle = LivingCycle(self.c, self.p, self.m, self.world, self.caps, StubCreatorBridge())
+        self.c.resume_session()
+
+    def test_repeated_post_goal_work_after_restart_does_not_start_done_reviews(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        first = self.write('Свет у окна.\nВесна пришла.')
+        self.restart_living_cycle()
+        repeated = self.write('Свет у окна.\nВесна пришла.')
+        self.assertNotEqual(first.memory_id, repeated.memory_id)
+        before = len(self.p.calls)
+        self.run_reply(self.transition('done', result=repeated))
+        self.assertEqual(len(self.p.calls), before + 1)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'active')
+        self.assertFalse([e for e in self.c.store.events() if e.type == 'proposal.assessed'])
+        self.assertNotIn('previous_fingerprint', json.dumps(self.p.calls[-1]))
+
+    def test_previous_fingerprint_never_reveals_forgotten_work_in_context(self):
+        from iam.world import fingerprint
+        source = self.read()
+        previous = self.write('PRIVATE_OLD_TEXT_5729')
+        current = self.write('Новая доступная работа')
+        self.assertTrue(self.m.fade(previous.memory_id).applied)
+        self.run_reply(rest())
+        request = json.dumps(self.p.calls[-1], ensure_ascii=False)
+        self.assertIn(current.memory_id, request)
+        self.assertNotIn('PRIVATE_OLD_TEXT_5729', request)
+        self.assertNotIn(fingerprint('PRIVATE_OLD_TEXT_5729'), request)
+        self.assertNotIn('previous_fingerprint', request)
+
+    def test_original_valid_work_can_finish_after_restart_without_claiming_late_progress(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        result = self.write('Свет у окна.\nВесна пришла.')
+        receipt = self.world.state['actions'][result.content['action_id']]['receipt']
+        self.assertIn('previous_fingerprint', receipt)
+        self.assertIsNone(receipt['previous_fingerprint'])
+        self.restart_living_cycle()
+        self.run_reply(self.transition('done', result=result),
+                       replies=(self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+
+    def test_legacy_receipt_remains_compatible_without_claiming_known_previous_text(self):
+        from unittest.mock import patch
+        source = self.read()
+        self.run_reply(self.goal(source))
+        original = self.world.result_ops
+
+        def legacy(*args):
+            ops = original(*args)
+            for op in ops:
+                if op.path.endswith('.receipt'):
+                    op.value.pop('previous_fingerprint', None)
+            return ops
+
+        with patch.object(self.world, 'result_ops', side_effect=legacy):
+            result = self.write('Свет у окна.\nВесна пришла.')
+        self.restart_living_cycle()
+        receipt = self.world.state['actions'][result.content['action_id']]['receipt']
+        self.assertNotIn('previous_fingerprint', receipt)
+        self.run_reply(self.transition('done', result=result),
+                       replies=(self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+
+    def test_same_text_in_another_project_does_not_make_first_work_a_repeat(self):
+        source = self.read()
+        self.write('Свет у окна.\nВесна пришла.', project='other')
+        self.run_reply(self.goal(source))
+        result = self.write('Свет у окна.\nВесна пришла.')
+        self.assertIsNone(self.world.state['actions'][result.content['action_id']]['receipt']['previous_fingerprint'])
+        self.run_reply(self.transition('done', result=result),
+                       replies=(self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+
+    def test_whitespace_repeat_after_restart_does_not_start_done_reviews(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        self.write('Свет у окна.')
+        self.restart_living_cycle()
+        repeated = self.write('  Свет   у окна.\n')
+        before = len(self.p.calls)
+        self.run_reply(self.transition('done', result=repeated))
+        self.assertEqual(len(self.p.calls), before + 1)
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'active')
+
+    def test_changed_work_after_restart_is_eligible(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        self.write('Свет у окна.')
+        self.restart_living_cycle()
+        changed = self.write('Свет у окна.\nВесна пришла.')
+        self.run_reply(self.transition('done', result=changed),
+                       replies=(self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+
     def test_future_moment_invalid_values_and_recovery_do_not_reset_or_duplicate(self):
         source=self.read()
         for value in (-1,True,'1000'):
@@ -79,8 +182,9 @@ class IntentionTest(LivingCase):
     def test_goal_and_action_are_independent_slots_in_both_orders(self):
         source = self.read()
         for reverse in (False,True):
-            goal = self.goal(source,iid='goal_' + str(reverse))
-            action = act(WRITE,{'project_id':'poem','title':'Работа','text':'Свет у окна.\nТёплая весна.'})
+            project = 'poem_' + str(reverse)
+            goal = self.goal(source, iid='goal_' + str(reverse), project=project)
+            action = act(WRITE,{'project_id':project,'title':'Работа','text':'Свет у окна.\nТёплая весна.'})
             report = self.run_reply(*( (action,goal) if reverse else (goal,action)))
             self.assertEqual(report.outcome,'done', report)
             self.assertEqual(report.actions[0].status,'confirmed')
@@ -121,6 +225,9 @@ class IntentionTest(LivingCase):
         self.assertNotIn('available_result',json.loads(stages[0]['request']['context'][0]['text'])['packet'])
         self.assertEqual(len(stages[0]['request']['context']),1)
         self.assertEqual(stages[0]['protocol'],'single_packet_v2')
+        evaluation = json.loads(stages[1]['request']['context'][0]['text'])
+        self.assertIn('подтверждённое действие записи собственной работы', evaluation['instructions'])
+        self.assertEqual(evaluation['packet']['available_result']['scope'], 'artifact')
 
     def test_failed_or_wrong_project_or_early_or_unchanged_result_never_done(self):
         source = self.read()

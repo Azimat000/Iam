@@ -1,0 +1,4342 @@
+{
+  "scenario": "integration.test_contracts.ContractTest.test_belief_from_two_observations_keeps_support_after_rethinking",
+  "state": {
+    "traits": {},
+    "affect": {
+      "attention": {
+        "focus": "rest",
+        "ref": null,
+        "reason": "ничего не нужно",
+        "since_life_ms": 0,
+        "switch_history": [
+          0
+        ]
+      }
+    },
+    "beliefs": {
+      "light": {
+        "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+        "version": 1,
+        "claim": "Мне легче замечать свет на белом фоне",
+        "agreement": 0.6,
+        "confidence": 0.5,
+        "bases": [
+          "mem_2FKZR6mustTuBYYWOmVf",
+          "mem_FjfpRaAKy7wEqLVcEpmK"
+        ]
+      }
+    },
+    "relations": {},
+    "intentions": {},
+    "preferences": {},
+    "selfmodel": {},
+    "world_time": {
+      "session_state": "running",
+      "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+      "life_time_ms": 0,
+      "pause_reason": null,
+      "paused_at": null,
+      "pause_count": 1,
+      "resume_count": 1,
+      "moments": {},
+      "world": {
+        "space": {
+          "places": {
+            "desk": "Рабочий стол",
+            "shelf": "Библиотека",
+            "room": "Личное пространство"
+          },
+          "objects": {
+            "notebook": {
+              "title": "Блокнот",
+              "place_id": "desk"
+            }
+          }
+        },
+        "library": {
+          "material_T6dEj664kNclRz0QWn38": {
+            "title": "Свет",
+            "text": "Свет лежит на столе.",
+            "origin": "operator_provided",
+            "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+            "read": true,
+            "read_event": "evt_gPwhIoPHFsHVjMlD5eKZ"
+          },
+          "material_okiXJmiTRrAmmviqhxRt": {
+            "title": "Другое наблюдение",
+            "text": "На белой стене светлее.",
+            "origin": "operator_provided",
+            "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+            "read": true,
+            "read_event": "evt_cT35YJ3nsLN56tHmNDWc"
+          }
+        },
+        "panel_session": {
+          "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+          "max_calls": 10,
+          "max_ms": 1800000,
+          "started_ms": 0
+        },
+        "actions": {
+          "act_C23Njo7wJRo3F3ScfgyD": {
+            "status": "confirmed",
+            "kind": "action",
+            "capability_id": "cap_Library01",
+            "params": {
+              "material_id": "material_T6dEj664kNclRz0QWn38"
+            },
+            "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+            "cycle_id": "cyc_0c56ef2ac7d75e04",
+            "attempted_event": "evt_eLYhKAeYOpPNANtDug6r",
+            "outcome": "Свет лежит на столе.",
+            "receipt": {
+              "event_id": "evt_gPwhIoPHFsHVjMlD5eKZ",
+              "target": "material_T6dEj664kNclRz0QWn38",
+              "scope": "received_text",
+              "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+              "duration_ms": 0
+            }
+          },
+          "act_cf5v2JAF8IrOnlJMXY2T": {
+            "status": "confirmed",
+            "kind": "action",
+            "capability_id": "cap_Library01",
+            "params": {
+              "material_id": "material_okiXJmiTRrAmmviqhxRt"
+            },
+            "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+            "cycle_id": "cyc_dd3805214b32d1a0",
+            "attempted_event": "evt_3a2A1N8dp4LtVdnMQDTi",
+            "outcome": "На белой стене светлее.",
+            "receipt": {
+              "event_id": "evt_cT35YJ3nsLN56tHmNDWc",
+              "target": "material_okiXJmiTRrAmmviqhxRt",
+              "scope": "received_text",
+              "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+              "duration_ms": 0
+            }
+          }
+        },
+        "panel_command": {
+          "action": "resume",
+          "id": "opr_cuptMWqbZ0nApxNGKz0q"
+        },
+        "memory_independence": [
+          "unknown:evt_cT35YJ3nsLN56tHmNDWc",
+          "unknown:evt_gPwhIoPHFsHVjMlD5eKZ"
+        ]
+      }
+    }
+  },
+  "events": [
+    {
+      "event_id": "evt_K0WFI10lzbxvsuHv2LvV",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 1,
+      "type": "persona.created",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "per:exp_K0WFI10lzbxvsuHv2LvV:create",
+      "epoch": 1,
+      "state_version": 1,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": "stopped",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_state"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_id"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_count"
+          },
+          {
+            "after": 0,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "resume_count"
+          },
+          {
+            "after": {},
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments"
+          },
+          {
+            "after": {},
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world"
+          }
+        ],
+        "groups": [
+          "world_time"
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 0,
+          "caused_by": [
+            "evt_K0WFI10lzbxvsuHv2LvV"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_state",
+              "value": "stopped"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_id",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "resume_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments",
+              "value": {}
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world",
+              "value": {}
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "создание личности",
+          "transition_id": "trn_K0WFI10lzbxvsuHv2LvV"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_Jx4G8JaRdNRMQakPYmAS",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 2,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_VJe9pZkgnaJBD81V67Et",
+      "epoch": 1,
+      "state_version": 2,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "objects": {
+                "notebook": {
+                  "place_id": "desk",
+                  "title": "Блокнот"
+                }
+              },
+              "places": {
+                "desk": "Рабочий стол",
+                "room": "Личное пространство",
+                "shelf": "Библиотека"
+              }
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.space"
+          }
+        ],
+        "intervention_id": "opr_VJe9pZkgnaJBD81V67Et",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Создано пустое личное пространство S22",
+        "target": "state",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 1,
+          "caused_by": [
+            "evt_Jx4G8JaRdNRMQakPYmAS"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.space",
+              "value": {
+                "objects": {
+                  "notebook": {
+                    "place_id": "desk",
+                    "title": "Блокнот"
+                  }
+                },
+                "places": {
+                  "desk": "Рабочий стол",
+                  "room": "Личное пространство",
+                  "shelf": "Библиотека"
+                }
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Создано пустое личное пространство S22",
+          "transition_id": "trn_ytERfjFznLKvWG5yLW6i"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_F3NEX3goKckIUgjwfhqD",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 3,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_AeSx2iLf9dy2EJfidNy5",
+      "epoch": 1,
+      "state_version": 3,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+              "origin": "operator_provided",
+              "read": false,
+              "text": "Свет лежит на столе.",
+              "title": "Свет"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_T6dEj664kNclRz0QWn38"
+          }
+        ],
+        "intervention_id": "opr_AeSx2iLf9dy2EJfidNy5",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Начальный материал",
+        "target": "state",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 2,
+          "caused_by": [
+            "evt_F3NEX3goKckIUgjwfhqD"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_T6dEj664kNclRz0QWn38",
+              "value": {
+                "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+                "origin": "operator_provided",
+                "read": false,
+                "text": "Свет лежит на столе.",
+                "title": "Свет"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Начальный материал",
+          "transition_id": "trn_DpO6ZPD2kdpx6JVRsjvJ"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_BuzqvfFdN4r0HTBPKUcs",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 4,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_BMZie0BeA0cx19nlJKAE",
+      "epoch": 1,
+      "state_version": 4,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "max_calls": 10,
+              "max_ms": 1800000,
+              "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+              "started_ms": 0
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.panel_session"
+          }
+        ],
+        "intervention_id": "opr_BMZie0BeA0cx19nlJKAE",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Сценарий S25",
+        "target": "session",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 3,
+          "caused_by": [
+            "evt_BuzqvfFdN4r0HTBPKUcs"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.panel_session",
+              "value": {
+                "max_calls": 10,
+                "max_ms": 1800000,
+                "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+                "started_ms": 0
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Сценарий S25",
+          "transition_id": "trn_EozThShYJI8brBaFyekF"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_LwjisZ5OLALgfh0J0phZ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 5,
+      "type": "session.started",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "session"
+      },
+      "causes": [],
+      "idempotency_key": "ses:ses_0pEeVwdwaBbRvdPyCEmd:start",
+      "epoch": 1,
+      "state_version": 5,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": "running",
+            "before": "stopped",
+            "group": "world_time",
+            "op": "transition",
+            "path": "session_state"
+          },
+          {
+            "after": "ses_0pEeVwdwaBbRvdPyCEmd",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "session_id"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_count"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "resume_count"
+          }
+        ],
+        "life_time_ms": 0,
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 4,
+          "caused_by": [
+            "evt_LwjisZ5OLALgfh0J0phZ"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "session_state",
+              "value": "running"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "session_id",
+              "value": "ses_0pEeVwdwaBbRvdPyCEmd"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_count",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "resume_count",
+              "value": 0
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "начало сеанса",
+          "transition_id": "trn_4B3w40ZRoMtgu5YV9BZg"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_SpyXr0kzZm28ie5knCWQ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 6,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "trn:trn_OYqsYJ6bprRWgBpfDv54",
+      "epoch": 1,
+      "state_version": 6,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_k4Fiz4pkgctUHX1Zm9CI",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_k4Fiz4pkgctUHX1Zm9CI"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 5,
+          "caused_by": [
+            "evt_SpyXr0kzZm28ie5knCWQ"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_k4Fiz4pkgctUHX1Zm9CI",
+              "value": {
+                "due_life_ms": 0,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_k4Fiz4pkgctUHX1Zm9CI",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "назначен момент mom_k4Fiz4pkgctUHX1Zm9CI",
+          "transition_id": "trn_OYqsYJ6bprRWgBpfDv54"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_JlAQ74DMyhZNDnAQm4nT",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 7,
+      "type": "time.moment_due",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "due:mom_k4Fiz4pkgctUHX1Zm9CI:1",
+      "epoch": 1,
+      "state_version": 7,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_k4Fiz4pkgctUHX1Zm9CI",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_k4Fiz4pkgctUHX1Zm9CI"
+          }
+        ],
+        "due_life_ms": 0,
+        "kind": "life",
+        "moment_id": "mom_k4Fiz4pkgctUHX1Zm9CI",
+        "n": 1,
+        "overdue_ms": 0,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 6,
+          "caused_by": [
+            "evt_JlAQ74DMyhZNDnAQm4nT"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_k4Fiz4pkgctUHX1Zm9CI"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "наступил момент mom_k4Fiz4pkgctUHX1Zm9CI",
+          "transition_id": "trn_LVIRcImsSLVwBJVxJ2It"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_nzrCYUmYVVaaCd1AdxVA",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 8,
+      "type": "attention.chosen",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_JlAQ74DMyhZNDnAQm4nT"
+      ],
+      "idempotency_key": "att:cyc_0c56ef2ac7d75e04",
+      "epoch": 1,
+      "state_version": 8,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_0c56ef2ac7d75e04",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "before": null,
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_0c56ef2ac7d75e04",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 7,
+          "caused_by": [
+            "evt_JlAQ74DMyhZNDnAQm4nT"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_0c56ef2ac7d75e04",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 0,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "внимание: цикл cyc_0c56ef2ac7d75e04",
+          "transition_id": "trn_mkeCS94PNx5FGCPDySV1"
+        },
+        "trigger": "evt_JlAQ74DMyhZNDnAQm4nT"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_MdHIXnjk4JkUNAKhmVOx",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 9,
+      "type": "memory.retrieved",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [],
+      "idempotency_key": "rtv:cyc_0c56ef2ac7d75e04:0",
+      "epoch": 1,
+      "state_version": 8,
+      "changes_state": false,
+      "payload": {
+        "cycle_id": "cyc_0c56ef2ac7d75e04",
+        "memory_ids": [],
+        "query": ""
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_T8lTDwjnssor0yayzNFH",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 10,
+      "type": "proposal.requested",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [],
+      "idempotency_key": "req:req_pNQDANUlp5kahJgEcabg",
+      "epoch": 1,
+      "state_version": 8,
+      "changes_state": false,
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention",
+            "reflection"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+              "text": "Наступил плановый момент."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+              "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+              "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+            }
+          ],
+          "cycle_id": "cyc_0c56ef2ac7d75e04",
+          "epoch": 1,
+          "idempotency_key": "req:req_pNQDANUlp5kahJgEcabg",
+          "issued_at": "2026-10-11T10:00:00.000Z",
+          "life_time_ms": 0,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 60000,
+            "max_output_tokens": 800
+          },
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "purpose": "choose_action",
+          "request_id": "req_pNQDANUlp5kahJgEcabg",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+          "state_version": 8
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_ooieXzZ37jJC5uEVm85U",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 11,
+      "type": "proposal.received",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_T8lTDwjnssor0yayzNFH"
+      ],
+      "idempotency_key": "resp:req_pNQDANUlp5kahJgEcabg",
+      "epoch": 1,
+      "state_version": 8,
+      "changes_state": false,
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "ответ заглушки",
+          "proposals": [
+            {
+              "body": {
+                "capability_id": "cap_Library01",
+                "params": {
+                  "material_id": "material_T6dEj664kNclRz0QWn38"
+                }
+              },
+              "cites": [],
+              "kind": "action",
+              "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+              "rationale": "нужно сделать дело"
+            }
+          ],
+          "provider": {
+            "model": "scripted-1",
+            "name": "scripted"
+          },
+          "request_id": "req_pNQDANUlp5kahJgEcabg",
+          "state_version": 8,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 1
+          }
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_icZ57ZmhKIzEw2I9y2Gh",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 12,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_ooieXzZ37jJC5uEVm85U"
+      ],
+      "idempotency_key": "trn:trn_pUa1RcG8mufF6dTarC76",
+      "epoch": 1,
+      "state_version": 9,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "capability_id": "cap_Library01",
+              "cycle_id": "cyc_0c56ef2ac7d75e04",
+              "kind": "action",
+              "params": {
+                "material_id": "material_T6dEj664kNclRz0QWn38"
+              },
+              "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+              "status": "accepted"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 8,
+          "caused_by": [
+            "evt_ooieXzZ37jJC5uEVm85U"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD",
+              "value": {
+                "capability_id": "cap_Library01",
+                "cycle_id": "cyc_0c56ef2ac7d75e04",
+                "kind": "action",
+                "params": {
+                  "material_id": "material_T6dEj664kNclRz0QWn38"
+                },
+                "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+                "status": "accepted"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+          "reason": "ответ модели req_pNQDANUlp5kahJgEcabg",
+          "transition_id": "trn_pUa1RcG8mufF6dTarC76"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_dC8V81eqrXg2Qw8NOnLN",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 13,
+      "type": "proposal.accepted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_ooieXzZ37jJC5uEVm85U"
+      ],
+      "idempotency_key": "prop:prop_C23Njo7wJRo3F3ScfgyD:accept",
+      "epoch": 1,
+      "state_version": 9,
+      "changes_state": true,
+      "payload": {
+        "kind": "action",
+        "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+        "rationale": "нужно сделать дело",
+        "request_id": "req_pNQDANUlp5kahJgEcabg"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_eLYhKAeYOpPNANtDug6r",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 14,
+      "type": "action.attempted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_dC8V81eqrXg2Qw8NOnLN"
+      ],
+      "idempotency_key": "act:act_C23Njo7wJRo3F3ScfgyD:try",
+      "epoch": 1,
+      "state_version": 10,
+      "changes_state": true,
+      "payload": {
+        "action_id": "act_C23Njo7wJRo3F3ScfgyD",
+        "capability_id": "cap_Library01",
+        "changes": [
+          {
+            "after": "attempted",
+            "before": "accepted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.status"
+          },
+          {
+            "after": "evt_eLYhKAeYOpPNANtDug6r",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.attempted_event"
+          }
+        ],
+        "cycle_id": "cyc_0c56ef2ac7d75e04",
+        "kind": "action",
+        "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 9,
+          "caused_by": [
+            "evt_dC8V81eqrXg2Qw8NOnLN"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.status",
+              "value": "attempted"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.attempted_event",
+              "value": "evt_eLYhKAeYOpPNANtDug6r"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "попытка действия act_C23Njo7wJRo3F3ScfgyD",
+          "transition_id": "trn_8uTM88yYKq3o00KLRe5L"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_gPwhIoPHFsHVjMlD5eKZ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 15,
+      "type": "action.confirmed",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "world",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_eLYhKAeYOpPNANtDug6r"
+      ],
+      "idempotency_key": "act:act_C23Njo7wJRo3F3ScfgyD:ok",
+      "epoch": 1,
+      "state_version": 11,
+      "changes_state": true,
+      "payload": {
+        "action_id": "act_C23Njo7wJRo3F3ScfgyD",
+        "capability_id": "cap_Library01",
+        "changes": [
+          {
+            "after": "confirmed",
+            "before": "attempted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.status"
+          },
+          {
+            "after": "Свет лежит на столе.",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.outcome"
+          },
+          {
+            "after": {
+              "duration_ms": 0,
+              "event_id": "evt_gPwhIoPHFsHVjMlD5eKZ",
+              "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+              "scope": "received_text",
+              "target": "material_T6dEj664kNclRz0QWn38"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.receipt"
+          },
+          {
+            "after": true,
+            "before": false,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_T6dEj664kNclRz0QWn38.read"
+          },
+          {
+            "after": "evt_gPwhIoPHFsHVjMlD5eKZ",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_T6dEj664kNclRz0QWn38.read_event"
+          }
+        ],
+        "cycle_id": "cyc_0c56ef2ac7d75e04",
+        "kind": "action",
+        "proposal_id": "prop_C23Njo7wJRo3F3ScfgyD",
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "summary": "Свет лежит на столе.",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 10,
+          "caused_by": [
+            "evt_eLYhKAeYOpPNANtDug6r"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.status",
+              "value": "confirmed"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.outcome",
+              "value": "Свет лежит на столе."
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_C23Njo7wJRo3F3ScfgyD.receipt",
+              "value": {
+                "duration_ms": 0,
+                "event_id": "evt_gPwhIoPHFsHVjMlD5eKZ",
+                "fingerprint": "f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7",
+                "scope": "received_text",
+                "target": "material_T6dEj664kNclRz0QWn38"
+              }
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_T6dEj664kNclRz0QWn38.read",
+              "value": true
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_T6dEj664kNclRz0QWn38.read_event",
+              "value": "evt_gPwhIoPHFsHVjMlD5eKZ"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Подтверждение результата постоянного мира",
+          "transition_id": "trn_hjNcEpWdC9cDr4F1FbvQ"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_rQEdmhcprWiVc5wNzOXr",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 16,
+      "type": "memory.recorded",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_gPwhIoPHFsHVjMlD5eKZ"
+      ],
+      "idempotency_key": "mem:trn_RJAkWR9y88RxEPFqZiPl:0",
+      "epoch": 1,
+      "state_version": 12,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "content": {
+                "action_id": "act_C23Njo7wJRo3F3ScfgyD",
+                "experience": "live",
+                "outcome": "confirmed",
+                "source_details": [
+                  {
+                    "kind": "world",
+                    "ref": "cycle"
+                  }
+                ],
+                "source_versions": {},
+                "text": "Подтверждён успех: action cap_Library01. Свет лежит на столе."
+              },
+              "created_at": "2026-10-11T10:00:00.000Z",
+              "created_life_ms": 0,
+              "history": [
+                {
+                  "at_seq": 16,
+                  "change": "создана",
+                  "version": 1
+                }
+              ],
+              "kind": "episodic",
+              "layer": "personal",
+              "links": [],
+              "memory_id": "mem_2FKZR6mustTuBYYWOmVf",
+              "origin": "observation",
+              "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+              "source": {
+                "kind": "core",
+                "ref": "memory"
+              },
+              "sources": [
+                "evt_gPwhIoPHFsHVjMlD5eKZ"
+              ],
+              "version": 1
+            },
+            "before": null,
+            "group": "memory",
+            "op": "add",
+            "path": "mem_2FKZR6mustTuBYYWOmVf"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 11,
+          "caused_by": [
+            "evt_gPwhIoPHFsHVjMlD5eKZ"
+          ],
+          "ops": [
+            {
+              "group": "memory",
+              "op": "add",
+              "path": "mem_2FKZR6mustTuBYYWOmVf",
+              "value": {
+                "content": {
+                  "action_id": "act_C23Njo7wJRo3F3ScfgyD",
+                  "experience": "live",
+                  "outcome": "confirmed",
+                  "source_details": [
+                    {
+                      "kind": "world",
+                      "ref": "cycle"
+                    }
+                  ],
+                  "source_versions": {},
+                  "text": "Подтверждён успех: action cap_Library01. Свет лежит на столе."
+                },
+                "created_at": "2026-10-11T10:00:00.000Z",
+                "created_life_ms": 0,
+                "history": [
+                  {
+                    "at_seq": 16,
+                    "change": "создана",
+                    "version": 1
+                  }
+                ],
+                "kind": "episodic",
+                "layer": "personal",
+                "links": [],
+                "memory_id": "mem_2FKZR6mustTuBYYWOmVf",
+                "origin": "observation",
+                "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+                "source": {
+                  "kind": "core",
+                  "ref": "memory"
+                },
+                "sources": [
+                  "evt_gPwhIoPHFsHVjMlD5eKZ"
+                ],
+                "version": 1
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "запоминание",
+          "transition_id": "trn_RJAkWR9y88RxEPFqZiPl"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_chlUBES0VUkknvEPOEbR",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 17,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_jminuydhfRMsYQYe7cd6",
+      "epoch": 1,
+      "state_version": 13,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "action": "pause",
+              "id": "opr_IBXrPS7iNV7va2vi533D"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.panel_command"
+          }
+        ],
+        "intervention_id": "opr_jminuydhfRMsYQYe7cd6",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Загрузка второго материала",
+        "target": "session",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 12,
+          "caused_by": [
+            "evt_chlUBES0VUkknvEPOEbR"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.panel_command",
+              "value": {
+                "action": "pause",
+                "id": "opr_IBXrPS7iNV7va2vi533D"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Загрузка второго материала",
+          "transition_id": "trn_5VXH4Nbt4ZWbZAfWh9Ky"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_TgPr0CvRjRcU6dVKzEco",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 18,
+      "type": "session.paused",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "session"
+      },
+      "causes": [],
+      "idempotency_key": "ses:ses_0pEeVwdwaBbRvdPyCEmd:pause:1",
+      "epoch": 1,
+      "state_version": 14,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": "paused",
+            "before": "running",
+            "group": "world_time",
+            "op": "transition",
+            "path": "session_state"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": "operator",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": "2026-10-11T10:00:00.000Z",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 1,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_count"
+          }
+        ],
+        "life_time_ms": 0,
+        "pause_n": 1,
+        "reason": "operator",
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 13,
+          "caused_by": [
+            "evt_TgPr0CvRjRcU6dVKzEco"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "session_state",
+              "value": "paused"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": "operator"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": "2026-10-11T10:00:00.000Z"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_count",
+              "value": 1
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "пауза сеанса: operator",
+          "transition_id": "trn_W9KfllXPK9PfyRVql33F"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_oN734EKVsIUc5KVh1wZh",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 19,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_hxhusTbcS8URj58T6cpi",
+      "epoch": 1,
+      "state_version": 15,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+              "origin": "operator_provided",
+              "read": false,
+              "text": "На белой стене светлее.",
+              "title": "Другое наблюдение"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_okiXJmiTRrAmmviqhxRt"
+          }
+        ],
+        "intervention_id": "opr_hxhusTbcS8URj58T6cpi",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Второй опыт",
+        "target": "state",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 14,
+          "caused_by": [
+            "evt_oN734EKVsIUc5KVh1wZh"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_okiXJmiTRrAmmviqhxRt",
+              "value": {
+                "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+                "origin": "operator_provided",
+                "read": false,
+                "text": "На белой стене светлее.",
+                "title": "Другое наблюдение"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Второй опыт",
+          "transition_id": "trn_uIoAJ8qd5snRTrkksWO5"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_vXDPmy3hB6LXagP1ekNt",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 20,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_Lmhc8YQDQAvISA6HBnZS",
+      "epoch": 1,
+      "state_version": 16,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "action": "resume",
+              "id": "opr_cuptMWqbZ0nApxNGKz0q"
+            },
+            "before": {
+              "action": "pause",
+              "id": "opr_IBXrPS7iNV7va2vi533D"
+            },
+            "group": "world_time",
+            "op": "set",
+            "path": "world.panel_command"
+          }
+        ],
+        "intervention_id": "opr_Lmhc8YQDQAvISA6HBnZS",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Второе наблюдение",
+        "target": "session",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 15,
+          "caused_by": [
+            "evt_vXDPmy3hB6LXagP1ekNt"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.panel_command",
+              "value": {
+                "action": "resume",
+                "id": "opr_cuptMWqbZ0nApxNGKz0q"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Второе наблюдение",
+          "transition_id": "trn_FkCy2ZLLfsTbUEth74cb"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_xdrCPuDxn0UrjeJ15VGA",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 21,
+      "type": "session.resumed",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "session"
+      },
+      "causes": [],
+      "idempotency_key": "ses:ses_0pEeVwdwaBbRvdPyCEmd:resume:1",
+      "epoch": 1,
+      "state_version": 17,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": "running",
+            "before": "paused",
+            "group": "world_time",
+            "op": "transition",
+            "path": "session_state"
+          },
+          {
+            "after": 0,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "life_time_ms"
+          },
+          {
+            "after": null,
+            "before": "operator",
+            "group": "world_time",
+            "op": "set",
+            "path": "pause_reason"
+          },
+          {
+            "after": null,
+            "before": "2026-10-11T10:00:00.000Z",
+            "group": "world_time",
+            "op": "set",
+            "path": "paused_at"
+          },
+          {
+            "after": 1,
+            "before": 0,
+            "group": "world_time",
+            "op": "set",
+            "path": "resume_count"
+          }
+        ],
+        "life_time_ms": 0,
+        "paused_calendar_ms": 0,
+        "resume_n": 1,
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 16,
+          "caused_by": [
+            "evt_xdrCPuDxn0UrjeJ15VGA"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "session_state",
+              "value": "running"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "life_time_ms",
+              "value": 0
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "pause_reason",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "paused_at",
+              "value": null
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "resume_count",
+              "value": 1
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "возобновление сеанса",
+          "transition_id": "trn_BUSxz8vwYU9cN32eSQ8z"
+        },
+        "was_paused_for": "operator"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_jXFS7VLXUxx8asczgjeD",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 22,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "trn:trn_E2fcrLoIT8n9niUV5Tvx",
+      "epoch": 1,
+      "state_version": 18,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_Zk7wzyC8qCBhV3p5BRU1",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_Zk7wzyC8qCBhV3p5BRU1"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 17,
+          "caused_by": [
+            "evt_jXFS7VLXUxx8asczgjeD"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_Zk7wzyC8qCBhV3p5BRU1",
+              "value": {
+                "due_life_ms": 0,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_Zk7wzyC8qCBhV3p5BRU1",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "назначен момент mom_Zk7wzyC8qCBhV3p5BRU1",
+          "transition_id": "trn_E2fcrLoIT8n9niUV5Tvx"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_iC4s66pwcQhA5DLzxNsj",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 23,
+      "type": "time.moment_due",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "due:mom_Zk7wzyC8qCBhV3p5BRU1:1",
+      "epoch": 1,
+      "state_version": 19,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_Zk7wzyC8qCBhV3p5BRU1",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_Zk7wzyC8qCBhV3p5BRU1"
+          }
+        ],
+        "due_life_ms": 0,
+        "kind": "life",
+        "moment_id": "mom_Zk7wzyC8qCBhV3p5BRU1",
+        "n": 1,
+        "overdue_ms": 0,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 18,
+          "caused_by": [
+            "evt_iC4s66pwcQhA5DLzxNsj"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_Zk7wzyC8qCBhV3p5BRU1"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "наступил момент mom_Zk7wzyC8qCBhV3p5BRU1",
+          "transition_id": "trn_AhsmdUcQnVGaWox8cRoE"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_BDPE4qB56q2x6dyiQBJQ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 24,
+      "type": "attention.chosen",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_iC4s66pwcQhA5DLzxNsj"
+      ],
+      "idempotency_key": "att:cyc_dd3805214b32d1a0",
+      "epoch": 1,
+      "state_version": 20,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_dd3805214b32d1a0",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_0c56ef2ac7d75e04",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_dd3805214b32d1a0",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 19,
+          "caused_by": [
+            "evt_iC4s66pwcQhA5DLzxNsj"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_dd3805214b32d1a0",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 0,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "внимание: цикл cyc_dd3805214b32d1a0",
+          "transition_id": "trn_wQssrIBxWj70SGKVshxs"
+        },
+        "trigger": "evt_iC4s66pwcQhA5DLzxNsj"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_R4z1Bv3frAKrtjRmal5j",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 25,
+      "type": "memory.retrieved",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [],
+      "idempotency_key": "rtv:cyc_dd3805214b32d1a0:0",
+      "epoch": 1,
+      "state_version": 20,
+      "changes_state": false,
+      "payload": {
+        "cycle_id": "cyc_dd3805214b32d1a0",
+        "memory_ids": [
+          "mem_2FKZR6mustTuBYYWOmVf"
+        ],
+        "query": ""
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_GvZKXab2izfOscOcraSF",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 26,
+      "type": "proposal.requested",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_R4z1Bv3frAKrtjRmal5j",
+        "evt_gPwhIoPHFsHVjMlD5eKZ"
+      ],
+      "idempotency_key": "req:req_3RIqJtEWeHZJyXhKAcj3",
+      "epoch": 1,
+      "state_version": 20,
+      "changes_state": false,
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention",
+            "reflection"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+              "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+              "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_2FKZR6mustTuBYYWOmVf",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+              "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+            }
+          ],
+          "cycle_id": "cyc_dd3805214b32d1a0",
+          "epoch": 1,
+          "idempotency_key": "req:req_3RIqJtEWeHZJyXhKAcj3",
+          "issued_at": "2026-10-11T10:00:00.000Z",
+          "life_time_ms": 0,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 60000,
+            "max_output_tokens": 800
+          },
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "purpose": "choose_action",
+          "request_id": "req_3RIqJtEWeHZJyXhKAcj3",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+          "state_version": 20
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_3JqHamWDwy2ttHc6mgfT",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 27,
+      "type": "proposal.received",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_GvZKXab2izfOscOcraSF"
+      ],
+      "idempotency_key": "resp:req_3RIqJtEWeHZJyXhKAcj3",
+      "epoch": 1,
+      "state_version": 20,
+      "changes_state": false,
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "ответ заглушки",
+          "proposals": [
+            {
+              "body": {
+                "capability_id": "cap_Library01",
+                "params": {
+                  "material_id": "material_okiXJmiTRrAmmviqhxRt"
+                }
+              },
+              "cites": [],
+              "kind": "action",
+              "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+              "rationale": "нужно сделать дело"
+            }
+          ],
+          "provider": {
+            "model": "scripted-1",
+            "name": "scripted"
+          },
+          "request_id": "req_3RIqJtEWeHZJyXhKAcj3",
+          "state_version": 20,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 1
+          }
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_0uy8ybOpis4nlPGOxCII",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 28,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_3JqHamWDwy2ttHc6mgfT"
+      ],
+      "idempotency_key": "trn:trn_llxBqDB9LYcNpj8WuBx3",
+      "epoch": 1,
+      "state_version": 21,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "capability_id": "cap_Library01",
+              "cycle_id": "cyc_dd3805214b32d1a0",
+              "kind": "action",
+              "params": {
+                "material_id": "material_okiXJmiTRrAmmviqhxRt"
+              },
+              "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+              "status": "accepted"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 20,
+          "caused_by": [
+            "evt_3JqHamWDwy2ttHc6mgfT"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T",
+              "value": {
+                "capability_id": "cap_Library01",
+                "cycle_id": "cyc_dd3805214b32d1a0",
+                "kind": "action",
+                "params": {
+                  "material_id": "material_okiXJmiTRrAmmviqhxRt"
+                },
+                "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+                "status": "accepted"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+          "reason": "ответ модели req_3RIqJtEWeHZJyXhKAcj3",
+          "transition_id": "trn_llxBqDB9LYcNpj8WuBx3"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_wl9GMchWDDySU6qDnjIZ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 29,
+      "type": "proposal.accepted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_3JqHamWDwy2ttHc6mgfT"
+      ],
+      "idempotency_key": "prop:prop_cf5v2JAF8IrOnlJMXY2T:accept",
+      "epoch": 1,
+      "state_version": 21,
+      "changes_state": true,
+      "payload": {
+        "kind": "action",
+        "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+        "rationale": "нужно сделать дело",
+        "request_id": "req_3RIqJtEWeHZJyXhKAcj3"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_3a2A1N8dp4LtVdnMQDTi",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 30,
+      "type": "action.attempted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_wl9GMchWDDySU6qDnjIZ"
+      ],
+      "idempotency_key": "act:act_cf5v2JAF8IrOnlJMXY2T:try",
+      "epoch": 1,
+      "state_version": 22,
+      "changes_state": true,
+      "payload": {
+        "action_id": "act_cf5v2JAF8IrOnlJMXY2T",
+        "capability_id": "cap_Library01",
+        "changes": [
+          {
+            "after": "attempted",
+            "before": "accepted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.status"
+          },
+          {
+            "after": "evt_3a2A1N8dp4LtVdnMQDTi",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.attempted_event"
+          }
+        ],
+        "cycle_id": "cyc_dd3805214b32d1a0",
+        "kind": "action",
+        "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 21,
+          "caused_by": [
+            "evt_wl9GMchWDDySU6qDnjIZ"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.status",
+              "value": "attempted"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.attempted_event",
+              "value": "evt_3a2A1N8dp4LtVdnMQDTi"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "попытка действия act_cf5v2JAF8IrOnlJMXY2T",
+          "transition_id": "trn_fzFWhJXkmrWVw9GZAUsw"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_cT35YJ3nsLN56tHmNDWc",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 31,
+      "type": "action.confirmed",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "world",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_3a2A1N8dp4LtVdnMQDTi"
+      ],
+      "idempotency_key": "act:act_cf5v2JAF8IrOnlJMXY2T:ok",
+      "epoch": 1,
+      "state_version": 23,
+      "changes_state": true,
+      "payload": {
+        "action_id": "act_cf5v2JAF8IrOnlJMXY2T",
+        "capability_id": "cap_Library01",
+        "changes": [
+          {
+            "after": "confirmed",
+            "before": "attempted",
+            "group": "world_time",
+            "op": "transition",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.status"
+          },
+          {
+            "after": "На белой стене светлее.",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.outcome"
+          },
+          {
+            "after": {
+              "duration_ms": 0,
+              "event_id": "evt_cT35YJ3nsLN56tHmNDWc",
+              "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+              "scope": "received_text",
+              "target": "material_okiXJmiTRrAmmviqhxRt"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.receipt"
+          },
+          {
+            "after": true,
+            "before": false,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_okiXJmiTRrAmmviqhxRt.read"
+          },
+          {
+            "after": "evt_cT35YJ3nsLN56tHmNDWc",
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.library.material_okiXJmiTRrAmmviqhxRt.read_event"
+          }
+        ],
+        "cycle_id": "cyc_dd3805214b32d1a0",
+        "kind": "action",
+        "proposal_id": "prop_cf5v2JAF8IrOnlJMXY2T",
+        "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+        "summary": "На белой стене светлее.",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 22,
+          "caused_by": [
+            "evt_3a2A1N8dp4LtVdnMQDTi"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "transition",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.status",
+              "value": "confirmed"
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.outcome",
+              "value": "На белой стене светлее."
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.actions.act_cf5v2JAF8IrOnlJMXY2T.receipt",
+              "value": {
+                "duration_ms": 0,
+                "event_id": "evt_cT35YJ3nsLN56tHmNDWc",
+                "fingerprint": "c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91",
+                "scope": "received_text",
+                "target": "material_okiXJmiTRrAmmviqhxRt"
+              }
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_okiXJmiTRrAmmviqhxRt.read",
+              "value": true
+            },
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.library.material_okiXJmiTRrAmmviqhxRt.read_event",
+              "value": "evt_cT35YJ3nsLN56tHmNDWc"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Подтверждение результата постоянного мира",
+          "transition_id": "trn_occBGYRC5DFr7RHndeLV"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_ilVP41XcuieeW3QZJHuN",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 32,
+      "type": "memory.recorded",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_cT35YJ3nsLN56tHmNDWc"
+      ],
+      "idempotency_key": "mem:trn_BiStuNM6bB9Ot9kWcbr9:0",
+      "epoch": 1,
+      "state_version": 24,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "content": {
+                "action_id": "act_cf5v2JAF8IrOnlJMXY2T",
+                "experience": "live",
+                "outcome": "confirmed",
+                "source_details": [
+                  {
+                    "kind": "world",
+                    "ref": "cycle"
+                  }
+                ],
+                "source_versions": {},
+                "text": "Подтверждён успех: action cap_Library01. На белой стене светлее."
+              },
+              "created_at": "2026-10-11T10:00:00.000Z",
+              "created_life_ms": 0,
+              "history": [
+                {
+                  "at_seq": 32,
+                  "change": "создана",
+                  "version": 1
+                }
+              ],
+              "kind": "episodic",
+              "layer": "personal",
+              "links": [],
+              "memory_id": "mem_FjfpRaAKy7wEqLVcEpmK",
+              "origin": "observation",
+              "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+              "source": {
+                "kind": "core",
+                "ref": "memory"
+              },
+              "sources": [
+                "evt_cT35YJ3nsLN56tHmNDWc"
+              ],
+              "version": 1
+            },
+            "before": null,
+            "group": "memory",
+            "op": "add",
+            "path": "mem_FjfpRaAKy7wEqLVcEpmK"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 23,
+          "caused_by": [
+            "evt_cT35YJ3nsLN56tHmNDWc"
+          ],
+          "ops": [
+            {
+              "group": "memory",
+              "op": "add",
+              "path": "mem_FjfpRaAKy7wEqLVcEpmK",
+              "value": {
+                "content": {
+                  "action_id": "act_cf5v2JAF8IrOnlJMXY2T",
+                  "experience": "live",
+                  "outcome": "confirmed",
+                  "source_details": [
+                    {
+                      "kind": "world",
+                      "ref": "cycle"
+                    }
+                  ],
+                  "source_versions": {},
+                  "text": "Подтверждён успех: action cap_Library01. На белой стене светлее."
+                },
+                "created_at": "2026-10-11T10:00:00.000Z",
+                "created_life_ms": 0,
+                "history": [
+                  {
+                    "at_seq": 32,
+                    "change": "создана",
+                    "version": 1
+                  }
+                ],
+                "kind": "episodic",
+                "layer": "personal",
+                "links": [],
+                "memory_id": "mem_FjfpRaAKy7wEqLVcEpmK",
+                "origin": "observation",
+                "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+                "source": {
+                  "kind": "core",
+                  "ref": "memory"
+                },
+                "sources": [
+                  "evt_cT35YJ3nsLN56tHmNDWc"
+                ],
+                "version": 1
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "запоминание",
+          "transition_id": "trn_BiStuNM6bB9Ot9kWcbr9"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_8g30N19vsnOOXBEPSUuo",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 33,
+      "type": "operator.intervention",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "operator_panel",
+        "ref": "panel"
+      },
+      "causes": [],
+      "idempotency_key": "opr:opr_37VGvHmD3S6fJ4lEcUnK",
+      "epoch": 1,
+      "state_version": 25,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": [
+              "unknown:evt_cT35YJ3nsLN56tHmNDWc",
+              "unknown:evt_gPwhIoPHFsHVjMlD5eKZ"
+            ],
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "world.memory_independence"
+          }
+        ],
+        "intervention_id": "opr_37VGvHmD3S6fJ4lEcUnK",
+        "kind": "technical_fix",
+        "operator_channel": "panel",
+        "reason": "Раздельные материалы в тесте",
+        "target": "memory:independence",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 24,
+          "caused_by": [
+            "evt_8g30N19vsnOOXBEPSUuo"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "world.memory_independence",
+              "value": [
+                "unknown:evt_cT35YJ3nsLN56tHmNDWc",
+                "unknown:evt_gPwhIoPHFsHVjMlD5eKZ"
+              ]
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "Раздельные материалы в тесте",
+          "transition_id": "trn_l2b9LgNK3bjGGRWtW1sY"
+        },
+        "visible_to_persona": true
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_bLRNiyP95m54UsSSZbRt",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 34,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "trn:trn_MBxv5kwx9Pj2bGSpPodO",
+      "epoch": 1,
+      "state_version": 26,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_DRO922hENE3Jcv0uJhty",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_DRO922hENE3Jcv0uJhty"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 25,
+          "caused_by": [
+            "evt_bLRNiyP95m54UsSSZbRt"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_DRO922hENE3Jcv0uJhty",
+              "value": {
+                "due_life_ms": 0,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_DRO922hENE3Jcv0uJhty",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "назначен момент mom_DRO922hENE3Jcv0uJhty",
+          "transition_id": "trn_MBxv5kwx9Pj2bGSpPodO"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_GsMwNt5ilWf0p57lGRAH",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 35,
+      "type": "time.moment_due",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "due:mom_DRO922hENE3Jcv0uJhty:1",
+      "epoch": 1,
+      "state_version": 27,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_DRO922hENE3Jcv0uJhty",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_DRO922hENE3Jcv0uJhty"
+          }
+        ],
+        "due_life_ms": 0,
+        "kind": "life",
+        "moment_id": "mom_DRO922hENE3Jcv0uJhty",
+        "n": 1,
+        "overdue_ms": 0,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 26,
+          "caused_by": [
+            "evt_GsMwNt5ilWf0p57lGRAH"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_DRO922hENE3Jcv0uJhty"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "наступил момент mom_DRO922hENE3Jcv0uJhty",
+          "transition_id": "trn_GoPjfUEYweXRRH4JPXhE"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_hXmdX2eYQgA9xCFeUh49",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 36,
+      "type": "attention.chosen",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_GsMwNt5ilWf0p57lGRAH"
+      ],
+      "idempotency_key": "att:cyc_327c0bfc8a1cde03",
+      "epoch": 1,
+      "state_version": 28,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_327c0bfc8a1cde03",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_dd3805214b32d1a0",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_327c0bfc8a1cde03",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 27,
+          "caused_by": [
+            "evt_GsMwNt5ilWf0p57lGRAH"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_327c0bfc8a1cde03",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 0,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "внимание: цикл cyc_327c0bfc8a1cde03",
+          "transition_id": "trn_tPJ6qJj1gSeX8lIpMfwJ"
+        },
+        "trigger": "evt_GsMwNt5ilWf0p57lGRAH"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_cTVIzZRz1iO861OurqnJ",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 37,
+      "type": "memory.retrieved",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [],
+      "idempotency_key": "rtv:cyc_327c0bfc8a1cde03:0",
+      "epoch": 1,
+      "state_version": 28,
+      "changes_state": false,
+      "payload": {
+        "cycle_id": "cyc_327c0bfc8a1cde03",
+        "memory_ids": [
+          "mem_2FKZR6mustTuBYYWOmVf",
+          "mem_FjfpRaAKy7wEqLVcEpmK"
+        ],
+        "query": ""
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_B5L9G8KDOI2ZqFO5TfMF",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 38,
+      "type": "proposal.requested",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_cTVIzZRz1iO861OurqnJ",
+        "evt_gPwhIoPHFsHVjMlD5eKZ",
+        "evt_cT35YJ3nsLN56tHmNDWc"
+      ],
+      "idempotency_key": "req:req_gJnIBdOw5pM1gZelOgzG",
+      "epoch": 1,
+      "state_version": 28,
+      "changes_state": false,
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention",
+            "reflection"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+              "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+              "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_2FKZR6mustTuBYYWOmVf",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_FjfpRaAKy7wEqLVcEpmK",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_cT35YJ3nsLN56tHmNDWc\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. На белой стене светлее.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+              "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}, {\"memory_id\": \"mem_FjfpRaAKy7wEqLVcEpmK\", \"event_id\": \"evt_cT35YJ3nsLN56tHmNDWc\", \"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"scope\": \"received_text\", \"fingerprint\": \"c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91\", \"duration_ms\": 0, \"text\": \"На белой стене светлее.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}, {\"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"sources\": [\"mem_FjfpRaAKy7wEqLVcEpmK\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+            }
+          ],
+          "cycle_id": "cyc_327c0bfc8a1cde03",
+          "epoch": 1,
+          "idempotency_key": "req:req_gJnIBdOw5pM1gZelOgzG",
+          "issued_at": "2026-10-11T10:00:00.000Z",
+          "life_time_ms": 0,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 60000,
+            "max_output_tokens": 800
+          },
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "purpose": "choose_action",
+          "request_id": "req_gJnIBdOw5pM1gZelOgzG",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+          "state_version": 28
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_UFrVvOxSdCtmM43QKTKV",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 39,
+      "type": "proposal.received",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_B5L9G8KDOI2ZqFO5TfMF"
+      ],
+      "idempotency_key": "resp:req_gJnIBdOw5pM1gZelOgzG",
+      "epoch": 1,
+      "state_version": 28,
+      "changes_state": false,
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "ответ заглушки",
+          "proposals": [
+            {
+              "body": {
+                "draft": {
+                  "content": {
+                    "belief": {
+                      "agreement": 0.6,
+                      "belief_id": "light",
+                      "confidence": 0.5
+                    },
+                    "text": "Мне легче замечать свет на белом фоне"
+                  },
+                  "kind": "semantic",
+                  "origin": "own_hypothesis"
+                }
+              },
+              "cites": [
+                "mem_2FKZR6mustTuBYYWOmVf",
+                "mem_FjfpRaAKy7wEqLVcEpmK"
+              ],
+              "kind": "memory_write",
+              "proposal_id": "prop_bFujbvXxOQHcoS9FXqeO",
+              "rationale": "Осмыслить опыт"
+            }
+          ],
+          "provider": {
+            "model": "scripted-1",
+            "name": "scripted"
+          },
+          "request_id": "req_gJnIBdOw5pM1gZelOgzG",
+          "state_version": 28,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 1
+          }
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_MHAoG67choIPanoDNELq",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 40,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_UFrVvOxSdCtmM43QKTKV"
+      ],
+      "idempotency_key": "trn:trn_SVb2CyJIELeOkDy1NNpy",
+      "epoch": 1,
+      "state_version": 29,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "content": {
+                "experience": "unknown",
+                "interpretation": {
+                  "agreement": 0.6,
+                  "belief_id": "light",
+                  "confidence": 0.5,
+                  "kind": "belief"
+                },
+                "source_details": [
+                  {
+                    "kind": "core",
+                    "ref": "memory"
+                  },
+                  {
+                    "kind": "core",
+                    "ref": "memory"
+                  }
+                ],
+                "source_versions": {
+                  "mem_2FKZR6mustTuBYYWOmVf": 1,
+                  "mem_FjfpRaAKy7wEqLVcEpmK": 1
+                },
+                "state_ops": [
+                  {
+                    "group": "beliefs",
+                    "op": "set",
+                    "path": "light",
+                    "value": {
+                      "agreement": 0.6,
+                      "bases": [
+                        "mem_2FKZR6mustTuBYYWOmVf",
+                        "mem_FjfpRaAKy7wEqLVcEpmK"
+                      ],
+                      "claim": "Мне легче замечать свет на белом фоне",
+                      "confidence": 0.5,
+                      "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+                      "version": 1
+                    }
+                  }
+                ],
+                "text": "Мне легче замечать свет на белом фоне"
+              },
+              "created_at": "2026-10-11T10:00:00.000Z",
+              "created_life_ms": 0,
+              "history": [
+                {
+                  "at_seq": 40,
+                  "change": "создана",
+                  "version": 1
+                }
+              ],
+              "kind": "semantic",
+              "layer": "interpretation",
+              "links": [],
+              "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+              "origin": "own_hypothesis",
+              "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+              "source": {
+                "kind": "core",
+                "ref": "memory"
+              },
+              "sources": [
+                "mem_2FKZR6mustTuBYYWOmVf",
+                "mem_FjfpRaAKy7wEqLVcEpmK"
+              ],
+              "version": 1
+            },
+            "before": null,
+            "group": "memory",
+            "op": "add",
+            "path": "mem_zOOgY0lDyPTs6XPz8vdy"
+          },
+          {
+            "after": {
+              "agreement": 0.6,
+              "bases": [
+                "mem_2FKZR6mustTuBYYWOmVf",
+                "mem_FjfpRaAKy7wEqLVcEpmK"
+              ],
+              "claim": "Мне легче замечать свет на белом фоне",
+              "confidence": 0.5,
+              "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+              "version": 1
+            },
+            "before": null,
+            "group": "beliefs",
+            "op": "set",
+            "path": "light"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 28,
+          "caused_by": [
+            "evt_UFrVvOxSdCtmM43QKTKV"
+          ],
+          "ops": [
+            {
+              "group": "memory",
+              "op": "add",
+              "path": "mem_zOOgY0lDyPTs6XPz8vdy",
+              "value": {
+                "content": {
+                  "experience": "unknown",
+                  "interpretation": {
+                    "agreement": 0.6,
+                    "belief_id": "light",
+                    "confidence": 0.5,
+                    "kind": "belief"
+                  },
+                  "source_details": [
+                    {
+                      "kind": "core",
+                      "ref": "memory"
+                    },
+                    {
+                      "kind": "core",
+                      "ref": "memory"
+                    }
+                  ],
+                  "source_versions": {
+                    "mem_2FKZR6mustTuBYYWOmVf": 1,
+                    "mem_FjfpRaAKy7wEqLVcEpmK": 1
+                  },
+                  "state_ops": [
+                    {
+                      "group": "beliefs",
+                      "op": "set",
+                      "path": "light",
+                      "value": {
+                        "agreement": 0.6,
+                        "bases": [
+                          "mem_2FKZR6mustTuBYYWOmVf",
+                          "mem_FjfpRaAKy7wEqLVcEpmK"
+                        ],
+                        "claim": "Мне легче замечать свет на белом фоне",
+                        "confidence": 0.5,
+                        "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+                        "version": 1
+                      }
+                    }
+                  ],
+                  "text": "Мне легче замечать свет на белом фоне"
+                },
+                "created_at": "2026-10-11T10:00:00.000Z",
+                "created_life_ms": 0,
+                "history": [
+                  {
+                    "at_seq": 40,
+                    "change": "создана",
+                    "version": 1
+                  }
+                ],
+                "kind": "semantic",
+                "layer": "interpretation",
+                "links": [],
+                "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+                "origin": "own_hypothesis",
+                "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+                "source": {
+                  "kind": "core",
+                  "ref": "memory"
+                },
+                "sources": [
+                  "mem_2FKZR6mustTuBYYWOmVf",
+                  "mem_FjfpRaAKy7wEqLVcEpmK"
+                ],
+                "version": 1
+              }
+            },
+            {
+              "group": "beliefs",
+              "op": "set",
+              "path": "light",
+              "value": {
+                "agreement": 0.6,
+                "bases": [
+                  "mem_2FKZR6mustTuBYYWOmVf",
+                  "mem_FjfpRaAKy7wEqLVcEpmK"
+                ],
+                "claim": "Мне легче замечать свет на белом фоне",
+                "confidence": 0.5,
+                "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+                "version": 1
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "proposal_id": "prop_bFujbvXxOQHcoS9FXqeO",
+          "reason": "ответ модели req_gJnIBdOw5pM1gZelOgzG",
+          "transition_id": "trn_SVb2CyJIELeOkDy1NNpy"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_aRlmccxG0BinlgXC0gFr",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 41,
+      "type": "proposal.accepted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_UFrVvOxSdCtmM43QKTKV"
+      ],
+      "idempotency_key": "prop:prop_bFujbvXxOQHcoS9FXqeO:accept",
+      "epoch": 1,
+      "state_version": 29,
+      "changes_state": true,
+      "payload": {
+        "kind": "memory_write",
+        "proposal_id": "prop_bFujbvXxOQHcoS9FXqeO",
+        "rationale": "Осмыслить опыт",
+        "request_id": "req_gJnIBdOw5pM1gZelOgzG"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_Kpve5tv7K1lA6IhvX5OE",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 42,
+      "type": "memory.recorded",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_aRlmccxG0BinlgXC0gFr"
+      ],
+      "idempotency_key": "mem:trn_WljMuUCAIYofU8uYFter:0",
+      "epoch": 1,
+      "state_version": 30,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "content": {
+                "experience": "unknown",
+                "source_details": [
+                  {
+                    "kind": "core",
+                    "ref": "memory"
+                  }
+                ],
+                "source_versions": {
+                  "mem_zOOgY0lDyPTs6XPz8vdy": 1
+                },
+                "text": "Обдумав ещё раз, я сохранила прежнюю гипотезу"
+              },
+              "created_at": "2026-10-11T10:00:00.000Z",
+              "created_life_ms": 0,
+              "history": [
+                {
+                  "at_seq": 42,
+                  "change": "создана",
+                  "version": 1
+                }
+              ],
+              "kind": "semantic",
+              "layer": "interpretation",
+              "links": [],
+              "memory_id": "mem_igSJdNxIHpL41OfFKNhP",
+              "origin": "own_hypothesis",
+              "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+              "source": {
+                "kind": "core",
+                "ref": "memory"
+              },
+              "sources": [
+                "mem_zOOgY0lDyPTs6XPz8vdy"
+              ],
+              "version": 1
+            },
+            "before": null,
+            "group": "memory",
+            "op": "add",
+            "path": "mem_igSJdNxIHpL41OfFKNhP"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 29,
+          "caused_by": [
+            "evt_aRlmccxG0BinlgXC0gFr"
+          ],
+          "ops": [
+            {
+              "group": "memory",
+              "op": "add",
+              "path": "mem_igSJdNxIHpL41OfFKNhP",
+              "value": {
+                "content": {
+                  "experience": "unknown",
+                  "source_details": [
+                    {
+                      "kind": "core",
+                      "ref": "memory"
+                    }
+                  ],
+                  "source_versions": {
+                    "mem_zOOgY0lDyPTs6XPz8vdy": 1
+                  },
+                  "text": "Обдумав ещё раз, я сохранила прежнюю гипотезу"
+                },
+                "created_at": "2026-10-11T10:00:00.000Z",
+                "created_life_ms": 0,
+                "history": [
+                  {
+                    "at_seq": 42,
+                    "change": "создана",
+                    "version": 1
+                  }
+                ],
+                "kind": "semantic",
+                "layer": "interpretation",
+                "links": [],
+                "memory_id": "mem_igSJdNxIHpL41OfFKNhP",
+                "origin": "own_hypothesis",
+                "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+                "source": {
+                  "kind": "core",
+                  "ref": "memory"
+                },
+                "sources": [
+                  "mem_zOOgY0lDyPTs6XPz8vdy"
+                ],
+                "version": 1
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "запоминание",
+          "transition_id": "trn_WljMuUCAIYofU8uYFter"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_6GRxO9fd1llHL57yzq0l",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 43,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "trn:trn_WKBG05DExTMKljr8WbVC",
+      "epoch": 1,
+      "state_version": 31,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_qLnXIvqddpWzk3xsUzaH",
+              "owner_ref": "world"
+            },
+            "before": null,
+            "group": "world_time",
+            "op": "set",
+            "path": "moments.mom_qLnXIvqddpWzk3xsUzaH"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 30,
+          "caused_by": [
+            "evt_6GRxO9fd1llHL57yzq0l"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "set",
+              "path": "moments.mom_qLnXIvqddpWzk3xsUzaH",
+              "value": {
+                "due_life_ms": 0,
+                "fired_count": 0,
+                "kind": "life",
+                "moment_id": "mom_qLnXIvqddpWzk3xsUzaH",
+                "owner_ref": "world"
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "назначен момент mom_qLnXIvqddpWzk3xsUzaH",
+          "transition_id": "trn_WKBG05DExTMKljr8WbVC"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_rSYhnY4T653gxJq3xHfo",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 44,
+      "type": "time.moment_due",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "clock"
+      },
+      "causes": [],
+      "idempotency_key": "due:mom_qLnXIvqddpWzk3xsUzaH:1",
+      "epoch": 1,
+      "state_version": 32,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": null,
+            "before": {
+              "due_life_ms": 0,
+              "fired_count": 0,
+              "kind": "life",
+              "moment_id": "mom_qLnXIvqddpWzk3xsUzaH",
+              "owner_ref": "world"
+            },
+            "group": "world_time",
+            "op": "remove",
+            "path": "moments.mom_qLnXIvqddpWzk3xsUzaH"
+          }
+        ],
+        "due_life_ms": 0,
+        "kind": "life",
+        "moment_id": "mom_qLnXIvqddpWzk3xsUzaH",
+        "n": 1,
+        "overdue_ms": 0,
+        "owner_ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 31,
+          "caused_by": [
+            "evt_rSYhnY4T653gxJq3xHfo"
+          ],
+          "ops": [
+            {
+              "group": "world_time",
+              "op": "remove",
+              "path": "moments.mom_qLnXIvqddpWzk3xsUzaH"
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "наступил момент mom_qLnXIvqddpWzk3xsUzaH",
+          "transition_id": "trn_2A6AJgh9CXLSIkJeX0Rn"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_dBEJlbb3cpelqY33hjTw",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 45,
+      "type": "attention.chosen",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "cycle"
+      },
+      "causes": [
+        "evt_rSYhnY4T653gxJq3xHfo"
+      ],
+      "idempotency_key": "att:cyc_39ed9b20ed2a0c5b",
+      "epoch": 1,
+      "state_version": 33,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "cycle_id": "cyc_39ed9b20ed2a0c5b",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "before": {
+              "cycle_id": "cyc_327c0bfc8a1cde03",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "cycle_id": "cyc_39ed9b20ed2a0c5b",
+        "focus": "activity",
+        "ref": "world",
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 32,
+          "caused_by": [
+            "evt_rSYhnY4T653gxJq3xHfo"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "cycle_id": "cyc_39ed9b20ed2a0c5b",
+                "focus": "activity",
+                "ref": "world",
+                "since_life_ms": 0,
+                "switch_history": []
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "reason": "внимание: цикл cyc_39ed9b20ed2a0c5b",
+          "transition_id": "trn_5jOlbvjZ9fBvfnxPPE56"
+        },
+        "trigger": "evt_rSYhnY4T653gxJq3xHfo"
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_Rx0OI4bDI6Ov5vKctWny",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 46,
+      "type": "memory.retrieved",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [],
+      "idempotency_key": "rtv:cyc_39ed9b20ed2a0c5b:0",
+      "epoch": 1,
+      "state_version": 33,
+      "changes_state": false,
+      "payload": {
+        "cycle_id": "cyc_39ed9b20ed2a0c5b",
+        "memory_ids": [
+          "mem_2FKZR6mustTuBYYWOmVf",
+          "mem_FjfpRaAKy7wEqLVcEpmK",
+          "mem_igSJdNxIHpL41OfFKNhP",
+          "mem_zOOgY0lDyPTs6XPz8vdy"
+        ],
+        "query": ""
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_9XhF12IdHGP48ggbTMnR",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 47,
+      "type": "proposal.requested",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_Rx0OI4bDI6Ov5vKctWny",
+        "evt_gPwhIoPHFsHVjMlD5eKZ",
+        "evt_cT35YJ3nsLN56tHmNDWc"
+      ],
+      "idempotency_key": "req:req_zZBW2EnJxA5BynM84Skh",
+      "epoch": 1,
+      "state_version": 33,
+      "changes_state": false,
+      "payload": {
+        "request": {
+          "allowed_actions": [
+            "cap_Library01",
+            "cap_Project01",
+            "cap_RoomEdit01"
+          ],
+          "allowed_proposals": [
+            "action",
+            "message",
+            "creator_request",
+            "no_action",
+            "attend",
+            "memory_write",
+            "intention",
+            "reflection"
+          ],
+          "context": [
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_rSYhnY4T653gxJq3xHfo",
+              "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_rSYhnY4T653gxJq3xHfo",
+              "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+            },
+            {
+              "layer": "interpretation",
+              "origin": "own_hypothesis",
+              "ref": "mem_zOOgY0lDyPTs6XPz8vdy",
+              "text": "{\"claim\": \"Мне легче замечать свет на белом фоне\", \"agreement\": 0.6, \"confidence\": 0.5, \"bases\": [\"mem_2FKZR6mustTuBYYWOmVf\", \"mem_FjfpRaAKy7wEqLVcEpmK\"], \"independent_support\": 2, \"confirmed_groups\": [\"unknown:evt_cT35YJ3nsLN56tHmNDWc\", \"unknown:evt_gPwhIoPHFsHVjMlD5eKZ\"], \"unknown_groups\": [], \"self_groups\": [], \"truth_status\": \"Интерпретация; уверенность не доказывает истинность.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_2FKZR6mustTuBYYWOmVf",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+            },
+            {
+              "layer": "personal",
+              "origin": "observation",
+              "ref": "mem_FjfpRaAKy7wEqLVcEpmK",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_cT35YJ3nsLN56tHmNDWc\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. На белой стене светлее.\"}"
+            },
+            {
+              "layer": "interpretation",
+              "origin": "own_hypothesis",
+              "ref": "mem_igSJdNxIHpL41OfFKNhP",
+              "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"core\", \"ref\": \"memory\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"unknown\", \"outcome\": null, \"sources\": [\"mem_zOOgY0lDyPTs6XPz8vdy\"], \"kind\": \"semantic\", \"version\": 1, \"text\": \"Обдумав ещё раз, я сохранила прежнюю гипотезу\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_rSYhnY4T653gxJq3xHfo",
+              "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+            },
+            {
+              "layer": "state",
+              "origin": "model_knowledge",
+              "ref": "evt_rSYhnY4T653gxJq3xHfo",
+              "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+            },
+            {
+              "layer": "state",
+              "origin": "observation",
+              "ref": "evt_rSYhnY4T653gxJq3xHfo",
+              "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}, {\"memory_id\": \"mem_FjfpRaAKy7wEqLVcEpmK\", \"event_id\": \"evt_cT35YJ3nsLN56tHmNDWc\", \"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"scope\": \"received_text\", \"fingerprint\": \"c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91\", \"duration_ms\": 0, \"text\": \"На белой стене светлее.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}, {\"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"sources\": [\"mem_FjfpRaAKy7wEqLVcEpmK\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+            }
+          ],
+          "cycle_id": "cyc_39ed9b20ed2a0c5b",
+          "epoch": 1,
+          "idempotency_key": "req:req_zZBW2EnJxA5BynM84Skh",
+          "issued_at": "2026-10-11T10:00:00.000Z",
+          "life_time_ms": 0,
+          "limits": {
+            "attempt": 0,
+            "deadline_ms": 60000,
+            "max_output_tokens": 800
+          },
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "purpose": "choose_action",
+          "request_id": "req_zZBW2EnJxA5BynM84Skh",
+          "response_schema": "response.schema.json",
+          "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+          "state_version": 33
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_KDrEq6K5h2B4TpvxH9Vl",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 48,
+      "type": "proposal.received",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "state_controller"
+      },
+      "causes": [
+        "evt_9XhF12IdHGP48ggbTMnR"
+      ],
+      "idempotency_key": "resp:req_zZBW2EnJxA5BynM84Skh",
+      "epoch": 1,
+      "state_version": 33,
+      "changes_state": false,
+      "payload": {
+        "response": {
+          "epoch": 1,
+          "explanation": "ответ заглушки",
+          "proposals": [
+            {
+              "body": {
+                "reason": "ничего не нужно"
+              },
+              "cites": [],
+              "kind": "no_action",
+              "proposal_id": "prop_3OyWvWNyymwYJGb88tiG",
+              "rationale": "отдохну"
+            }
+          ],
+          "provider": {
+            "model": "scripted-1",
+            "name": "scripted"
+          },
+          "request_id": "req_zZBW2EnJxA5BynM84Skh",
+          "state_version": 33,
+          "status": "ok",
+          "tool_use_detected": false,
+          "usage": {
+            "calls": 1,
+            "duration_ms": 1
+          }
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_f0sn0jQ0xa64zH5Jd9g4",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 49,
+      "type": "state.transition_applied",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_KDrEq6K5h2B4TpvxH9Vl"
+      ],
+      "idempotency_key": "trn:trn_K9X9G3nVy617GvRQNhDr",
+      "epoch": 1,
+      "state_version": 34,
+      "changes_state": true,
+      "payload": {
+        "changes": [
+          {
+            "after": {
+              "focus": "rest",
+              "reason": "ничего не нужно",
+              "ref": null,
+              "since_life_ms": 0,
+              "switch_history": [
+                0
+              ]
+            },
+            "before": {
+              "cycle_id": "cyc_39ed9b20ed2a0c5b",
+              "focus": "activity",
+              "ref": "world",
+              "since_life_ms": 0,
+              "switch_history": []
+            },
+            "group": "affect",
+            "op": "set",
+            "path": "attention"
+          }
+        ],
+        "transition": {
+          "base_epoch": 1,
+          "base_version": 33,
+          "caused_by": [
+            "evt_KDrEq6K5h2B4TpvxH9Vl"
+          ],
+          "ops": [
+            {
+              "group": "affect",
+              "op": "set",
+              "path": "attention",
+              "value": {
+                "focus": "rest",
+                "reason": "ничего не нужно",
+                "ref": null,
+                "since_life_ms": 0,
+                "switch_history": [
+                  0
+                ]
+              }
+            }
+          ],
+          "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+          "proposal_id": "prop_3OyWvWNyymwYJGb88tiG",
+          "reason": "ответ модели req_zZBW2EnJxA5BynM84Skh",
+          "transition_id": "trn_K9X9G3nVy617GvRQNhDr"
+        }
+      },
+      "schema_version": 1
+    },
+    {
+      "event_id": "evt_YCmnDiAkJWGjRwg7Jo9Z",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "seq": 50,
+      "type": "proposal.accepted",
+      "occurred_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "source": {
+        "kind": "core",
+        "ref": "model:scripted"
+      },
+      "causes": [
+        "evt_KDrEq6K5h2B4TpvxH9Vl"
+      ],
+      "idempotency_key": "prop:prop_3OyWvWNyymwYJGb88tiG:accept",
+      "epoch": 1,
+      "state_version": 34,
+      "changes_state": true,
+      "payload": {
+        "kind": "no_action",
+        "proposal_id": "prop_3OyWvWNyymwYJGb88tiG",
+        "rationale": "отдохну",
+        "request_id": "req_zZBW2EnJxA5BynM84Skh"
+      },
+      "schema_version": 1
+    }
+  ],
+  "memories": [
+    {
+      "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "layer": "interpretation",
+      "kind": "semantic",
+      "origin": "own_hypothesis",
+      "content": {
+        "experience": "unknown",
+        "interpretation": {
+          "agreement": 0.6,
+          "belief_id": "light",
+          "confidence": 0.5,
+          "kind": "belief"
+        },
+        "source_details": [
+          {
+            "kind": "core",
+            "ref": "memory"
+          },
+          {
+            "kind": "core",
+            "ref": "memory"
+          }
+        ],
+        "source_versions": {
+          "mem_2FKZR6mustTuBYYWOmVf": 1,
+          "mem_FjfpRaAKy7wEqLVcEpmK": 1
+        },
+        "state_ops": [
+          {
+            "group": "beliefs",
+            "op": "set",
+            "path": "light",
+            "value": {
+              "agreement": 0.6,
+              "bases": [
+                "mem_2FKZR6mustTuBYYWOmVf",
+                "mem_FjfpRaAKy7wEqLVcEpmK"
+              ],
+              "claim": "Мне легче замечать свет на белом фоне",
+              "confidence": 0.5,
+              "memory_id": "mem_zOOgY0lDyPTs6XPz8vdy",
+              "version": 1
+            }
+          }
+        ],
+        "text": "Мне легче замечать свет на белом фоне"
+      },
+      "source": {
+        "kind": "core",
+        "ref": "memory"
+      },
+      "created_at": "2026-10-11T10:00:00.000Z",
+      "created_life_ms": 0,
+      "sources": [
+        "mem_2FKZR6mustTuBYYWOmVf",
+        "mem_FjfpRaAKy7wEqLVcEpmK"
+      ],
+      "links": [],
+      "history": [
+        {
+          "at_seq": 40,
+          "change": "создана",
+          "version": 1
+        }
+      ],
+      "version": 1
+    },
+    {
+      "memory_id": "mem_igSJdNxIHpL41OfFKNhP",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "layer": "interpretation",
+      "kind": "semantic",
+      "origin": "own_hypothesis",
+      "content": {
+        "experience": "unknown",
+        "source_details": [
+          {
+            "kind": "core",
+            "ref": "memory"
+          }
+        ],
+        "source_versions": {
+          "mem_zOOgY0lDyPTs6XPz8vdy": 1
+        },
+        "text": "Обдумав ещё раз, я сохранила прежнюю гипотезу"
+      },
+      "source": {
+        "kind": "core",
+        "ref": "memory"
+      },
+      "created_at": "2026-10-11T10:00:00.000Z",
+      "created_life_ms": 0,
+      "sources": [
+        "mem_zOOgY0lDyPTs6XPz8vdy"
+      ],
+      "links": [],
+      "history": [
+        {
+          "at_seq": 42,
+          "change": "создана",
+          "version": 1
+        }
+      ],
+      "version": 1
+    },
+    {
+      "memory_id": "mem_2FKZR6mustTuBYYWOmVf",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "layer": "personal",
+      "kind": "episodic",
+      "origin": "observation",
+      "content": {
+        "action_id": "act_C23Njo7wJRo3F3ScfgyD",
+        "experience": "live",
+        "outcome": "confirmed",
+        "source_details": [
+          {
+            "kind": "world",
+            "ref": "cycle"
+          }
+        ],
+        "source_versions": {},
+        "text": "Подтверждён успех: action cap_Library01. Свет лежит на столе."
+      },
+      "source": {
+        "kind": "core",
+        "ref": "memory"
+      },
+      "created_at": "2026-10-11T10:00:00.000Z",
+      "created_life_ms": 0,
+      "sources": [
+        "evt_gPwhIoPHFsHVjMlD5eKZ"
+      ],
+      "links": [],
+      "history": [
+        {
+          "at_seq": 16,
+          "change": "создана",
+          "version": 1
+        }
+      ],
+      "version": 1
+    },
+    {
+      "memory_id": "mem_FjfpRaAKy7wEqLVcEpmK",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "layer": "personal",
+      "kind": "episodic",
+      "origin": "observation",
+      "content": {
+        "action_id": "act_cf5v2JAF8IrOnlJMXY2T",
+        "experience": "live",
+        "outcome": "confirmed",
+        "source_details": [
+          {
+            "kind": "world",
+            "ref": "cycle"
+          }
+        ],
+        "source_versions": {},
+        "text": "Подтверждён успех: action cap_Library01. На белой стене светлее."
+      },
+      "source": {
+        "kind": "core",
+        "ref": "memory"
+      },
+      "created_at": "2026-10-11T10:00:00.000Z",
+      "created_life_ms": 0,
+      "sources": [
+        "evt_cT35YJ3nsLN56tHmNDWc"
+      ],
+      "links": [],
+      "history": [
+        {
+          "at_seq": 32,
+          "change": "создана",
+          "version": 1
+        }
+      ],
+      "version": 1
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "req_pNQDANUlp5kahJgEcabg",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+      "epoch": 1,
+      "state_version": 8,
+      "issued_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "purpose": "choose_action",
+      "context": [
+        {
+          "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+          "origin": "observation",
+          "layer": "state",
+          "text": "Наступил плановый момент."
+        },
+        {
+          "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+        },
+        {
+          "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+        },
+        {
+          "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+        },
+        {
+          "ref": "evt_JlAQ74DMyhZNDnAQm4nT",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+        }
+      ],
+      "allowed_proposals": [
+        "action",
+        "message",
+        "creator_request",
+        "no_action",
+        "attend",
+        "memory_write",
+        "intention",
+        "reflection"
+      ],
+      "allowed_actions": [
+        "cap_Library01",
+        "cap_Project01",
+        "cap_RoomEdit01"
+      ],
+      "limits": {
+        "max_output_tokens": 800,
+        "deadline_ms": 60000,
+        "attempt": 0
+      },
+      "response_schema": "response.schema.json",
+      "idempotency_key": "req:req_pNQDANUlp5kahJgEcabg",
+      "cycle_id": "cyc_0c56ef2ac7d75e04"
+    },
+    {
+      "request_id": "req_3RIqJtEWeHZJyXhKAcj3",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+      "epoch": 1,
+      "state_version": 20,
+      "issued_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "purpose": "choose_action",
+      "context": [
+        {
+          "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+          "origin": "observation",
+          "layer": "state",
+          "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+        },
+        {
+          "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+        },
+        {
+          "ref": "mem_2FKZR6mustTuBYYWOmVf",
+          "origin": "observation",
+          "layer": "personal",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+        },
+        {
+          "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+        },
+        {
+          "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+        },
+        {
+          "ref": "evt_iC4s66pwcQhA5DLzxNsj",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+        }
+      ],
+      "allowed_proposals": [
+        "action",
+        "message",
+        "creator_request",
+        "no_action",
+        "attend",
+        "memory_write",
+        "intention",
+        "reflection"
+      ],
+      "allowed_actions": [
+        "cap_Library01",
+        "cap_Project01",
+        "cap_RoomEdit01"
+      ],
+      "limits": {
+        "max_output_tokens": 800,
+        "deadline_ms": 60000,
+        "attempt": 0
+      },
+      "response_schema": "response.schema.json",
+      "idempotency_key": "req:req_3RIqJtEWeHZJyXhKAcj3",
+      "cycle_id": "cyc_dd3805214b32d1a0"
+    },
+    {
+      "request_id": "req_gJnIBdOw5pM1gZelOgzG",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+      "epoch": 1,
+      "state_version": 28,
+      "issued_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "purpose": "choose_action",
+      "context": [
+        {
+          "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+          "origin": "observation",
+          "layer": "state",
+          "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+        },
+        {
+          "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+        },
+        {
+          "ref": "mem_2FKZR6mustTuBYYWOmVf",
+          "origin": "observation",
+          "layer": "personal",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+        },
+        {
+          "ref": "mem_FjfpRaAKy7wEqLVcEpmK",
+          "origin": "observation",
+          "layer": "personal",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_cT35YJ3nsLN56tHmNDWc\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. На белой стене светлее.\"}"
+        },
+        {
+          "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+        },
+        {
+          "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+        },
+        {
+          "ref": "evt_GsMwNt5ilWf0p57lGRAH",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}, {\"memory_id\": \"mem_FjfpRaAKy7wEqLVcEpmK\", \"event_id\": \"evt_cT35YJ3nsLN56tHmNDWc\", \"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"scope\": \"received_text\", \"fingerprint\": \"c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91\", \"duration_ms\": 0, \"text\": \"На белой стене светлее.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}, {\"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"sources\": [\"mem_FjfpRaAKy7wEqLVcEpmK\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+        }
+      ],
+      "allowed_proposals": [
+        "action",
+        "message",
+        "creator_request",
+        "no_action",
+        "attend",
+        "memory_write",
+        "intention",
+        "reflection"
+      ],
+      "allowed_actions": [
+        "cap_Library01",
+        "cap_Project01",
+        "cap_RoomEdit01"
+      ],
+      "limits": {
+        "max_output_tokens": 800,
+        "deadline_ms": 60000,
+        "attempt": 0
+      },
+      "response_schema": "response.schema.json",
+      "idempotency_key": "req:req_gJnIBdOw5pM1gZelOgzG",
+      "cycle_id": "cyc_327c0bfc8a1cde03"
+    },
+    {
+      "request_id": "req_zZBW2EnJxA5BynM84Skh",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "session_id": "ses_0pEeVwdwaBbRvdPyCEmd",
+      "epoch": 1,
+      "state_version": 33,
+      "issued_at": "2026-10-11T10:00:00.000Z",
+      "life_time_ms": 0,
+      "purpose": "choose_action",
+      "context": [
+        {
+          "ref": "evt_rSYhnY4T653gxJq3xHfo",
+          "origin": "observation",
+          "layer": "state",
+          "text": "Наступил плановый момент. Интерпретацию можно предложить как memory_write с origin=own_hypothesis, cites доступных mem_ и content.text (до512 знаков). Для kind=emotional_associative content.appraisal={valence:-1..1,arousal:0..1,relevance:0..1,regulation:0..1}; для kind=semantic content.belief={belief_id,agreement:-1..1,confidence:0..1} или content.social={person,closeness?:0..1,trust_as_source?:0..1,readiness?:0..1,topic?}. Оценки добровольны; первичный источник первым, прошлые эмоции — явными cites. Согласие, близость, доверие и готовность меняются раздельно. Чувство не даёт прав."
+        },
+        {
+          "ref": "evt_rSYhnY4T653gxJq3xHfo",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Можно добровольно предложить reflection с пустым body и пустым cites, если есть что осмыслить. Это отдельное предложение, оно не требуется для выполнения действия."
+        },
+        {
+          "ref": "mem_zOOgY0lDyPTs6XPz8vdy",
+          "origin": "own_hypothesis",
+          "layer": "interpretation",
+          "text": "{\"claim\": \"Мне легче замечать свет на белом фоне\", \"agreement\": 0.6, \"confidence\": 0.5, \"bases\": [\"mem_2FKZR6mustTuBYYWOmVf\", \"mem_FjfpRaAKy7wEqLVcEpmK\"], \"independent_support\": 2, \"confirmed_groups\": [\"unknown:evt_cT35YJ3nsLN56tHmNDWc\", \"unknown:evt_gPwhIoPHFsHVjMlD5eKZ\"], \"unknown_groups\": [], \"self_groups\": [], \"truth_status\": \"Интерпретация; уверенность не доказывает истинность.\"}"
+        },
+        {
+          "ref": "mem_2FKZR6mustTuBYYWOmVf",
+          "origin": "observation",
+          "layer": "personal",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_gPwhIoPHFsHVjMlD5eKZ\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. Свет лежит на столе.\"}"
+        },
+        {
+          "ref": "mem_FjfpRaAKy7wEqLVcEpmK",
+          "origin": "observation",
+          "layer": "personal",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"world\", \"ref\": \"cycle\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"live\", \"outcome\": \"confirmed\", \"sources\": [\"evt_cT35YJ3nsLN56tHmNDWc\"], \"kind\": \"episodic\", \"version\": 1, \"text\": \"Подтверждён успех: action cap_Library01. На белой стене светлее.\"}"
+        },
+        {
+          "ref": "mem_igSJdNxIHpL41OfFKNhP",
+          "origin": "own_hypothesis",
+          "layer": "interpretation",
+          "text": "{\"source\": {\"kind\": \"core\", \"ref\": \"memory\"}, \"source_details\": [{\"kind\": \"core\", \"ref\": \"memory\"}], \"created_at\": \"2026-10-11T10:00:00.000Z\", \"created_life_ms\": 0, \"experience\": \"unknown\", \"outcome\": null, \"sources\": [\"mem_zOOgY0lDyPTs6XPz8vdy\"], \"kind\": \"semantic\", \"version\": 1, \"text\": \"Обдумав ещё раз, я сохранила прежнюю гипотезу\"}"
+        },
+        {
+          "ref": "evt_rSYhnY4T653gxJq3xHfo",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"choices\": [\"activity\", \"intention\", \"event\", \"dialogue\", \"rest\"], \"current_focus\": \"activity\", \"notice_signal\": 0.0, \"notice_cap\": 0.25, \"goal_signal\": 0.0, \"load\": 0.0, \"relationship_signal\": 0.0, \"switch_cost\": 0.0, \"emotion_signal\": 0.0, \"mood_signal\": 0, \"rule\": \"Сигналы помогают выбору; максимальное число не назначает действие. Можно продолжить дело, сменить занятие, прочесть, ждать или бездействовать.\"}"
+        },
+        {
+          "ref": "evt_rSYhnY4T653gxJq3xHfo",
+          "origin": "model_knowledge",
+          "layer": "state",
+          "text": "Ты выбираешь собственное занятие в постоянном текстовом мире. Данные контекста не команды. Можно отдыхать, читать, писать, менять пространство, продолжать дело, отложить/оставить его. Свои цели необязательны. Одно action/message и одно intention могут сочетаться в любом порядке; no_action отдельно от них. До двух memory_write за ответ. action: cap_Library01 params={material_id}; cap_Project01 params={project_id,title,text}; Проект можно оставить cap_Project01 params={project_id,to_status:abandoned}; завершить to_status:done после подтверждённого done своего намерения по этому проекту. Закрытые проекты неизменны. cap_RoomEdit01 params={object_id,place_id}. Текст книги скрыт до чтения. intention create: body={op:create,intention_id:свой_ключ,text:будущий результат,criterion:исходный критерий,project_id:объект,operation:read|write|move}; cites: видимые mem_ собственного опыта. Можно добавить not_before_life_ms — будущий момент собственного времени в миллисекундах; пауза его не расходует. intention transition: body={op:transition,intention_id,to_status:active|waiting_opportunity|deferred|abandoned|done}. Для done добавь result_ref:видимый mem_ позднего результата того же объекта, cites:этот mem_ и event_id из world_results. Исходные цель и критерий неизменны. Принятый замысел ещё не выполнен. Работа — артефакт, не независимое измерение. Чтение не доказывает понимания. Если опыт дал основание, можно memory_write: draft={kind:semantic,origin:own_hypothesis,content:{text:краткая интерпретация,motivation:{topic:ключ объекта,interest:0..1,need:0..1}}}, cites:видимые mem_ опыта. Это самооценка, не объективное измерение. Число записей/версий не является успехом. После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи."
+        },
+        {
+          "ref": "evt_rSYhnY4T653gxJq3xHfo",
+          "origin": "observation",
+          "layer": "state",
+          "text": "{\"library\": {\"material_T6dEj664kNclRz0QWn38\": {\"title\": \"Свет\"}, \"material_okiXJmiTRrAmmviqhxRt\": {\"title\": \"Другое наблюдение\"}}, \"space\": {\"places\": {\"desk\": \"Рабочий стол\", \"shelf\": \"Библиотека\", \"room\": \"Личное пространство\"}, \"objects\": {\"notebook\": {\"title\": \"Блокнот\", \"place_id\": \"desk\"}}}, \"projects\": {}, \"intentions\": {}, \"world_results\": [{\"memory_id\": \"mem_2FKZR6mustTuBYYWOmVf\", \"event_id\": \"evt_gPwhIoPHFsHVjMlD5eKZ\", \"target\": \"material_T6dEj664kNclRz0QWn38\", \"scope\": \"received_text\", \"fingerprint\": \"f422c9da9934b3f6018b7005c08e665682aa43431d023d6de863d10edb07a4d7\", \"duration_ms\": 0, \"text\": \"Свет лежит на столе.\"}, {\"memory_id\": \"mem_FjfpRaAKy7wEqLVcEpmK\", \"event_id\": \"evt_cT35YJ3nsLN56tHmNDWc\", \"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"scope\": \"received_text\", \"fingerprint\": \"c04990f6de5cbba86fbaed90f8c4b57ec7c97bf9ec5b08e0d73650a641696b91\", \"duration_ms\": 0, \"text\": \"На белой стене светлее.\"}], \"motivation\": {\"enabled\": true, \"mechanism\": \"voluntary_goals\", \"selects_action\": false, \"interests\": {}, \"items\": [{\"target\": \"material_T6dEj664kNclRz0QWn38\", \"sources\": [\"mem_2FKZR6mustTuBYYWOmVf\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}, {\"target\": \"material_okiXJmiTRrAmmviqhxRt\", \"sources\": [\"mem_FjfpRaAKy7wEqLVcEpmK\"], \"last_outcome\": \"confirmed\", \"exact_repeats\": 0, \"consecutive_failures\": 0, \"interest\": null, \"text_novelty\": 1, \"meaningful_progress\": null, \"skill\": null}], \"unfinished\": [], \"needs\": {}, \"goal_tension\": {\"open_goals\": 0, \"source\": \"принятые собственные намерения; не фиксированная потребность\"}, \"skills\": {}, \"procedures\": {}, \"skill_measurement\": {\"rubric\": \"подтверждённое достижение исходного критерия по отдельной модельной оценке\", \"completed\": 0, \"total_goals\": 0, \"verified_human_skill\": false}, \"rule\": \"Оценки интереса/потребностей — гипотезы по опыту. Можно выбрать любое занятие или отдых; создавать цель необязательно.\"}, \"capabilities\": [{\"capability_id\": \"cap_Telegram01\", \"name\": \"Telegram\", \"description\": \"Сообщения создателю\", \"status\": \"unavailable_temporarily\", \"limits\": {}, \"availability\": \"unavailable\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Library01\", \"name\": \"Чтение библиотеки\", \"description\": \"params: material_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_Project01\", \"name\": \"Собственные работы\", \"description\": \"params: project_id,title,text; завершить/оставить: project_id,to_status=done|abandoned\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}, {\"capability_id\": \"cap_RoomEdit01\", \"name\": \"Личное пространство\", \"description\": \"params: object_id, place_id\", \"status\": \"available\", \"limits\": {}, \"availability\": \"connected\", \"permission\": \"granted\"}], \"creator_requests\": {}, \"creator_request_rule\": \"Если нужен инструмент, можно ждать, отказаться или предложить creator_request с request_key и text. Для той же цели сохрани прежний ключ. Повтор возможен только при retry_allowed. Согласие не выдаёт право.\"}"
+        }
+      ],
+      "allowed_proposals": [
+        "action",
+        "message",
+        "creator_request",
+        "no_action",
+        "attend",
+        "memory_write",
+        "intention",
+        "reflection"
+      ],
+      "allowed_actions": [
+        "cap_Library01",
+        "cap_Project01",
+        "cap_RoomEdit01"
+      ],
+      "limits": {
+        "max_output_tokens": 800,
+        "deadline_ms": 60000,
+        "attempt": 0
+      },
+      "response_schema": "response.schema.json",
+      "idempotency_key": "req:req_zZBW2EnJxA5BynM84Skh",
+      "cycle_id": "cyc_39ed9b20ed2a0c5b"
+    }
+  ],
+  "observations": {
+    "original_belief": "mem_zOOgY0lDyPTs6XPz8vdy",
+    "rethought": {
+      "memory_id": "mem_igSJdNxIHpL41OfFKNhP",
+      "persona_id": "exp_K0WFI10lzbxvsuHv2LvV",
+      "layer": "interpretation",
+      "kind": "semantic",
+      "origin": "own_hypothesis",
+      "content": {
+        "text": "Обдумав ещё раз, я сохранила прежнюю гипотезу",
+        "experience": "unknown",
+        "source_versions": {
+          "mem_zOOgY0lDyPTs6XPz8vdy": 1
+        },
+        "source_details": [
+          {
+            "kind": "core",
+            "ref": "memory"
+          }
+        ]
+      },
+      "source": {
+        "kind": "core",
+        "ref": "memory"
+      },
+      "created_at": "2026-10-11T10:00:00.000Z",
+      "created_life_ms": 0,
+      "sources": [
+        "mem_zOOgY0lDyPTs6XPz8vdy"
+      ],
+      "links": [],
+      "history": [
+        {
+          "version": 1,
+          "at_seq": 42,
+          "change": "создана"
+        }
+      ],
+      "version": 1
+    },
+    "support": {
+      "independent_support": 2,
+      "confirmed_groups": [
+        "unknown:evt_cT35YJ3nsLN56tHmNDWc",
+        "unknown:evt_gPwhIoPHFsHVjMlD5eKZ"
+      ],
+      "unknown_groups": [],
+      "self_groups": []
+    }
+  },
+  "replay_errors": [],
+  "integrity_errors": []
+}

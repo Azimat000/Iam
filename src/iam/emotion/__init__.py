@@ -21,14 +21,22 @@ def current(saved, now):
             'mood': decay(saved['mood'], elapsed, MOOD_HALF_MS)}
 
 
+def trait_value(traits, name, default):
+    """Формат state.md/S24 имеет приоритет; старые снимки тоже читаются."""
+    entries = traits.get('traits')
+    if isinstance(entries, list):
+        matches = [entry for entry in entries if isinstance(entry, dict) and entry.get('name') == name]
+        entry = matches[0] if len(matches) == 1 else {}
+    else:
+        entry = traits.get(name, {})
+    return bounded(entry.get('value', default) if isinstance(entry, dict) else default)
+
+
 def appraise(spec, state, previous, past, now):
     """Факт события не задаёт знак: valence/relevance предлагает модель с основаниями."""
     traits = state['traits']
-    sensitivity = traits.get('sensitivity', {})
-    sensitivity = sensitivity.get('value', 0.5) if isinstance(sensitivity, dict) else 0.5
-    disposition = traits.get('irritability', {})
-    disposition = bounded(disposition.get('value', 0.0)) if isinstance(disposition, dict) else 0.0
-    sensitivity = bounded(sensitivity)
+    sensitivity = trait_value(traits, 'sensitivity', 0.5)
+    disposition = trait_value(traits, 'irritability', 0.0)
     mood = previous['mood'] if previous else 0.0
     goals = min(1.0, len(state['intentions']) / 4) * spec['relevance']
     load = bounded(state['affect'].get('load'))

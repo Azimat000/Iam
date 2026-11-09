@@ -1,6 +1,7 @@
 """Bounded Docker command; credentials and model context travel only over stdin."""
 from __future__ import annotations
 
+import copy
 import re
 import uuid
 from dataclasses import dataclass
@@ -12,25 +13,84 @@ from .auth_session import validate_writeback_path
 
 DEFAULT_MODEL = "gpt-6-luna"
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SYSTEM_PROMPT = (
+LEGACY_SYSTEM_PROMPT = (
     "You are the proposal engine of a digital persona core. You have no tools and cannot act in the world. "
     "Reply with exactly one JSON object containing proposals and explanation. "
     "Each proposal has kind, rationale, cites (context references), and body_json, a JSON-encoded object string. "
+    "cites may contain only evt_ or mem_ references from the context. "
+    "Visible inp_ notice identifiers are attention targets in attend body.ref, never citations. "
     "Kinds and body fields: action{capability_id,params}; message{capability_id,to,text}; "
     "creator_request{request_key,text}; no_action{reason}; attend{focus,ref}; state_change{ops}; memory_write{draft}; intention{op}. "
     "reflection{} opts in during choose_action; during reflect its body follows the supplied instructions. "
     "Use only allowed_proposals and allowed_actions. Proposals request actions from the core; never claim results. "
     "Do not invent proposal ids. Ground rationale only in the supplied context."
 )
-RESPONSE_JSON_SCHEMA = {
+LEGACY_RESPONSE_JSON_SCHEMA = {
     "type": "object", "properties": {
         "proposals": {"type": "array", "items": {"type": "object", "properties": {
             "kind": {"type": "string", "enum": ["action", "message", "state_change", "memory_write", "intention", "creator_request", "no_action", "reflection", "attend"]}, "rationale": {"type": "string"},
-            "cites": {"type": "array", "items": {"type": "string"}}, "body_json": {"type": "string"}},
+            "cites": {"type": "array", "items": {"type": "string", "pattern": "^(evt|mem)_[A-Za-z0-9]{8,40}$"}}, "body_json": {"type": "string"}},
             "required": ["kind", "rationale", "cites", "body_json"], "additionalProperties": False}},
         "explanation": {"type": "string"}},
     "required": ["proposals", "explanation"], "additionalProperties": False,
 }
+SYSTEM_PROMPT = LEGACY_SYSTEM_PROMPT.replace(
+    "containing proposals and explanation", "containing proposals, attention and explanation"
+).replace("attend{focus,ref}; ", "") + (
+    " Attention is a separate nullable object, not an item in proposals. "
+    "Use attention=null when no attention switch is proposed. Otherwise it has rationale, cites, "
+    "focus (activity, intention, event, dialogue or rest), and ref (target identifier, or null for no target). "
+    "A visible inp_ notice is an attention target ref, never a focus value or a citation. "
+    "The adapter copies this object to an attend proposal; it does not execute a read."
+)
+RESPONSE_JSON_SCHEMA = copy.deepcopy(LEGACY_RESPONSE_JSON_SCHEMA)
+RESPONSE_JSON_SCHEMA['properties']['proposals']['items']['properties']['kind']['enum'].remove('attend')
+RESPONSE_JSON_SCHEMA['properties']['attention'] = {
+    'type': ['object', 'null'], 'properties': {
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(LEGACY_RESPONSE_JSON_SCHEMA['properties']['proposals']['items']['properties']['cites']),
+        'focus': {'type': 'string', 'enum': ['activity', 'intention', 'event', 'dialogue', 'rest']},
+        'ref': {'type': ['string', 'null'], 'minLength': 1}},
+    'required': ['rationale', 'cites', 'focus', 'ref'], 'additionalProperties': False,
+}
+RESPONSE_JSON_SCHEMA['required'].append('attention')
+# Исторический wire3 читается строго по прежнему контракту, без ремонта его тел.
+WIRE3_RESPONSE_JSON_SCHEMA = copy.deepcopy(RESPONSE_JSON_SCHEMA)
+general = copy.deepcopy(RESPONSE_JSON_SCHEMA['properties']['proposals']['items'])
+general['properties']['kind']['enum'].remove('memory_write')
+memory = {
+    'type': 'object', 'properties': {
+        'kind': {'type': 'string', 'enum': ['memory_write']},
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(general['properties']['cites']),
+        'draft': {'type': 'object', 'properties': {
+            'kind': {'type': 'string', 'enum': ['sensory', 'working', 'episodic', 'semantic',
+                     'autobiographical', 'emotional_associative', 'procedural', 'social', 'prospective']},
+            'origin': {'type': 'string', 'enum': ['observation', 'model_knowledge', 'stated_by_other',
+                       'own_hypothesis', 'imagination', 'simulation_event', 'model_explanation']},
+            'content_json': {'type': 'string'}},
+            'required': ['kind', 'origin', 'content_json'], 'additionalProperties': False}},
+    'required': ['kind', 'rationale', 'cites', 'draft'], 'additionalProperties': False,
+}
+project_write = {
+    'type': 'object', 'properties': {
+        'kind': {'type': 'string', 'enum': ['project_write']},
+        'rationale': {'type': 'string'},
+        'cites': copy.deepcopy(general['properties']['cites']),
+        'project_id': {'type': 'string'}, 'title': {'type': 'string'}, 'text': {'type': 'string'}},
+    'required': ['kind', 'rationale', 'cites', 'project_id', 'title', 'text'], 'additionalProperties': False,
+}
+RESPONSE_JSON_SCHEMA['properties']['proposals']['items'] = {'anyOf': [general, memory, project_write]}
+SYSTEM_PROMPT += (
+    ' For memory_write only, use the explicit draft field instead of body_json. '
+    'draft has kind, origin and content_json, a JSON-encoded content object following the supplied memory instructions. '
+    'The adapter copies these fields into the existing body.draft, parsing content_json into draft.content. '
+    ' Keep proposals in your chosen order; no memory write is required.'
+    ' When you choose a project text write, use the native wire kind project_write, with project_id, title and text '
+    'as separate fields beside rationale and cites, without body_json. This is just the encoding of an action '
+    'with cap_Project01 and those three params, so use it only when action and cap_Project01 are allowed. '
+    'Other actions, including a project status change, still use body_json.'
+)
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 _MEMORY = re.compile(r"([1-9]\d*)([mg])")
 
