@@ -136,6 +136,8 @@ class PersistentWorld:
             if 'to_status' in p:
                 ops.append(Op('world_time', 'world.projects.' + target + '.status', 'set', p['to_status'], True))
             else:
+                previous = state.get('projects', {}).get(target, {}).get('latest_work')
+                receipt['previous_fingerprint'] = state.get('works', {}).get(previous, {}).get('fingerprint')
                 work = {'title': p['title'], 'text': p['text'], 'fingerprint': receipt['fingerprint'],
                         'event_id': event_id, 'action_id': aid}
                 ops += [Op('world_time', 'world.works.' + aid, 'set', work, True),

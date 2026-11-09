@@ -119,6 +119,8 @@ class Intentions:
             raise ValueError('Нужен поздний исход того же проекта и его событие в cites')
         if goal['operation'] == 'write' and receipt['fingerprint'] == goal['initial_fingerprint']:
             raise ValueError('Повтор исходного текста не является новой работой')
+        if goal['operation'] == 'write' and receipt['fingerprint'] == receipt.get('previous_fingerprint'):
+            raise ValueError('Повтор предыдущего текста не является новой работой')
         shown = []
         for item in request['context']:
             try:

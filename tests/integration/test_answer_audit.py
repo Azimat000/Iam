@@ -10,6 +10,32 @@ from integration.live_series import audit
 
 
 class PhysicalAnswerTest(unittest.TestCase):
+    def test_tool_categories_match_classifier_and_never_store_private_event_fields(self):
+        from iam.providers.codex.classify import classify
+        from iam.providers.codex import fake
+        from iam.providers.classify import Kind
+        cases = [
+            ({'type': 'item.completed', 'item': {'type': 'command_execution', 'command': 'PRIVATE_COMMAND'}},
+             ['known_tool_item']),
+            ({'type': 'item.completed', 'item': {'type': 'PRIVATE_UNKNOWN', 'text': 'PRIVATE_BODY'}},
+             ['unknown_item_type']),
+            ({'type': 'PRIVATE_TOOL_EVENT', 'message': 'PRIVATE_MESSAGE'}, ['event_type_pattern']),
+            ({'type': 'iam.auth.updated', 'auth': {'tokens': {'access_token': 'PRIVATE_TOKEN'}}}, []),
+            ({'type': None, 'secret': 'PRIVATE_TYPE'}, []),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            artifacts = audit.Artifacts(directory)
+            for index, (event, expected) in enumerate(cases, 1):
+                run = RunResult(0, fake.reply([]).stdout + '\n' + json.dumps(event))
+                result = record_answer(artifacts, 'cell', index, run)
+                self.assertEqual(result['tool_use_categories'], expected)
+                self.assertEqual(classify(run).kind == Kind.TOOL_USE, bool(expected))
+                saved = (Path(directory) / f'cell/physical/{index:03d}.json').read_text()
+                self.assertNotIn('PRIVATE', saved)
+                self.assertTrue(result['body_available'])
+            clean = record_answer(artifacts, 'cell', len(cases) + 1, fake.reply([]))
+            self.assertEqual(clean['tool_use_categories'], [])
+
     def test_invalid_model_body_is_preserved_without_credentials_or_reasoning(self):
         with tempfile.TemporaryDirectory() as directory:
             artifacts = audit.Artifacts(directory)

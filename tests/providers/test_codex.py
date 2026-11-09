@@ -261,6 +261,27 @@ class ProviderTests(unittest.TestCase):
 
 
 class ClassifierTests(unittest.TestCase):
+    def test_fixed_tool_categories_preserve_fail_closed_policy_without_raw_metadata(self):
+        from iam.providers.codex.classify import tool_use_categories
+        cases = [
+            (item('command_execution', command='PRIVATE_COMMAND'), ('known_tool_item',)),
+            (item('PRIVATE_UNKNOWN_TYPE'), ('unknown_item_type',)),
+            (item(['PRIVATE_MALFORMED_TYPE']), ('unknown_item_type',)),
+            ({'type': 'private.tool.started', 'secret': 'PRIVATE_TOKEN'}, ('event_type_pattern',)),
+            ({'type': 'item.tool', 'item': {'type': 'web_search'}}, ('known_tool_item', 'event_type_pattern')),
+        ]
+        for event, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(tool_use_categories(event), expected)
+                run = RunResult(1, json.dumps(event) + '\ninvalid raw', 'PRIVATE_STDERR', timed_out=True)
+                result = classify(run)
+                self.assertEqual(result.kind, Kind.TOOL_USE)
+                self.assertEqual(result.envelope, {'tool_use_categories': sorted(expected)})
+                self.assertNotIn('PRIVATE', repr(result))
+        for event in ({}, {'type': None}, {'type': 1}, {'type': 'item.completed'}, item(),
+                      item('reasoning'), {'type': 'iam.auth.updated', 'auth': {'tokens': {'access_token': 'PRIVATE'}}}):
+            self.assertEqual(tool_use_categories(event), ())
+
     def test_success_and_passive_item_lifecycle(self):
         self.assertEqual(classify(fake.reply([])).kind, Kind.OK)
         result = sequence({"type": "item.started", "item": {"id": "r", "type": "reasoning", "status": "in_progress"}},

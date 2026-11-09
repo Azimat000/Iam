@@ -153,7 +153,10 @@ class LivingCycle(Cycle):
                 continue
             action = state.get('actions', {}).get(row.content.get('action_id'), {})
             if 'receipt' in action:
-                results.append({'memory_id': row.memory_id, **action['receipt'],
+                # Проверочное прошлое не возвращается в доступную память через receipt.
+                public_receipt = {key: value for key, value in action['receipt'].items()
+                                  if key != 'previous_fingerprint'}
+                results.append({'memory_id': row.memory_id, **public_receipt,
                                 'text': action['outcome']})
         goals = {} if self.motivation.off else self.intentions.visible()
         catalog = {'library': {key: {'title': value['title']} for key, value in list(state.get('library', {}).items())[:30]},

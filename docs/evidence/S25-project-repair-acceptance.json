@@ -1,0 +1,109 @@
+{
+  "decision": "D-089",
+  "baseline_head": "39097b2cef57b307183715603a6fbdc72013db62",
+  "S25_accepted": false,
+  "S26_started": false,
+  "goal_and_seven_criteria_unchanged": true,
+  "requirements_unchanged": true,
+  "preexisting_changes_preserved": true,
+  "python_sources_match_tested_snapshot": 309,
+  "full_tests": {
+    "count": 1474,
+    "seconds": 1059.551,
+    "exit_code": 0,
+    "skipped": 0,
+    "modules": 151,
+    "below_threshold": 0
+  },
+  "changed_modules_coverage": {
+    "src/iam/intentions/__init__.py": {
+      "covered_lines": 120,
+      "num_statements": 120,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 58,
+      "num_partial_branches": 0,
+      "covered_branches": 58,
+      "missing_branches": 0
+    },
+    "src/iam/world/__init__.py": {
+      "covered_lines": 118,
+      "num_statements": 118,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 52,
+      "num_partial_branches": 0,
+      "covered_branches": 52,
+      "missing_branches": 0
+    },
+    "src/iam/world/cycle.py": {
+      "covered_lines": 132,
+      "num_statements": 132,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 38,
+      "num_partial_branches": 0,
+      "covered_branches": 38,
+      "missing_branches": 0
+    },
+    "src/iam/providers/codex/classify.py": {
+      "covered_lines": 101,
+      "num_statements": 101,
+      "percent_covered": 100.0,
+      "percent_covered_display": "100",
+      "missing_lines": 0,
+      "excluded_lines": 0,
+      "num_branches": 64,
+      "num_partial_branches": 0,
+      "covered_branches": 64,
+      "missing_branches": 0
+    }
+  },
+  "transport": {
+    "applied_to_persona": false,
+    "behavioral_acceptance": false,
+    "body_available": true,
+    "database_opened": false,
+    "format_codes": [],
+    "historical_d088_cause": "unknown",
+    "physical_calls": 1,
+    "proposal_count": 0,
+    "shared_schema_valid": true,
+    "status": "returned",
+    "timed_out": false,
+    "tool_use_categories": [],
+    "tool_use_detected": false
+  },
+  "criteria": {
+    "exact_and_whitespace_repeat": "PASS: test_repeated_post_goal_work_after_restart_does_not_start_done_reviews / test_whitespace_repeat_after_restart_does_not_start_done_reviews",
+    "valid_first_and_changed_work": "PASS: test_original_valid_work_can_finish_after_restart_without_claiming_late_progress / test_changed_work_after_restart_is_eligible",
+    "legacy_and_other_project": "PASS: explicit regression cases",
+    "forgotten_fingerprint": "PASS: test_previous_fingerprint_never_reveals_forgotten_work_in_context; independent memory_off check",
+    "safe_transport_categories": "PASS: provider classifier and physical answer tests",
+    "two_independent_continuing_goals": "NOT_PROVEN",
+    "historical_D088_event_type": "UNKNOWN"
+  },
+  "limitations": [
+    "Fingerprint guard covers immediate predecessor and creation baseline, not semantic novelty or arbitrary older versions.",
+    "Legacy receipts retain previous validation, without new proof of non-repetition.",
+    "One clean transport response is not behavioral acceptance or explanation of historical refusal."
+  ],
+  "post_doc_tests": {
+    "count": 81,
+    "seconds": 11.606,
+    "exit_code": 0
+  },
+  "validators": {
+    "memory": "PASS",
+    "requirements_226": "PASS",
+    "scenarios_33_required_19": "PASS",
+    "plan_coverage": "PASS",
+    "git_diff_check": "PASS"
+  }
+}

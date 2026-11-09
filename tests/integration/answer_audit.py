@@ -3,11 +3,12 @@ import hashlib
 import json
 
 from iam.backup.scan import SecretScanner
-from iam.providers.codex.classify import _json
+from iam.providers.codex.classify import _json, tool_use_categories
 
 
 def record_answer(artifacts, cell, index, run, *, auth=None):
     messages, secrets, malformed = [], [], 0
+    categories = set()
     credentials = [auth] if auth else []
     for line in run.stdout.splitlines():
         if not line.strip():
@@ -20,6 +21,7 @@ def record_answer(artifacts, cell, index, run, *, auth=None):
         if not isinstance(event, dict):
             malformed += 1
             continue
+        categories.update(tool_use_categories(event))
         if event.get("type") == "iam.auth.updated":
             credentials.append(event.get("auth"))
         item = event.get("item")
@@ -40,6 +42,7 @@ def record_answer(artifacts, cell, index, run, *, auth=None):
               "stderr_present": bool(run.stderr), "messages": messages,
               "malformed_stream_lines": malformed, "redactions": sum(counts.values()),
               "body_available": len(messages) == 1,
+              "tool_use_categories": sorted(categories),
               "messages_sha256": hashlib.sha256(serialized.encode()).hexdigest(),
               "scope": "Completed agent message bodies only; credentials, reasoning and diagnostics omitted."}
     artifacts.write(f"{cell}/physical/{index:03d}.json", record, exclusive=True)
