@@ -10,8 +10,8 @@ kind = "functional"
 mechanism = "iam.persona (создание личности) + iam.storage (одна личность — один файл базы)"
 check = "Сквозной тест S26/S27: у созданной личности есть все компоненты состояния из §2.1; панель их показывает."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S26-birth.md (создание и состояние, отображение в рабочем сеансе и поведение остаются S27–S29)"
 
 [[req]]
 id = "R-002"
@@ -58,8 +58,8 @@ kind = "functional"
 mechanism = "iam.persona.create создаёт хранилище без эпизодических/автобиографических записей"
 check = "Тест: сразу после создания хранилища число записей личной памяти равно нулю, общие знания доступны через провайдера."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "implemented"
+evidence = "docs/evidence/S26-birth.md (пустая личная память, доступ к общим знаниям через живой маршрут проверяется S27)"
 
 [[req]]
 id = "R-006"
@@ -70,8 +70,8 @@ kind = "process"
 mechanism = "Профили временных персонажей (S11); кандидаты характера (S26); барьер G05"
 check = "Запись выбора в docs/DECISIONS.md и закрытый барьер G05."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/DECISIONS.md D-105/D-106; docs/STATE.md G05; docs/evidence/S26-character-candidates.md"
 
 [[req]]
 id = "R-007"
@@ -312,8 +312,8 @@ kind = "functional"
 mechanism = "iam.persona (черты/ценности/границы в состоянии) [spec: docs/spec/state.md#groups] [spec: docs/spec/state.md#traits]"
 check = "Тест: черты, ценности и границы записываются при создании личности и неизменны после перезапуска, пока нет отдельного акта изменения."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S26-birth.md; tests/persona/test_create.py::CreateTest.test_birth_backup_and_separate_restore."
 
 [[req]]
 id = "R-027"
@@ -1708,8 +1708,8 @@ kind = "process"
 mechanism = "D-053: архитектура/мотивация — решение S17 с передачей рисков; постоянный характер — G05/S26; финальная приёмка полного требования в S26"
 check = "Записи решений; закрытые G04 и G05."
 slice = ["S17", "S26"]
-status = "implemented"
-evidence = "docs/DECISIONS.md D-037/D-042; docs/experiments/development/transfer-v1/REPORT.md (архитектура A выбрана, механизм целей остаётся непроверенным, постоянный характер не выбран, G05 открыт, полное требование не verified)."
+status = "verified"
+evidence = "docs/DECISIONS.md D-037/D-054/D-106; docs/STATE.md G04/G05. Подтверждён выбор, конечная проверка работы мотивации остаётся S28."
 
 [[req]]
 id = "R-141"
@@ -1996,8 +1996,8 @@ kind = "constraint"
 mechanism = "iam.persona.create (отдельный файл базы)"
 check = "Тест: путь постоянной базы отличается от каталога экспериментов."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S26-birth.md; tests/persona/test_create.py::CreateTest.test_existing_and_concurrent_creation_do_not_replace_database."
 
 [[req]]
 id = "R-165"
@@ -2008,8 +2008,8 @@ kind = "constraint"
 mechanism = "iam.persona (запрет импорта; проверка идентификаторов exp/)"
 check = "Тест: импорт запрещён; в хранилище нет id из exp/."
 slice = "S26"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S26-birth.md; tests/persona/test_create.py::CreateTest.test_experiment_location_and_foreign_memory_are_rejected; tests/state/test_controller.py::test_permanent_persona_refuses_time_scale."
 
 [[req]]
 id = "R-166"
