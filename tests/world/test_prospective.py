@@ -283,6 +283,47 @@ class ProspectiveTest(LivingCase):
         self.assertIs(self.cycle.provider.scanner, scanner)
         self.assertEqual(verify(self.c.store), [])
 
+    def test_duplicate_open_goal_is_rejected_without_cancelling_late_choice(self):
+        source = self.read()
+        self.assertEqual(self.run_reply(self.goal(source)).outcome, 'done')
+        fresh = self.write('Новый источник для наблюдения', project='other')
+        self.enable()
+        duplicate = self.goal(fresh, iid='duplicate_goal', text='Написать стихотворение  о свете',
+                              criterion='Есть  две строки о свете')
+        report = self.run_reply(duplicate, replies=(Reply((act(WRITE, {
+            'project_id': 'poem', 'title': 'Работа', 'text': 'Свет на столе. Свет у окна.',
+        }),)),))
+        self.assertEqual(report.outcome, 'done')
+        self.assertEqual(set(self.c.state['intentions']), {'my_goal'})
+        self.assertEqual(self.c.state['intentions']['my_goal']['criterion'], 'Есть две строки о свете')
+        stage = next(row for row in report.stages if row.stage == 'experience_appraisal')
+        self.assertEqual(stage.detail['rejected'], {duplicate['proposal_id']: 'intention_duplicate'})
+        self.assertEqual(report.actions[0].status, 'confirmed')
+        self.assertEqual(self.p.calls[-1]['purpose'], 'choose_action')
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_distinct_text_criterion_time_and_restarting_abandoned_goal_remain_available(self):
+        source = self.read()
+        self.assertEqual(self.run_reply(self.goal(source)).outcome, 'done')
+        self.assertEqual(self.run_reply(self.goal(source, iid='different', criterion='Есть три строки')).outcome, 'done')
+        self.assertEqual(self.run_reply(self.goal(source, iid='other_text', text='Сравнить свет от двух ламп')).outcome, 'done')
+        scheduled = self.goal(source, iid='later')
+        scheduled['body']['not_before_life_ms'] = self.c.life_time_ms + 100000
+        self.assertEqual(self.run_reply(scheduled).outcome, 'done')
+        self.assertEqual(self.run_reply(self.transition('abandoned')).outcome, 'done')
+        self.assertEqual(self.run_reply(self.goal(source, iid='restart')).outcome, 'done')
+        self.assertEqual(set(self.c.state['intentions']), {'my_goal', 'different', 'later', 'other_text', 'restart'})
+
+    def test_goal_with_forgotten_source_does_not_block_new_choice(self):
+        source = self.read()
+        self.assertEqual(self.run_reply(self.goal(source)).outcome, 'done')
+        self.time.advance(14 * 24 * 60 * 60 * 1000)
+        self.m.fade_due()
+        self.assertNotIn('my_goal', self.cycle.intentions.visible())
+        fresh = self.write('Новый наблюдаемый источник', project='another')
+        self.assertEqual(self.run_reply(self.goal(fresh, iid='from_new_source')).outcome, 'done')
+        self.assertIn('from_new_source', self.cycle.intentions.visible())
+
     def test_second_goal_in_same_cycle_is_rejected_by_request_scope(self):
         source = self.read(); self.enable()
         other = self.goal(source, iid='other')

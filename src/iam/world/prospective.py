@@ -17,7 +17,10 @@ PROSPECTION = (
     'Отдельно реши, появился ли у тебя желаемый будущий результат, к которому хочешь вернуться '
     'после нынешнего действия или сеанса. Если да, выбери его содержание и исходный критерий сама '
     'и предложи полный intention/create по прежнему контракту, опираясь на доступный собственный опыт. '
-    'Намерение останется доступным следующему выбору и после перезапуска; оно не считается выполненным. '
+    'Намерение останется доступным следующему выбору и после перезапуска. Оно не считается выполненным. '
+    'Проверь открытые намерения в intentions. Если новый опыт помогает уже выбранному результату, '
+    'можно сохранить только оценку и продолжить прежний проект в обычном выборе. '
+    'Новый ключ сам по себе не делает результат новым. Продолжать прежнее дело необязательно. '
 )
 BOUNDARY = (
     'Здесь не исполняются действия, сообщения или просьбы; их выберешь следующим отдельным запросом. '
@@ -131,9 +134,12 @@ class ProspectiveCycle(LivingCycle):
         proposals = response.get('proposals') if isinstance(response, dict) else None
         none_accepted = result.status == 'rejected' and result.reason == 'no_proposal_accepted'
         declined = none_accepted and proposals == []
-        # Переход отклонён, но его можно заново выбрать в обычной фазе.
-        phase_rejected = none_accepted and set(result.rejected.values()) == {'appraisal_create_only'}
-        ok = declined or phase_rejected or result.status in ('applied', 'partial')
+        # Отклонённый переход или копия уже открытой цели не отменяют обычный выбор.
+        rejected_codes = set(result.rejected.values())
+        recoverable = none_accepted and bool(rejected_codes) and rejected_codes <= {
+            'appraisal_create_only', 'intention_duplicate',
+        }
+        ok = declined or recoverable or result.status in ('applied', 'partial')
         accepted = set(result.accepted)
         self._appraised_intention = any(pr['kind'] == 'intention' and pr['proposal_id'] in accepted
                                        for pr in (proposals or []))

@@ -182,8 +182,9 @@ class IntentionTest(LivingCase):
     def test_goal_and_action_are_independent_slots_in_both_orders(self):
         source = self.read()
         for reverse in (False,True):
-            goal = self.goal(source,iid='goal_' + str(reverse))
-            action = act(WRITE,{'project_id':'poem','title':'Работа','text':'Свет у окна.\nТёплая весна.'})
+            project = 'poem_' + str(reverse)
+            goal = self.goal(source, iid='goal_' + str(reverse), project=project)
+            action = act(WRITE,{'project_id':project,'title':'Работа','text':'Свет у окна.\nТёплая весна.'})
             report = self.run_reply(*( (action,goal) if reverse else (goal,action)))
             self.assertEqual(report.outcome,'done', report)
             self.assertEqual(report.actions[0].status,'confirmed')
@@ -224,6 +225,9 @@ class IntentionTest(LivingCase):
         self.assertNotIn('available_result',json.loads(stages[0]['request']['context'][0]['text'])['packet'])
         self.assertEqual(len(stages[0]['request']['context']),1)
         self.assertEqual(stages[0]['protocol'],'single_packet_v2')
+        evaluation = json.loads(stages[1]['request']['context'][0]['text'])
+        self.assertIn('подтверждённое действие записи собственной работы', evaluation['instructions'])
+        self.assertEqual(evaluation['packet']['available_result']['scope'], 'artifact')
 
     def test_failed_or_wrong_project_or_early_or_unchanged_result_never_done(self):
         source = self.read()

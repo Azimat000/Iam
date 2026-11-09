@@ -7,6 +7,16 @@ from iam.state import KindDecision, Violation
 from iam.world import READ, WRITE, MOVE, identifier, text
 
 OPERATIONS = {'read': READ, 'write': WRITE, 'move': MOVE}
+OPEN_STATUSES = {'active', 'deferred', 'waiting_opportunity'}
+
+
+class _DuplicateIntention(ValueError):
+    pass
+
+
+def _signature(goal):
+    return (goal.get('project_id'), goal.get('operation'), goal.get('not_before_life_ms'),
+            ' '.join(goal.get('text', '').split()), ' '.join(goal.get('criterion', '').split()))
 
 
 class Intentions:
@@ -27,6 +37,8 @@ class Intentions:
     def proposal(self, pr, ctx):
         try:
             ops = self.checked(pr, ctx)
+        except _DuplicateIntention:
+            return KindDecision(violation=Violation('intention_duplicate', 'Такое открытое намерение уже сохранено'))
         except (KeyError, TypeError, ValueError):
             return KindDecision(violation=Violation('intention_invalid', 'Нужен доступный опыт, исходный критерий и подтверждённый результат'))
         self.grants.extend((op.group, op.path, op.value) for op in ops)
@@ -60,6 +72,13 @@ class Intentions:
                 raise ValueError('Нет предмета')
             if body['operation'] == 'write' and self.world.state.get('projects',{}).get(target,{}).get('status','active') != 'active':
                 raise ValueError('Проект уже закрыт')
+            when = body.get('not_before_life_ms')
+            if 'not_before_life_ms' in body and (type(when) is not int or when < ctx.life_time_ms):
+                raise ValueError('Нужен будущий момент собственного времени')
+            signature = _signature(body)
+            open_goals = (goal for goal in self.visible(ctx.state).values() if goal['status'] in OPEN_STATUSES)
+            if any(_signature(goal) == signature for goal in open_goals):
+                raise _DuplicateIntention()
             work = self.world.state.get('projects', {}).get(target, {}).get('latest_work')
             initial = self.world.state.get('works', {}).get(work, {}).get('fingerprint')
             value = {key: body[key] for key in ('text', 'criterion', 'project_id', 'operation')}
@@ -68,10 +87,7 @@ class Intentions:
                          created_seq=self.ctl.store.last_seq(), created_life_ms=ctx.life_time_ms,
                          initial_fingerprint=initial, knows=True, wants=True,
                          history=[{'status': 'active', 'reason': pr['rationale'], 'life_ms': ctx.life_time_ms}])
-            if 'not_before_life_ms' in body:
-                when=body['not_before_life_ms']
-                if type(when) is not int or when<ctx.life_time_ms:
-                    raise ValueError('Нужен будущий момент собственного времени')
+            if when is not None:
                 value.update(not_before_life_ms=when,moment_id=new_id('mom'))
             return [Op('intentions', iid, 'set', value, True)]
         if op != 'transition' or set(body) - {'op', 'intention_id', 'to_status', 'result_ref'}:

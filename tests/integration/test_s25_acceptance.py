@@ -2,11 +2,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from iam.state import StateController, verify
 from iam.storage import Store
+from iam.stubs import Reply, act
+from iam.world import READ, WRITE
 
 from integration.intention_probe import snapshot
 from integration.project_affordance import events, next_session
 from integration.s25_acceptance import CONTROLS, initial_record, prepare_controls, prepare_primary
+from integration.s25_continuity_repair import copy_stopped_prefix
+from integration.test_persistent_core import tick, wire
 
 
 class AcceptanceSetupTest(unittest.TestCase):
@@ -52,3 +57,32 @@ class AcceptanceSetupTest(unittest.TestCase):
             first, second = list(initial)[:2]
             self.assertEqual(next_session([dict(branch=first, number=1, status='completed')],
                                           list(initial), 1), (second, 1))
+
+    def test_rebuilt_stopped_prefix_preserves_state_and_drops_later_work(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            prepare_primary(root)
+            source = root / 'stories/cloth/persona.db'
+            with Store.open(source) as store:
+                ctl = StateController(store)
+                session, cycle, provider = wire(ctl)
+                material = cycle.world.add_material('Первая запись', 'Есть только первый результат.', 'Проверка')
+                session.command('start', 'Чтение')
+                provider.queue(Reply((act(READ, {'material_id': material}),)))
+                self.assertEqual(tick(cycle).actions[0].status, 'confirmed')
+                session.command('stop', 'Граница истории')
+                saved = {'record': {'head': events(store)[-1]}, 'state': ctl.state}
+                prefix = events(store)
+                session.command('start', 'Следующий сеанс')
+                provider.queue(Reply((act(WRITE, {'project_id': 'note', 'title': 'Итог',
+                                                 'text': 'Это более поздний результат.'}),)))
+                self.assertEqual(tick(cycle).actions[0].status, 'confirmed')
+                session.command('stop', 'Завершить источник')
+            rebuilt = root / 'copy/cloth.db'
+            copy_stopped_prefix(source, rebuilt, saved)
+            with Store.open(rebuilt, readonly=True) as store:
+                self.assertEqual(events(store), prefix)
+                self.assertEqual(store.latest_snapshot().state, saved['state'])
+                self.assertEqual(verify(store), [])
+            with Store.open(source, readonly=True) as store:
+                self.assertGreater(store.last_seq(), len(prefix))
