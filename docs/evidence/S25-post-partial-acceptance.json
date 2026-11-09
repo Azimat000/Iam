@@ -1,0 +1,61 @@
+{
+  "user_goal_achieved": false,
+  "s25_accepted": false,
+  "s26_started": false,
+  "criteria": [
+    {
+      "requirement": "Проверить исправление остановки живьём",
+      "status": "PASS",
+      "finding": "A-1 приняла память при partial и выполнила следующий choose_action.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Проверить сохранение собственной цели после перезапуска",
+      "status": "PASS_ONE_GOAL",
+      "finding": "A восстановила исходный текст, критерий, статус и источники.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Добиться содержательного позднего продолжения",
+      "status": "NOT_MET",
+      "finding": "Действие A-1 перезаписало предшествующий текст дословно.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Проверить завершение по исходному критерию",
+      "status": "PASS_CORE_ONLY",
+      "finding": "A-2 получила done через две проверки. Результат связан с повторной записью, поэтому цепочка позднего продолжения и завершения не принята.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Проверить вторую историю",
+      "status": "PASS_NEGATIVE_OUTCOME",
+      "finding": "E прошла три сеанса и шесть решений без добровольного create.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Устранить лишние вызовы оценщиков",
+      "status": "PASS_LOCAL_LIVE_INCOMPLETE",
+      "finding": "Адресный тест и полный прогон прошли. Живая серия остановилась до appraise по флагу использования инструментов.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Соблюсти условия приёмки",
+      "status": "PASS",
+      "finding": "Исходные критерии, ограничения на источники, права, бюджет и исходный результат сохранены. Схемы и проверка завершения действуют в прежнем объёме.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Выполнить полный технический прогон",
+      "status": "PASS",
+      "finding": "На итоговом коде прошли 1465 тестов и пороги всех 151 модуля.",
+      "evidence": "S25-post-partial-audit.json"
+    },
+    {
+      "requirement": "Достичь поведенческого минимума S25",
+      "status": "NOT_MET",
+      "finding": "Содержательного позднего продолжения и второй самостоятельной цели нет.",
+      "evidence": "S25-post-partial-audit.json"
+    }
+  ]
+}
