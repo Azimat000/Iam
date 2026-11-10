@@ -1960,8 +1960,8 @@ kind = "functional"
 mechanism = "iam.telegram.Receiver (запись в inbox до продвижения offset) [spec: docs/spec/events.md#idempotency]"
 check = "Тест: сбой между приёмом и подтверждением не теряет сообщение; живая проверка по барьеру G02. D-104: живой рубеж G02/S27; технические проверки не отложены."
 slice = ["S09", "S27"]
-status = "implemented"
-evidence = "docs/evidence/S09-telegram.md; tests/telegram/test_receiver.py::ReceiverTest.test_storage_failure_rolls_back_event_inbox_and_offset; tests/telegram/test_receiver.py::ReceiverTest.test_partial_batch_crash_preserves_completed_updates; docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+status = "verified"
+evidence = "docs/evidence/S27-telegram-live.md (живой приём и повторный запуск); docs/evidence/S09-telegram.md; tests/telegram/test_receiver.py::ReceiverTest.test_storage_failure_rolls_back_event_inbox_and_offset; tests/telegram/test_receiver.py::ReceiverTest.test_partial_batch_crash_preserves_completed_updates"
 
 [[req]]
 id = "R-162"
@@ -1984,8 +1984,8 @@ kind = "constraint"
 mechanism = "docs/RUNBOOK.md (раздел ограничений)"
 check = "Раздел в RUNBOOK.md с ссылкой на документацию Bot API."
 slice = "S27"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/RUNBOOK.md (срок хранения ожидающих обновлений Telegram)"
 
 [[req]]
 id = "R-164"
@@ -2538,8 +2538,8 @@ kind = "process"
 mechanism = "Барьер G09; подготовка S08, обязательная проверка политик до старта S27; свойства API не приписываются подписке"
 check = "Закрытый G09 с записью проверенных политик."
 slice = ["S08", "S27"]
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/evidence/S27-preflight.md (официальные правила, состав запроса и согласие владельца)"
 
 [[req]]
 id = "R-209"
