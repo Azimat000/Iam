@@ -32,9 +32,11 @@ from iam.telegram import Client, CreatorBridge, Receiver, Sender
 
 
 class Runtime:
-    def __init__(self, db, *, demo=False, auth_file=None, telegram_user=None, interval=0.5):
+    def __init__(self, db, *, demo=False, auth_file=None, telegram_user=None, interval=0.5,
+                 persist_auth_updates=False):
         self.db, self.demo = Path(db).resolve(), demo
         self.auth_file, self.telegram_user, self.interval = auth_file, telegram_user, interval
+        self.persist_auth_updates = persist_auth_updates
         self.jobs = queue.Queue()
         self.ready = Future()
         self.closed = False
@@ -113,14 +115,15 @@ class Runtime:
             call = client.call
             client.call = lambda method, params: self._telegram_call(call, method, params)
             self.receiver = Receiver(self.ctl, client, [self.telegram_user])
-            world = Sender(self.ctl, client, [self.telegram_user])
+            world = Sender(self.ctl, client, [self.telegram_user], creator_id=self.telegram_user)
             creator = CreatorBridge(self.receiver, world, self.telegram_user)
         if self.demo:
             cycle_type, cycle_options = LivingCycle, {}
             provider = ScriptedProvider([lambda request: Reply(proposals=(rest("Демонстрация: действий нет."),))] * 100,
                                         name="demo")
         else:
-            provider = CodexProvider(self._model_run, CodexSandboxConfig(auth_file=self.auth_file))
+            sandbox = CodexSandboxConfig(auth_file=self.auth_file, persist_auth_updates=self.persist_auth_updates)
+            provider = CodexProvider(self._model_run, sandbox)
             appraisal_calls = 2 * (1 + provider.max_format_retries)
 
             def can_appraise():

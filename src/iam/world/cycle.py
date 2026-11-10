@@ -193,6 +193,12 @@ class LivingCycle(Cycle):
                 'с request_key и text. Для той же цели сохрани прежний ключ. '
                 'Повтор возможен только при retry_allowed. Согласие не выдаёт право.'
             )
+            if getattr(self.creator, 'recipient', None) is not None:
+                catalog['telegram_message_rule'] = (
+                    'Если сама захочешь написать создателю, используй вид message с полями '
+                    'capability_id: cap_Telegram01, to: creator, text: текст сообщения. '
+                    'Доступность определяется реестром возможностей. Для сообщений не используй вид action.'
+                )
         context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
                            'text': self.reflection.guidance(context)})
         context.extend(character_context(self.ctl, self.memory))

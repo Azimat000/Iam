@@ -12,8 +12,8 @@
    .venv/bin/python -m pip install -e .
    ```
 
-2. Проверьте наличие образа `iam-codex:1` и работающего посредника `iam-proxy`. Если их нужно подготовить, используйте [инструкцию Docker](../docker/README.md). Для входа используйте отдельный файл подписочной авторизации IAM вне проекта. При необходимости обновите его по [инструкции восстановления входа](../scripts/experiments/README.md#восстановление-входа-после-g13).
-3. Личный обмен с Telegram уже проверен. Числовой ID оператора сохранён на этом Mac в `~/.local/share/iam/operator/telegram-user-id`. Выпустите новый токен того же бота в [@BotFather](https://t.me/BotFather), поскольку прежний был передан в чате. Вставьте новый токен только в скрытый запрос Терминала при запуске. [Результаты проверки Telegram](evidence/S27-telegram-live.md).
+2. Проверьте наличие образа `iam-codex:1` и работающего посредника `iam-proxy`. Если их нужно подготовить, используйте [инструкцию Docker](../docker/README.md). Для входа используйте отдельный файл подписочной авторизации IAM вне проекта. Панель сохраняет обновления в этом файле при запуске с `--persist-codex-auth-updates`. При необходимости обновите отдельный вход по [инструкции восстановления](../scripts/experiments/README.md#восстановление-входа-после-g13).
+3. Личный обмен с Telegram проверен. Числовой ID оператора и перевыпущенный токен сохранены на этом Mac в `~/.local/share/iam/operator`. При следующей замене токена вводите его только в скрытый запрос Терминала. [Результаты первых сеансов](evidence/S27-first-sessions.md).
 
 ## Запуск и остановка
 
@@ -30,11 +30,18 @@
   iam_id_file="$HOME/.local/share/iam/operator/telegram-user-id"
   IFS= read -r iam_user < "$iam_id_file" || exit 1
   read -r 'iam_auth?Полный путь к файлу входа Codex: ' || exit 1
-  read -rs 'TELEGRAM_BOT_TOKEN?Новый токен Telegram: ' || exit 1
-  printf '\n'
+  iam_token_file="$HOME/.local/share/iam/operator/telegram-bot-token"
+  if [[ -f "$iam_token_file" && ! -L "$iam_token_file" && -O "$iam_token_file" &&
+        "$(stat -f '%Lp' "$iam_token_file")" == 600 ]]; then
+    IFS= read -r TELEGRAM_BOT_TOKEN < "$iam_token_file" || exit 1
+  else
+    read -rs 'TELEGRAM_BOT_TOKEN?Токен Telegram: ' || exit 1
+    printf '\n'
+  fi
   export TELEGRAM_BOT_TOKEN
   SSL_CERT_FILE=/etc/ssl/cert.pem .venv/bin/python -m iam.panel \
-    --db "$iam_dbs[1]" --codex-auth-file "$iam_auth" --telegram-user "$iam_user"
+    --db "$iam_dbs[1]" --codex-auth-file "$iam_auth" --persist-codex-auth-updates \
+    --telegram-user "$iam_user"
 )
 ```
 
