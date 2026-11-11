@@ -9,7 +9,7 @@ from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
 from .lifecycle import MemoryLifecycle
 from .window import text_window
-from .search import relevance
+from .search import relevance, diverse
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
@@ -75,11 +75,11 @@ class PersistentMemory(MemoryLifecycle):
     def retrieve(self, query, *, limit=5):
         return self._retrieve(query, limit=limit, natural=False)
 
-    def recall(self, query, *, limit=5):
+    def recall(self, query, *, limit=5, current=None):
         """Ассоциативное извлечение по прочитанной реплике; точный retrieve сохраняет контракт."""
-        return self._retrieve(query, limit=limit, natural=True)
+        return self._retrieve(query, limit=limit, natural=True, current=current)
 
-    def _retrieve(self, query, *, limit, natural):
+    def _retrieve(self, query, *, limit, natural, current=None):
         if type(limit) is not int or limit < 0:
             raise ValueError("Неверный предел извлечения")
         if self.off or limit == 0:
@@ -92,6 +92,10 @@ class PersistentMemory(MemoryLifecycle):
         direct = set(matches)
         associated = {link.target for mid in direct for link in available[mid].links if link.target in available}
         candidates = direct | associated if query.strip() else set(available)
+        # Текущая прочитанная запись уже отдельно включается в context().
+        # Она не должна отнимать место у воспоминаний, нужных для ответа.
+        if natural and current is not None:
+            candidates = {mid for mid in candidates if current not in available[mid].sources}
         now = self.ctl.life_time_ms
         def score(mid):
             r = available[mid]
@@ -101,7 +105,10 @@ class PersistentMemory(MemoryLifecycle):
             freshness = 1 / (1 + max(0, now - r.created_life_ms) / 60000)
             return (-matches.get(mid, 0) if natural else 0,
                     -(2 * (mid in direct) + freshness + min(1, max(0, significance))), -r.created_life_ms, mid)
-        return [available[mid] for mid in sorted(candidates, key=score)[:min(limit, self.working_limit)]]
+        ranked = sorted(candidates, key=score)
+        count = min(limit, self.working_limit)
+        selected = diverse(ranked, matches, available, count, query) if natural and matches else ranked[:count]
+        return [available[mid] for mid in selected]
 
     def context(self, trigger, first, records):
         """Буфер хранит только безопасное уведомление цикла, не payload входящего."""

@@ -2,7 +2,7 @@
 from types import SimpleNamespace
 import unittest
 
-from iam.memory.search import match, relevance, words
+from iam.memory.search import match, relevance, words, diverse
 
 
 class SearchTest(unittest.TestCase):
@@ -24,3 +24,44 @@ class SearchTest(unittest.TestCase):
         self.assertEqual(relevance('Я и ты', rows), {})
         self.assertEqual(relevance('самолёт', rows), {})
         self.assertEqual(relevance('компас', []), {})
+
+    def test_close_retellings_leave_room_for_another_relevant_detail(self):
+        rows = {str(i): SimpleNamespace(memory_id=str(i), text=t) for i,t in enumerate([
+            'Экспедиция корабль карта отправление',
+            'Экспедиция корабль карта отправление сегодня',
+            'Карта отмечает старый маяк'])}
+        scores = relevance('экспедиция корабль карта', rows.values())
+        self.assertEqual(diverse(['0','1','2'], scores, rows, 2), ['0','2'])
+        self.assertEqual(diverse(['1','0','2'], scores, rows, 1), ['1'])
+        self.assertEqual(diverse([], {}, {}, 5), [])
+        self.assertEqual(diverse(['0'], scores, rows, 0), [])
+
+    def test_empty_associated_records_keep_stable_order(self):
+        rows = {key:SimpleNamespace(text='') for key in ('first','second')}
+        self.assertEqual(diverse(list(rows), {}, rows, 5), list(rows))
+
+    def test_opposite_statements_and_different_numbers_are_not_redundant(self):
+        for a,b in [('Я выбрал перчатку', 'Я не выбрал перчатку'),
+                    ('Встреча 3 марта', 'Встреча 5 марта')]:
+            rows = {'a':SimpleNamespace(text=a), 'b':SimpleNamespace(text=b),
+                    'c':SimpleNamespace(text='Другое слабое совпадение')}
+            self.assertEqual(diverse(list(rows), {'a':10,'b':9,'c':2}, rows, 2), ['a','b'])
+
+    def test_different_authors_and_delivery_outcomes_are_not_redundant(self):
+        for field,left,right in [('origin','observation','stated_by_other'),
+                                 ('independence_group','alice','bob'),
+                                 ('outcome','confirmed','unknown'), ('outcome','failed','confirmed'),
+                                 ('person','alice','bob')]:
+            rows = {key:SimpleNamespace(text='Перчатку выбрали для зала',content={}) for key in ('a','b')}
+            for key,value in [('a',left),('b',right)]:
+                if field=='outcome': rows[key].content['outcome']=value
+                elif field=='person': rows[key].content['communication']={'person':value}
+                else: setattr(rows[key],field,value)
+            rows['c']=SimpleNamespace(text='Слабое совпадение',content={})
+            self.assertEqual(diverse(list(rows), {'a':10,'b':9,'c':2}, rows, 2), ['a','b'])
+
+    def test_current_question_does_not_penalize_the_recalled_answer(self):
+        query='Какая перчатка была выбрана для зала'
+        rows={'q':SimpleNamespace(text=query), 'answer':SimpleNamespace(text='Перчатка была выбрана для зала'),
+              'other':SimpleNamespace(text='Другое слабое совпадение')}
+        self.assertEqual(diverse(list(rows), {'q':12,'answer':10,'other':3}, rows, 2, query), ['q','answer'])

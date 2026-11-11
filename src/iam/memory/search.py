@@ -38,3 +38,34 @@ def relevance(query, records):
         for mid, value in hits.items():
             scores[mid] += value * weight
     return {mid: score for mid, score in scores.items() if score > 0}
+
+
+def diverse(ranked, scores, records, limit, query=''):
+    """Близкие пересказы не занимают весь бюджет; сами записи остаются неизменными."""
+    # Для сравнения свидетельств сохраняются отрицания и числа, удаляемые поисковым words().
+    tokens = {mid: set(re.findall(r'[^\W_]+', records[mid].text.casefold().replace('ё', 'е'))) for mid in ranked}
+    negations = {'не', 'ни', 'нет', 'нельзя', 'никогда', 'not', 'no', 'never', 'without'}
+    def identity(mid):
+        row = records[mid]
+        content = getattr(row, 'content', {})
+        communication = content.get('communication')
+        return (getattr(row, 'origin', None), getattr(row, 'independence_group', None),
+                getattr(row, 'claim_kind', None), content.get('outcome'),
+                communication.get('person') if isinstance(communication, dict) else None,
+                frozenset(tokens[mid] & negations), frozenset(t for t in tokens[mid] if t.isdecimal()))
+    identities = {mid: identity(mid) for mid in ranked}
+    remaining, selected = list(ranked), []
+    while remaining and len(selected) < limit:
+        def value(mid):
+            overlaps = []
+            for previous in selected:
+                if (query and records[previous].text.startswith(query)) or identities[mid] != identities[previous]:
+                    continue
+                union = tokens[mid] | tokens[previous]
+                overlaps.append(len(tokens[mid] & tokens[previous]) / len(union) if union else 0.0)
+            return scores.get(mid, 0.0) * (1 - max(overlaps, default=0.0))
+        # max сохраняет прежний порядок при равенстве: свежесть/значимость не теряются.
+        best = max(remaining, key=value)
+        selected.append(best)
+        remaining.remove(best)
+    return selected

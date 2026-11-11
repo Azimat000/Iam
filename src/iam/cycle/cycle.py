@@ -194,9 +194,9 @@ class Cycle:
             return []
         # Архив обычному извлечению недоступен, даже если память по ошибке его вернула (E-1).
         natural = self.perception is not None and self.ctl.find_event(event_id=rep.trigger).type == 'input.read'
-        retrieve = self.memory.recall if natural else self.memory.retrieve
-        records = [r for r in retrieve(focus.query, limit=self.retrieval_limit)
-                   if r.layer in READABLE_LAYERS]
+        found = (self.memory.recall(focus.query, limit=self.retrieval_limit, current=rep.trigger) if natural else
+                 self.memory.retrieve(focus.query, limit=self.retrieval_limit))
+        records = [r for r in found if r.layer in READABLE_LAYERS]
         res = self.ctl.record_event(EventSpec("memory.retrieved", f"rtv:{rep.cycle_id}:0", {
             "cycle_id": rep.cycle_id, "query": focus.query, "memory_ids": [r.memory_id for r in records]}))
         self._stage(rep, "retrieval", "ok", (e.event_id for e in (res.event,) if e), {"count": len(records)})

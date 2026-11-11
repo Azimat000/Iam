@@ -92,8 +92,8 @@ class SocialMemory(WorldMemory):
             candidates.append((source.seq, row, direction, person, text, outcome, received_seq))
         return sorted(candidates, key=lambda item: item[0])
 
-    def recall(self, query, *, limit=5):
-        ranked = super().recall(query, limit=limit)
+    def recall(self, query, *, limit=5, current=None):
+        ranked = super().recall(query, limit=limit, current=current)
         if not query.strip() or not ranked:
             return ranked
         turns = self._turns()
@@ -107,7 +107,7 @@ class SocialMemory(WorldMemory):
         selected = {row.memory_id: row for row in ranked}
         for row in ranked:
             neighbor = adjacent.get(row.memory_id)
-            if neighbor is not None and row.text[:self.text_limit] != query:
+            if neighbor is not None and current not in neighbor.sources and row.text[:self.text_limit] != query:
                 selected.setdefault(neighbor.memory_id, neighbor)
         return list(selected.values())[:min(limit, self.working_limit)]
 

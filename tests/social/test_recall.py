@@ -144,3 +144,35 @@ class RecallTest(PerceptionCase):
         visible = {item['ref'] for item in self.provider.calls[-1]['context'] if item['layer']=='personal'}
         self.assertTrue({r.memory_id for r in direct} <= visible)
         self.assertEqual(verify(self.c.store), [])
+
+    def test_repeated_retellings_do_not_hide_original_detail(self):
+        first = self.exchange('Экспедиция корабль карта отправление',
+                              'Карта отмечает старый маяк.', 1)
+        for n in range(2,7):
+            self.exchange('Экспедиция корабль карта отправление сегодня',
+                          'Экспедиция корабль карта отправление обсуждались сегодня', n)
+        iid, _ = self.read('Экспедиция, корабль и карта — что на ней отмечено?', 10)
+        self.run_reply(self.c.find_event(key='rd:'+iid), rest())
+        context = self.provider.calls[-1]['context']
+        self.assertIn(first.memory_id, {item['ref'] for item in context})
+        self.assertTrue(any('старый маяк' in item['text'] for item in context))
+        self.assertTrue(self.memory.fade(first.memory_id).applied)
+        self.assertNotIn(first.memory_id, {r.memory_id for r in self.memory.recall('Экспедиция корабль карта')})
+
+    def test_current_read_is_shown_separately_without_spending_a_recall_slot(self):
+        query = 'Выставка: что выберем?'
+        self.exchange(query, 'Выставка начинается с компаса.', 1)
+        old = next(r for r in self.memory.records() if r.text == query)
+        iid, _ = self.read(query, 2)
+        trigger = self.c.find_event(key='rd:' + iid)
+        current = next(r for r in self.memory.records() if trigger.event_id in r.sources)
+        found = self.memory.recall(query, current=trigger.event_id)
+        self.assertIn(old.memory_id, {r.memory_id for r in found})
+        self.assertNotIn(current.memory_id, {r.memory_id for r in found})
+        self.run_reply(trigger, rest())
+        context = self.provider.calls[-1]['context']
+        self.assertTrue(any(item['ref'] == current.memory_id and item['layer'] == 'personal'
+                            for item in context))
+        retrieved = [e for e in self.c.events_after(0) if e.type == 'memory.retrieved'][-1]
+        self.assertNotIn(current.memory_id, retrieved.payload['memory_ids'])
+        self.assertIn(old.memory_id, retrieved.payload['memory_ids'])
