@@ -9,6 +9,7 @@ from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
 from .lifecycle import MemoryLifecycle
 from .window import text_window
+from .search import relevance
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
@@ -53,15 +54,42 @@ class PersistentMemory(MemoryLifecycle):
                 return list(rows.values())
             rows = {mid: r for mid, r in rows.items() if mid not in hidden}
 
+    def retrieval_query(self, trigger, fallback=''):
+        """Содержание повода берётся только из ещё доступной личной записи прочитанного."""
+        if self.off:
+            return ''
+        if trigger.type != 'input.read':
+            return fallback
+        rows = [r for r in self.records() if r.origin == 'stated_by_other'
+                and trigger.event_id in r.sources]
+        packed = self._window(max(rows, key=lambda r: (r.created_life_ms, r.memory_id))) if rows else None
+        return json.loads(packed)['text'] if packed is not None else ''
+
+    def _window(self, r, start=0):
+        metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
+                    'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
+                    'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
+                    'version': r.version, 'observation_scope': self.observation_scope(r)}
+        return text_window(metadata, r.text, self.text_limit, start)
+
     def retrieve(self, query, *, limit=5):
+        return self._retrieve(query, limit=limit, natural=False)
+
+    def recall(self, query, *, limit=5):
+        """Ассоциативное извлечение по прочитанной реплике; точный retrieve сохраняет контракт."""
+        return self._retrieve(query, limit=limit, natural=True)
+
+    def _retrieve(self, query, *, limit, natural):
         if type(limit) is not int or limit < 0:
             raise ValueError("Неверный предел извлечения")
         if self.off or limit == 0:
             return []
         self.fade_due()
         available = {r.memory_id: r for r in self.records()}
-        hits = self.ctl.store.search_memory(query, layers=LAYERS, limit=-1)
-        direct = {r.memory_id for r in hits if r.memory_id in available}
+        matches = (relevance(query, available.values()) if natural else
+                   {r.memory_id: 1.0 for r in self.ctl.store.search_memory(query, layers=LAYERS, limit=-1)
+                    if r.memory_id in available})
+        direct = set(matches)
         associated = {link.target for mid in direct for link in available[mid].links if link.target in available}
         candidates = direct | associated if query.strip() else set(available)
         now = self.ctl.life_time_ms
@@ -71,7 +99,8 @@ class PersistentMemory(MemoryLifecycle):
             if type(significance) not in (int, float) or not math.isfinite(significance):
                 significance = 0.5
             freshness = 1 / (1 + max(0, now - r.created_life_ms) / 60000)
-            return (-(2 * (mid in direct) + freshness + min(1, max(0, significance))), -r.created_life_ms, mid)
+            return (-matches.get(mid, 0) if natural else 0,
+                    -(2 * (mid in direct) + freshness + min(1, max(0, significance))), -r.created_life_ms, mid)
         return [available[mid] for mid in sorted(candidates, key=score)[:min(limit, self.working_limit)]]
 
     def context(self, trigger, first, records):
@@ -98,13 +127,8 @@ class PersistentMemory(MemoryLifecycle):
             for saved in list(selected.values())[:self.working_limit - 1]:
                 r = current.get(saved.memory_id)
                 if r is not None:
-                    metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
-                                'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
-                                'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
-                                'version': r.version}
-                    metadata['observation_scope'] = self.observation_scope(r)
                     start = page['offset'] if opened is not None and r.memory_id == opened.memory_id else 0
-                    text = text_window(metadata, r.text, self.text_limit, start)
+                    text = self._window(r, start)
                     if text is None:
                         continue
                     result.append({'ref': r.memory_id, 'origin': r.origin, 'layer': r.layer,

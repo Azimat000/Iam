@@ -64,8 +64,8 @@ class SocialMemory(WorldMemory):
                                                    ensure_ascii=False)})
         return [*context, *self.dialogue(trigger)]
 
-    def dialogue(self, trigger=None):
-        """Ограниченная хронология доступных реплик; транспортный архив не восстанавливается."""
+    def _turns(self):
+        """Доступные реплики с порядком и авторством; тело берётся только из памяти."""
         if self.off:
             return []
         rows = self.records()
@@ -90,6 +90,30 @@ class SocialMemory(WorldMemory):
             if source is None or not hasattr(source, 'seq'):
                 continue
             candidates.append((source.seq, row, direction, person, text, outcome, received_seq))
+        return sorted(candidates, key=lambda item: item[0])
+
+    def recall(self, query, *, limit=5):
+        ranked = super().recall(query, limit=limit)
+        if not query.strip() or not ranked:
+            return ranked
+        turns = self._turns()
+        adjacent = {}
+        for i, turn in enumerate(turns):
+            # Ближайшая реплика другой стороны помогает вспомнить ответ и его автора.
+            j = i + (1 if turn[2] == 'incoming' else -1)
+            if 0 <= j < len(turns) and turns[j][3] == turn[3] and turns[j][2] != turn[2]:
+                adjacent[turn[1].memory_id] = turns[j][1]
+        selected = {}
+        for row in ranked:
+            selected.setdefault(row.memory_id, row)
+            neighbor = adjacent.get(row.memory_id)
+            if neighbor is not None and row.text[:self.text_limit] != query:
+                selected.setdefault(neighbor.memory_id, neighbor)
+        return list(selected.values())[:min(limit, self.working_limit)]
+
+    def dialogue(self, trigger=None):
+        """Ограниченная хронология доступных реплик; транспортный архив не восстанавливается."""
+        candidates = self._turns()
         result, budget = [], 2 * self.text_limit
         latest = {direction:max((item[0] for item in candidates if item[2] == direction), default=None)
                   for direction in ('incoming', 'outgoing')}

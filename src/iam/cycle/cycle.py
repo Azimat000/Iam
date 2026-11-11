@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Iterable
 
 from iam.creator_bridge import PATH, event_key, records as creator_records, request_id
@@ -138,6 +138,8 @@ class Cycle:
         self._stage(rep, "event", "ok", (trigger.event_id,), {"type": trigger.type})
         state = self.memory.decision_state() if hasattr(self.memory, 'decision_state') else self.ctl.state
         focus = self.attention.choose(trigger, state)
+        if self.perception is not None:
+            focus = replace(focus, query=self.memory.retrieval_query(trigger, focus.query))
         if not self._attend(rep, trigger, focus):
             return rep
         records = self._retrieve(rep, focus)
@@ -191,7 +193,9 @@ class Cycle:
             self._stage(rep, "retrieval", "skipped", (), {"count": 0, "reason": "memory_off"})
             return []
         # Архив обычному извлечению недоступен, даже если память по ошибке его вернула (E-1).
-        records = [r for r in self.memory.retrieve(focus.query, limit=self.retrieval_limit)
+        natural = self.perception is not None and self.ctl.find_event(event_id=rep.trigger).type == 'input.read'
+        retrieve = self.memory.recall if natural else self.memory.retrieve
+        records = [r for r in retrieve(focus.query, limit=self.retrieval_limit)
                    if r.layer in READABLE_LAYERS]
         res = self.ctl.record_event(EventSpec("memory.retrieved", f"rtv:{rep.cycle_id}:0", {
             "cycle_id": rep.cycle_id, "query": focus.query, "memory_ids": [r.memory_id for r in records]}))
