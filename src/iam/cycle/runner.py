@@ -57,6 +57,8 @@ class Runner:
             if len(reports) >= self.max_cycles:
                 self.backlog = todo[i:]
                 break
+            if not self.is_current(event):
+                continue
             try:
                 report = self.cycle.run(event, round_=round_)
             except Exception as e:
@@ -73,3 +75,7 @@ class Runner:
                                             {"trigger": event.event_id, "rounds": self.max_rounds})
             reports.append(report)
         return reports
+
+    def is_current(self, event):
+        """Расширение может отсеять отменённый повод, уже попавший в журнал/очередь."""
+        return True

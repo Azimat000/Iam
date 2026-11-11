@@ -3,6 +3,7 @@ import json
 import re
 
 from iam.domain import Op, Transition, new_id
+from iam.memory.window import next_window
 from iam.state import EventSpec, KindDecision, Proposal, Violation
 
 STAGES = ('input.noticed', 'input.read', 'input.ignored')
@@ -93,10 +94,23 @@ class Perception:
         body = pr['body']
         if body['focus'] in ('event', 'dialogue'):
             iid = body.get('ref')
+            if isinstance(iid, str) and iid.startswith('mem_'):
+                if self._page_offset(iid, ctx.request['context']) is None:
+                    return KindDecision(violation=Violation('memory_not_visible', 'Можно перечитать только показанную доступную память'))
+                return fallback(pr, ctx)
             visible = {x['ref'] for x in ctx.request['context'] if x['layer'] == 'notice'}
             if iid not in visible or self._states().get(iid, {}).get('stage') not in ('noticed', 'ignored'):
                 return KindDecision(violation=Violation('input_not_visible', 'Можно открыть только замеченное входящее'))
         return fallback(pr, ctx)
+
+    def _page_offset(self, ref, context):
+        if not self.memory.off:
+            for record in self.memory.records():
+                if record.memory_id == ref:
+                    offset = next_window(record, context)
+                    if offset is not None:
+                        return record, offset
+        return None
 
     def _fresh(self, accepted, request):
         if (accepted.epoch != self.ctl.epoch or accepted.state_version != self.ctl.state_version
@@ -115,6 +129,17 @@ class Perception:
             raise ValueError('Решение не соответствует принятому ответу или сеанс остановлен')
         if pr['kind'] == 'attend' and pr['body']['focus'] in ('event', 'dialogue'):
             iid = pr['body']['ref']
+            if iid.startswith('mem_'):
+                self._fresh(accepted, request)
+                page = self._page_offset(iid, request['context'])
+                if page is None:
+                    raise ValueError('Память больше недоступна для перечитывания')
+                record, offset = page
+                value = {'memory_id': iid, 'memory_version': record.version, 'offset': offset}
+                transition = Transition(new_id('trn'), self.ctl.persona_id, self.ctl.epoch, self.ctl.state_version,
+                    (Op('affect', 'attention.reading', 'set', value, True),), 'Перечитывание доступной памяти', (accepted_id,))
+                return self.ctl.apply(Proposal(transition, actor='world', actor_ref='perception',
+                    carrier=EventSpec('activity.completed', 'act:act_' + pr['proposal_id'][5:] + ':done', value)))
             old = self._states()[iid]
             if old['stage'] == 'read':
                 return None

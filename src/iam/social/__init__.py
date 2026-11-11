@@ -1,8 +1,8 @@
 """Социальная история строится из прочитанного и ещё доступного опыта."""
 
-import hashlib
 import json
 
+from iam.domain.contacts import contact_id
 from iam.perception import Perception
 from iam.world.cycle import WorldMemory
 
@@ -12,9 +12,7 @@ class SocialMemory(WorldMemory):
     def contact(arrival):
         sender = str(arrival.payload.get("sender", "unknown"))
         channel = arrival.payload.get("channel", "")
-        person = "creator" if channel == "telegram" else "person_" + hashlib.sha256(
-            f"{channel}:{sender}".encode()).hexdigest()[:16]
-        return person
+        return contact_id(channel, sender)
 
     def history(self):
         profiles = {"creator": {"role": "operator_interlocutor", "history": []}}

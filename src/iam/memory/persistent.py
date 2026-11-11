@@ -8,6 +8,7 @@ from iam.domain import MemoryRecord, Op, Source, Transition, new_id
 from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
 from .lifecycle import MemoryLifecycle
+from .window import text_window
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
@@ -84,8 +85,14 @@ class PersistentMemory(MemoryLifecycle):
         direct_ids = set()
         if not self.off:
             current = {r.memory_id: r for r in self.records()}
+            page = getattr(trigger, 'payload', {}) if getattr(trigger, 'type', '') == 'activity.completed' else {}
+            opened = current.get(page.get('memory_id'))
+            if opened is not None and opened.version != page.get('memory_version'):
+                opened = None
             direct = sorted((r for r in current.values() if getattr(trigger, 'event_id', None) in r.sources),
                             key=lambda r: (-r.created_life_ms, r.memory_id))[:1]
+            if opened is not None:
+                direct = [opened]
             direct_ids = {r.memory_id for r in direct}
             selected = {r.memory_id: r for r in [*direct, *records]}
             for saved in list(selected.values())[:self.working_limit - 1]:
@@ -95,14 +102,12 @@ class PersistentMemory(MemoryLifecycle):
                                 'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
                                 'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
                                 'version': r.version}
-                    metadata['text'] = ''
-                    overhead = len(json.dumps(metadata, ensure_ascii=False))
-                    if overhead > self.text_limit:
+                    start = page['offset'] if opened is not None and r.memory_id == opened.memory_id else 0
+                    text = text_window(metadata, r.text, self.text_limit, start)
+                    if text is None:
                         continue
-                    metadata['text'] = r.text[:(self.text_limit - overhead) // 6]
-                    text = json.dumps(metadata, ensure_ascii=False)
                     result.append({'ref': r.memory_id, 'origin': r.origin, 'layer': r.layer,
-                                   'text': text[:self.text_limit]})
+                                   'text': text})
         interpreted = self.experience.context()
         if not self.off and (len(result) > 1 or interpreted):
             result[0]['text'] = (result[0]['text'] + self.experience.instructions)[:self.text_limit]
@@ -127,6 +132,10 @@ class PersistentMemory(MemoryLifecycle):
             return rec if any(r.memory_id == ref for r in self.records()) else None
         event = self.ctl.find_event(event_id=ref)
         if event is None or event.persona_id != self.ctl.persona_id or event.type == "input.arrived":
+            return None
+        # Навигация по уже существующей памяти не становится независимым опытом.
+        # Иначе evt_ страницы переживёт забывание исходной mem_ и отмоет её происхождение.
+        if event.type == 'activity.completed' and 'memory_id' in event.payload:
             return None
         if event.type in (*OUTCOMES, 'input.read', 'activity.completed') and any(
                 (not self._available(r) and ref in r.sources) or any(ref in h.get('previous_sources', []) for h in r.history)

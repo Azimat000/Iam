@@ -2,6 +2,7 @@
 import math
 
 from iam.cycle.attention import AttentionPolicy as ScaffoldPolicy, Focus
+from iam.domain.contacts import contact_id
 
 CHOICES = ('activity', 'intention', 'event', 'dialogue', 'rest')
 NOTICE_CAP = 0.25
@@ -32,7 +33,9 @@ class AttentionPolicy(ScaffoldPolicy):
         current = affect.get('attention', {})
         current = current if isinstance(current, dict) else {}
         history = switch_history(state)
-        senders = {item['sender'] for item in notice.get('items', [])}
+        # Старые тестовые/внешние уведомления без канала уже содержали ключ отношения.
+        senders = {contact_id(item['channel'], item['sender']) if 'channel' in item else item['sender']
+                   for item in notice.get('items', [])}
         closeness = max((unit(state['relations'].get(sender, {}).get('closeness')) for sender in senders
                          if isinstance(state['relations'].get(sender), dict)), default=0.0)
         count = notice['count']

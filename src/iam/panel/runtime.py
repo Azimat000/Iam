@@ -12,7 +12,7 @@ from iam.backup import create_backup, default_backup_dir, list_backups, open_for
 from iam.backup.scan import SecretScanner
 from iam.capabilities import Registry, TELEGRAM_ID
 from iam.creator_bridge import Bridge, Requests
-from iam.cycle import Runner
+from iam.world.autonomy import AutonomousRunner
 from iam.cycle.cycle import DEFAULT_ALLOWED
 from iam.domain import new_id
 from iam.interfaces import Capability
@@ -145,7 +145,7 @@ class Runtime:
         creator = Bridge(creator, self.caps, self.telegram_user)
         self.cycle = cycle_type(self.ctl, provider, SocialMemory(self.ctl), world, self.caps, creator, **cycle_options)
         self.cycle.perception.on_read = self.ctl.record_creator_reply
-        self.runner = Runner(self.cycle, self.ctl, creator, max_cycles=1)
+        self.runner = AutonomousRunner(self.cycle, self.ctl, creator, max_cycles=1)
 
     def _serve(self):
         self.store = None

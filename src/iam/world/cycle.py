@@ -24,6 +24,12 @@ PROJECT_CREATION = (
 )
 
 GUIDANCE = (
+    'Поле text_window у воспоминания показывает часть текста: start/end/total — позиции символов. '
+    'Если more=true, конец ещё не прочитан; не делай вывод о всём сообщении по началу. '
+    'Чтобы открыть следующую часть, выбери attention={rationale:причина,cites:[],focus:event,ref:этот mem_} '
+    'на верхнем уровне ответа Codex (proposals=[] для одного чтения); адаптер преобразует это в attend. '
+    'После последней части тот же выбор перечитывает начало. Это не новое входящее. '
+    'Для выводов цитируй исходную mem_: событие перелистывания не является новым опытом. '
     'Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. '
     'Выбери подходящий сейчас вариант из разрешённых предложений, включая отдых. '
     'Если хочешь позднее вернуться к будущему результату, можно сохранить intention '
@@ -177,6 +183,9 @@ class LivingCycle(Cycle):
 
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
+        if trigger.payload.get('owner_ref', '').startswith('autonomy:v1:unfinished:'):
+            context.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
+                            'text': 'До остановки принятое действие не было начато. Автоматического повтора нет; можно сделать новый выбор.'})
         state = self.world.state
         current = {r.memory_id: r for r in self.memory.records()} if not self.memory.off else {}
         visible = {item['ref'] for item in context}
