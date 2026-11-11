@@ -15,7 +15,7 @@ CAP = "cap_Telegram01"
 
 
 class SenderTest(TelegramCase):
-    def request(self, aid=None, text="привет"):
+    def request(self, aid=None, text="привет", *, to=str(USER)):
         if self.c.session_state == "paused":
             self.c.resume_session()
         elif self.c.session_state != "running":
@@ -25,7 +25,7 @@ class SenderTest(TelegramCase):
         pid = new_id("prop")
         accepted = self.c.apply(self.prop(self.c, Op("world_time", path, "set", {
             "status": "accepted", "kind": "message", "capability_id": CAP, "params": {},
-            "proposal_id": pid, "cycle_id": new_id("cyc"), "to": str(USER), "text": text}, True),
+            "proposal_id": pid, "cycle_id": new_id("cyc"), "to": to, "text": text}, True),
             carrier=EventSpec("proposal.accepted", f"prop:{pid}:accept", {"proposal_id": pid})))
         self.assertTrue(accepted.applied, accepted)
         res = self.c.apply(self.prop(self.c, Op("world_time", path + ".status", "transition", "attempted", True),
@@ -33,6 +33,22 @@ class SenderTest(TelegramCase):
             carrier=EventSpec("message.out_requested", "out:" + aid, {"action_id": aid})))
         self.assertTrue(res.applied, res)
         return aid, res.events[0].seq
+
+    def test_creator_alias_requires_configured_allowed_recipient_and_an_accepted_message(self):
+        other = USER + 1
+        aid, seq = self.request(to="creator")
+        action = ActionRequest(aid, "message", CAP, {}, "creator", "привет")
+        self.assertEqual(self.tx.execute(action).status, "failed")
+        with self.assertRaises(ValueError):
+            Sender(self.c, self.client, [USER], creator_id=other)
+        sender = Sender(self.c, self.client, [USER, other], creator_id=USER)
+        with self.assertRaises(ValueError):
+            sender.send(aid, other, "привет", requested_seq=seq)
+        self.assertEqual(self.api.messages, [])
+        self.assertEqual(sender.execute(action).status, "confirmed")
+        self.assertEqual(sender.execute(action).status, "confirmed")
+        self.assertEqual(len(self.api.messages), 1)
+        self.assertEqual(self.c.store.get_outbox(aid).recipient, str(USER))
 
     def test_sent_confirmed_once_and_idempotent_across_restart(self):
         aid, seq = self.request()

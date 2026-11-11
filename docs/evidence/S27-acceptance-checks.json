@@ -1,0 +1,154 @@
+{
+  "date": "2026-11-11",
+  "slice": "S27",
+  "acceptance_attempt": "1/3",
+  "slice_accepted": false,
+  "source_commit": "461df47",
+  "source_sha256": {
+    "src/iam/panel/__main__.py": "fbed1aa40ca78105ca0714d1d51465496960da288bc544dc43157fd8dfbe2c15",
+    "src/iam/panel/runtime.py": "8954b605a47878cf4d7bc5bc4231b4ef75431cde2105d06c9f5a442e10ecd9fe",
+    "src/iam/telegram/sender.py": "8a0a60cbfbbfe780e492c580e8db19abef1c52dbd5459a38c2982ec30f9e06de",
+    "src/iam/world/cycle.py": "8d5b7d490ecdcce41bb92f3a69b767ff87045f0f4cbf01d949453e0adf81af34",
+    "tests/e2e/test_panel_auth.py": "580c524091ff77159c1efc0ad6c5ea224ff11cf410fc660fa956abddb0b4d1dc",
+    "tests/e2e/test_panel_telegram.py": "222b2345356a12f746799787e666ba4278a163a160175c3063256f22e8409a8f",
+    "tests/telegram/test_sender.py": "7082cd7d6276382a21c1f05b912742a72784228da44921ed3a0361198c70b0ff"
+  },
+  "full_tests": {
+    "command": "PYTHONPATH=src <existing-venv>/bin/python tools/covcheck.py",
+    "exit_code": 0,
+    "count": 1511,
+    "seconds": 737.414,
+    "skipped": 0,
+    "coverage_modules": 154,
+    "modules_below_threshold": 0,
+    "log_sha256": "dcd4a15d959558ecc2923ddc377804320e3388e2c0ecb7b967253be81fcf5593"
+  },
+  "document_tests": {
+    "count": 136,
+    "exit_code": 0,
+    "skipped": 0,
+    "seconds": 13.112
+  },
+  "history": {
+    "last_seq": 108,
+    "life_time_ms": 177997,
+    "session_calls": [
+      6,
+      7
+    ],
+    "event_counts": {
+      "persona.created": 1,
+      "system.backup_created": 2,
+      "input.arrived": 3,
+      "operator.intervention": 10,
+      "session.started": 2,
+      "input.noticed": 3,
+      "attention.chosen": 7,
+      "memory.retrieved": 7,
+      "proposal.requested": 10,
+      "system.error": 2,
+      "session.paused": 3,
+      "session.resumed": 3,
+      "proposal.received": 9,
+      "state.transition_applied": 6,
+      "proposal.accepted": 10,
+      "input.read": 3,
+      "memory.recorded": 8,
+      "action.attempted": 2,
+      "action.failed": 3,
+      "proposal.assessed": 7,
+      "message.out_requested": 2,
+      "session.stopped": 2,
+      "proposal.rejected": 1,
+      "message.out_sent": 1,
+      "reflection.done": 1
+    },
+    "verification_problems": [],
+    "boundary_check": {
+      "life_time_ms_before_and_after": [
+        90822,
+        90822
+      ],
+      "intentions_before_and_after": [
+        0,
+        0
+      ],
+      "library_space_equal": true,
+      "calls_at_incoming_64": 0,
+      "pause_arrival_resume_life_time_ms": [
+        91000,
+        91000,
+        91000
+      ]
+    }
+  },
+  "local_restore": {
+    "restored_through_seq": 107,
+    "verification_problems": [],
+    "life_time_ms": 177997,
+    "intentions_count": 1,
+    "external_medium": false
+  },
+  "telegram_confirmation_loss": {
+    "status": "PASS",
+    "original_harness_status": "FAIL: assertion expected unknown; actual public report uses unknown_outcome. A later event assertion also named out_uncertain instead of out_unknown. No second live attempt.",
+    "sender_status_after_reopens": [
+      "uncertain",
+      "uncertain"
+    ],
+    "additional_network_calls": 0,
+    "outbox_status": "unknown",
+    "core_action_status": "unknown_outcome",
+    "message_out_unknown": true,
+    "message_out_sent": false,
+    "database_verified": true,
+    "live_delivery_visual_check": "PASS: one received Iam test message found in Telegram at 14:05 MSK on 2026-11-11; telegram-delivery.png",
+    "live_model_calls": 0
+  },
+  "browser": {
+    "mode": "demo",
+    "url": "http://127.0.0.1:8767/",
+    "flow": [
+      "start",
+      "pause",
+      "resume",
+      "stop"
+    ],
+    "viewport_width": 1280,
+    "document_width": 1280,
+    "error_warning_log": [],
+    "server_stopped": true,
+    "screenshots": [
+      "panel-stopped.jpg"
+    ],
+    "unverified": [
+      "mobile layout",
+      "axe",
+      "performance metrics"
+    ]
+  },
+  "requirements_newly_verified": [
+    "R-016",
+    "R-188",
+    "R-206"
+  ],
+  "blocking_gates": [
+    "G16",
+    "G17"
+  ],
+  "live_model_calls": 0,
+  "live_telegram_requests": {
+    "getMe": 1,
+    "sendMessage": 1,
+    "getUpdates": 0
+  },
+  "limitations": [
+    "Original live harness failed on incorrect assertion names; original failure retained. No second live attempt.",
+    "Original harness did not persist network.server_acknowledged; delivery independently observed in Telegram.",
+    "External backup and live rejection of foreign/group messages are unverified."
+  ],
+  "independent_reviews": [
+    "s27_review: source and scope",
+    "s27_review: live transport artifacts and requirement status"
+  ]
+}

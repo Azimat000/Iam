@@ -14,11 +14,15 @@ STATUSES = {"requested": "pending", "unknown": "uncertain", "sent": "sent", "fai
 
 
 class Sender:
-    def __init__(self, controller, client, allowed_user_ids, *, capability_id="cap_Telegram01", max_resend=1):
+    def __init__(self, controller, client, allowed_user_ids, *, capability_id="cap_Telegram01", max_resend=1,
+                 creator_id=None):
         if type(max_resend) is not int or not 0 <= max_resend <= 10:
             raise ValueError("max_resend: целое от 0 до 10")
         self.ctl, self.store, self.client = controller, controller.store, client
         self.allowed = mailbox.allowed_ids(allowed_user_ids)
+        if creator_id is not None and (type(creator_id) is not int or creator_id not in self.allowed):
+            raise ValueError("создатель отсутствует в числовом белом списке")
+        self.creator_id = creator_id
         self.capability_id, self.max_resend = capability_id, max_resend
         self.box = TelegramMailbox(controller)
         self.box.bind(client.bot_id)
@@ -46,7 +50,9 @@ class Sender:
                 raise ValueError("нет принятого ядром запроса отправки")
             if event.type == "message.out_requested":
                 action = self.ctl.state["world_time"].get("world", {}).get("actions", {}).get(action_id, {})
-                if (event.payload.get("action_id") != action_id or action.get("to") != str(recipient)
+                target = action.get("to")
+                matches_recipient = target == str(recipient) or (target == "creator" and recipient == self.creator_id)
+                if (event.payload.get("action_id") != action_id or not matches_recipient
                     or action.get("text") != text or action.get("capability_id") != self.capability_id
                     or action.get("status") != "attempted"):
                     raise ValueError("отправка не совпадает с принятым действием")
@@ -80,13 +86,17 @@ class Sender:
     def execute(self, request):
         if request.kind != "message" or request.capability_id != self.capability_id:
             return ActionOutcome("failed", "Telegram: недоступная возможность")
-        if not isinstance(request.to, str) or not request.to.isascii() or not request.to.isdecimal():
+        if request.to == "creator" and self.creator_id is not None:
+            recipient = self.creator_id
+        elif isinstance(request.to, str) and request.to.isascii() and request.to.isdecimal():
+            recipient = int(request.to)
+        else:
             return ActionOutcome("failed", "Telegram: нужен числовой получатель")
         event = self.ctl.find_event(key="out:" + request.action_id)
         if event is None:
             return ActionOutcome("failed", "Telegram: нет запроса ядра")
         try:
-            status = self.send(request.action_id, int(request.to), request.text, requested_seq=event.seq)
+            status = self.send(request.action_id, recipient, request.text, requested_seq=event.seq)
         except ValueError:
             return ActionOutcome("failed", "Telegram: отправка отклонена")
         return ActionOutcome({"sent": "confirmed", "failed": "failed", "uncertain": "unknown"}[status],
