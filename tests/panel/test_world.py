@@ -57,6 +57,9 @@ class WorldHTTPTest(unittest.TestCase):
         fields=self.fields()
         def run():
             self.runtime.ctl.start_session()
+            # Фиксируем обычный служебный момент до снятия версии формы: отказ должен
+            # проверять запрет загрузки на ходу, а не случайно устаревшую версию.
+            self.runtime.runner.reconcile()
             return self.runtime.ctl.state_version
         self.runtime._test_run=run
         version=self.runtime.submit('_test_run').result(5)
@@ -64,12 +67,19 @@ class WorldHTTPTest(unittest.TestCase):
         self.assertNotIn('/actions/material_add',page.text)
         result=self.client.post('/actions/material_add',data={**fields,'version':version,'title':'Заголовок','content':'Текст','reason':'Проверка'},headers={'Origin':'http://127.0.0.1:18765'})
         self.assertEqual(result.status_code,409)
+        self.assertIn('Поставьте сеанс на паузу и дождитесь ответа модели перед загрузкой текста.', result.text)
         def flight():
             self.runtime.ctl.pause_session('operator')
             self.runtime.session.in_flight=True
+            return self.runtime.ctl.state_version
         self.runtime._test_flight=flight
-        self.runtime.submit('_test_flight').result(5)
+        version = self.runtime.submit('_test_flight').result(5)
         self.assertNotIn('/actions/material_add',self.client.get('/world').text)
+        result = self.client.post('/actions/material_add', data={**fields, 'version': version,
+            'title': 'Заголовок', 'content': 'Текст', 'reason': 'Проверка'},
+            headers={'Origin': 'http://127.0.0.1:18765'})
+        self.assertEqual(result.status_code, 409)
+        self.assertIn('Поставьте сеанс на паузу и дождитесь ответа модели перед загрузкой текста.', result.text)
 
 
 class WorldPageRenderTest(unittest.TestCase):

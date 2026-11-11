@@ -436,7 +436,7 @@ mechanism = "iam.cycle (событийный запуск, без фоновог
 check = "Тест: без событий цикл не обращается к провайдеру. Сценарии каталога: scenarios/required/no_new_messages.toml."
 slice = "S07"
 status = "verified"
-evidence = "docs/evidence/S07-cycle.md; tests/cycle/test_runner.py::NoEventsTest"
+evidence = "docs/evidence/S07-cycle.md; tests/cycle/test_runner.py::NoEventsTest; docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-037"
@@ -475,7 +475,7 @@ check = "Сценарий «Непрочитанное сообщение»: к�
 slice = ["S12", "S20"]
 status = "verified"
 stub_only = true
-evidence = "docs/experiments/variant-a.md (контекст A проверен на заглушке, полноценное восприятие и смысловая приёмка остаются S20/S25); tests/experiments/test_model_led.py::test_unread_never_reaches_request_or_outbound_prompt; docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+evidence = "docs/experiments/variant-a.md (контекст A проверен на заглушке, полноценное восприятие и смысловая приёмка остаются S20/S25); tests/experiments/test_model_led.py::test_unread_never_reaches_request_or_outbound_prompt; docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-040"
@@ -488,7 +488,7 @@ check = "Тест: для каждого из пяти исходов есть �
 slice = "S20"
 status = "verified"
 stub_only = true
-evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-041"
@@ -501,7 +501,7 @@ check = "Тест: изменение каждого признака при п�
 slice = "S20"
 status = "verified"
 stub_only = true
-evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25)"
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (проверка механизма на временных базах, заглушке модели и локальном Telegram-сервере, живой эффект S25); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-042"
@@ -587,7 +587,7 @@ mechanism = "iam.memory (рабочий контекст с пределом) [s
 check = "Тест: рабочий контекст ограничен по размеру; переполнение вытесняет по правилу, а не растёт неограниченно."
 slice = "S18"
 status = "verified"
-evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (предел числа элементов и размера контекста, отключение памяти)"
+evidence = "docs/evidence/S18-close.md; tests/memory/test_persistent.py (предел числа элементов и размера контекста, отключение памяти); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-049"
@@ -708,7 +708,7 @@ mechanism = "iam.memory (операции цикла) [spec: docs/spec/provenanc
 check = "Тест на каждую операцию; сценарии «Исправление старого сведения», «Забывание». Сценарии каталога: scenarios/experiments/exp_correction.toml, scenarios/required/correct_old_fact.toml."
 slice = "S19"
 status = "verified"
-evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py и test_persistent.py: запись, связь, извлечение, обобщение, пересмотр с историей и забывание проверены на контроллере"
+evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py и test_persistent.py: запись, связь, извлечение, обобщение, пересмотр с историей и забывание проверены на контроллере; docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-059"
@@ -2122,7 +2122,7 @@ check = "scenarios/required/forgetting.toml (создан в S03); прогон 
 slice = "S19"
 status = "verified"
 stub_only = true
-evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py; tests/memory/test_cycle.py (нынешние пути забывания проверены, будущие потребители повторно проверяются S22/S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+evidence = "docs/evidence/S19-close.md; tests/memory/test_lifecycle.py; tests/memory/test_cycle.py (нынешние пути забывания проверены, будущие потребители повторно проверяются S22/S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-175"
@@ -2135,7 +2135,7 @@ check = "scenarios/required/unread_message.toml (создан в S03); прог�
 slice = "S20"
 status = "verified"
 stub_only = true
-evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+evidence = "docs/evidence/S20-close.md; tests/perception/test_perception.py; tests/perception/test_telegram.py; tests/attention/test_attention.py (закрытость контекста проверена, итоговый сценарий полного ядра и живое поведение остаются S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-176"
@@ -2147,7 +2147,7 @@ mechanism = "iam.attention, iam.motivation, iam.world"
 check = "scenarios/required/no_new_messages.toml (создан в S03); прогон на ядре в S25. Сценарии каталога: scenarios/experiments/exp_no_messages.toml, scenarios/motivation/mot_do_nothing.toml."
 slice = "S22"
 status = "verified"
-evidence = "docs/evidence/S22-attempt4-close.md (1268тестов и140модульныхпорогов пройдены в4/4, S22blocked из-за остановки единственной живой коррекции сProviderFormatError, самостоятельность и причинность остаются S25); docs/evidence/S22-close.md (полная5:1285 тестов и140/140, live3:18 ветвей и0 новых намерений/0 appraise, ограниченные механизмы проверены, добровольные цели и причинность остаются до S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+evidence = "docs/evidence/S22-attempt4-close.md (1268тестов и140модульныхпорогов пройдены в4/4, S22blocked из-за остановки единственной живой коррекции сProviderFormatError, самостоятельность и причинность остаются S25); docs/evidence/S22-close.md (полная5:1285 тестов и140/140, live3:18 ветвей и0 новых намерений/0 appraise, ограниченные механизмы проверены, добровольные цели и причинность остаются до S25); docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические); docs/evidence/S28-three-defects.md (D-114: исправление связности, границы живой и технической проверки, статусы поведенческой приёмки не повышены)"
 
 [[req]]
 id = "R-177"
