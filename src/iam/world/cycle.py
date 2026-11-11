@@ -24,6 +24,17 @@ PROJECT_CREATION = (
 )
 
 GUIDANCE = (
+    'observation_scope ограничивает подтверждённый факт: created_text_only — создан текст; '
+    'read_text_only — прочитан текст; outgoing_words_only — произнесены собственные слова с указанным исходом отправки; '
+    'received_statement_only — собеседник сообщил это. События внутри рассказа и содержание чужих или своих слов '
+    'не становятся прожитой биографией или доказанной истиной. '
+    'dialogue_turn — хронология доступных реплик по seq, отдельно входящие и исходящие. '
+    'content_available=false означает, что слова старой отправки не сохранились в личной памяти. '
+    'excerpt.more=true означает неполный обзор; полный доступный текст можно читать в исходной mem_. '
+    'Старый вопрос и собственный ответ не являются новым обращением. Новое уведомление ещё не раскрывает текст. '
+    'Если выбираешь message, пиши собеседнику обычную реплику, продолжая смысл прочитанного разговора. '
+    'Проверочные ссылки и техническое обоснование относятся к cites/rationale, а не обязательному тексту сообщения. '
+    'Можно спорить, уточнять, сказать, что занята, или не отвечать. Эти возможности не задают тебе чувства или мнение. '
     'Поле text_window у воспоминания показывает часть текста: start/end/total — позиции символов. '
     'Если more=true, конец ещё не прочитан; не делай вывод о всём сообщении по началу. '
     'Чтобы открыть следующую часть, выбери attention={rationale:причина,cites:[],focus:event,ref:этот mem_} '
@@ -200,6 +211,7 @@ class LivingCycle(Cycle):
                 public_receipt = {key: value for key, value in action['receipt'].items()
                                   if key != 'previous_fingerprint'}
                 results.append({'memory_id': row.memory_id, **public_receipt,
+                                'observation_scope': self.memory.observation_scope(row),
                                 'text': action['outcome']})
         goals = {} if self.motivation.off else self.intentions.visible()
         catalog = {'library': {key: {'title': value['title']} for key, value in list(state.get('library', {}).items())[:30]},

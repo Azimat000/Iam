@@ -102,6 +102,7 @@ class PersistentMemory(MemoryLifecycle):
                                 'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
                                 'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
                                 'version': r.version}
+                    metadata['observation_scope'] = self.observation_scope(r)
                     start = page['offset'] if opened is not None and r.memory_id == opened.memory_id else 0
                     text = text_window(metadata, r.text, self.text_limit, start)
                     if text is None:
@@ -227,12 +228,29 @@ class PersistentMemory(MemoryLifecycle):
         if self.off:
             return None
         label = {'confirmed': 'Подтверждён успех', 'failed': 'Подтверждена неудача', 'unknown': 'Исход неизвестен'}[outcome.status]
-        return f'{label}: {action.kind} {action.capability_id}. {outcome.summary}'
+        description = f'{label}: {action.kind} {action.capability_id}. {outcome.summary}'
+        if action.kind == 'message':
+            description += f' Мои слова собеседнику: {action.text}'
+        return description
+
+    def observation_scope(self, record):
+        """Подтверждение действия не подтверждает содержание написанного/прочитанного."""
+        if record.origin == 'stated_by_other':
+            return 'received_statement_only'
+        if record.origin != 'observation' or record.version != 1:
+            return None
+        action = self.ctl.state['world_time'].get('world', {}).get('actions', {}).get(record.content.get('action_id'), {})
+        if action.get('kind') == 'message':
+            return 'outgoing_words_only'
+        scope = action.get('receipt', {}).get('scope')
+        return {'artifact': 'created_text_only', 'received_text': 'read_text_only'}.get(scope)
 
     def remember_outcome(self, action, outcome, event):
         text = self.describe(action, outcome)
         if text is None:
             return None
-        rec = self.prepare(kind='episodic', origin='observation', text=text, sources=(event.event_id,),
-                           content={'outcome': outcome.status, 'experience': 'live', 'action_id': action.action_id})
+        content = {'outcome': outcome.status, 'experience': 'live', 'action_id': action.action_id}
+        if action.kind == 'message':
+            content['communication'] = {'person': action.to, 'text': action.text}
+        rec = self.prepare(kind='episodic', origin='observation', text=text, sources=(event.event_id,), content=content)
         return rec, self.write(rec)

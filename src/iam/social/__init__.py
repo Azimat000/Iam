@@ -3,6 +3,7 @@
 import json
 
 from iam.domain.contacts import contact_id
+from iam.memory.window import text_window
 from iam.perception import Perception
 from iam.world.cycle import WorldMemory
 
@@ -58,4 +59,42 @@ class SocialMemory(WorldMemory):
                 context.append({"ref": recent[-1], "origin": "observation", "layer": "state",
                                 "text": json.dumps({"person": person, "history": recent, **values},
                                                    ensure_ascii=False)})
-        return context
+        return [*context, *self.dialogue()]
+
+    def dialogue(self):
+        """Ограниченная хронология доступных реплик; транспортный архив не восстанавливается."""
+        if self.off:
+            return []
+        rows = self.records()
+        people = {ref: person for person, profile in self.history().items() for ref in profile['history']}
+        candidates = []
+        for row in rows:
+            if row.version != 1 or row.kind != 'episodic' or len(row.sources) != 1:
+                continue
+            if row.memory_id in people:
+                direction, person, text, outcome = 'incoming', people[row.memory_id], row.text, 'read'
+            elif self.observation_scope(row) == 'outgoing_words_only':
+                communication = row.content.get('communication', {})
+                direction, person = 'outgoing', communication.get('person', 'creator')
+                # Старые исходы содержат лишь «Telegram: sent»: не читаем тело из world.actions/журнала.
+                text, outcome = communication.get('text'), row.content.get('outcome')
+            else:
+                continue
+            source = self._source(row.sources[0])
+            if source is None or not hasattr(source, 'seq'):
+                continue
+            candidates.append((source.seq, row, direction, person, text, outcome))
+        result, budget = [], 2 * self.text_limit
+        for seq, row, direction, person, text, outcome in sorted(candidates, key=lambda item: item[0], reverse=True)[:6]:
+            metadata = {'kind': 'dialogue_turn', 'version': row.version, 'seq': seq, 'direction': direction, 'person': person,
+                        'outcome': outcome, 'content_available': text is not None}
+            packed = text_window(metadata, text or '', min(800, self.text_limit, budget))
+            if packed is None:
+                break
+            packet = json.loads(packed)
+            # Это явно обозначенный краткий обзор, а не подмена страниц самой mem_.
+            packet['excerpt'] = packet.pop('text_window')
+            packed = json.dumps(packet, ensure_ascii=False)
+            budget -= len(packed)
+            result.append({'ref': row.memory_id, 'origin': row.origin, 'layer': 'state', 'text': packed})
+        return list(reversed(result))
