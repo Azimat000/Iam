@@ -109,6 +109,17 @@ class DialogueTest(PerceptionCase):
         with patch.object(self.memory, '_source', return_value=None):
             self.assertEqual(self.memory.dialogue(), [])
 
+    def test_late_reading_preserves_original_order_of_received_questions(self):
+        earlier_id, earlier = self.arrive('БОЛЕЕ_РАННИЙ_ВОПРОС', 1)
+        later_id, later = self.arrive('Уточнение', 2)
+        self.run_reply(later, attend('dialogue', later_id))
+        self.assertNotIn('БОЛЕЕ_РАННИЙ_ВОПРОС', json.dumps(self.provider.calls[-1], ensure_ascii=False))
+        self.run_reply(earlier, attend('dialogue', earlier_id))
+        turns = [turn for ref, turn in self.turns()]
+        self.assertEqual([turn['text'] for turn in turns], ['Уточнение', 'БОЛЕЕ_РАННИЙ_ВОПРОС'])
+        self.assertLess(turns[0]['seq'], turns[1]['seq'])
+        self.assertEqual([turn['received_seq'] for turn in turns], [later.seq, earlier.seq])
+
     def test_overview_opens_current_memory_when_not_in_normal_retrieval(self):
         from iam.memory.window import next_window
         answer = self.answer('ДЛИННЫЙ_ОТВЕТ ' * 250)

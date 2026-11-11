@@ -15,14 +15,17 @@ class SocialMemory(WorldMemory):
         channel = arrival.payload.get("channel", "")
         return contact_id(channel, sender)
 
+    def _read_arrivals(self):
+        events = self.ctl.events_after(0)
+        arrivals = {Perception.input_id(event): event for event in events if event.type == "input.arrived"}
+        return {event.event_id: arrivals.get(event.payload.get("input_id"))
+                for event in events if event.type == "input.read"}
+
     def history(self):
         profiles = {"creator": {"role": "operator_interlocutor", "history": []}}
         if self.off:
             return profiles
-        events = self.ctl.events_after(0)
-        arrivals = {Perception.input_id(event): event for event in events if event.type == "input.arrived"}
-        reads = {event.event_id: arrivals.get(event.payload.get("input_id"))
-                 for event in events if event.type == "input.read"}
+        reads = self._read_arrivals()
         for row in sorted(self.records(), key=lambda row: (row.created_at, row.memory_id)):
             if row.origin != "stated_by_other" or row.kind != "episodic" or row.version != 1 or len(row.sources) != 1:
                 continue
@@ -66,6 +69,7 @@ class SocialMemory(WorldMemory):
         if self.off:
             return []
         rows = self.records()
+        arrivals = self._read_arrivals()
         people = {ref: person for person, profile in self.history().items() for ref in profile['history']}
         candidates = []
         for row in rows:
@@ -73,21 +77,23 @@ class SocialMemory(WorldMemory):
                 continue
             if row.memory_id in people:
                 direction, person, text, outcome = 'incoming', people[row.memory_id], row.text, 'read'
+                received_seq = arrivals[row.sources[0]].seq
             elif self.observation_scope(row) == 'outgoing_words_only':
                 communication = row.content.get('communication', {})
                 direction, person = 'outgoing', communication.get('person', 'creator')
                 # Старые исходы содержат лишь «Telegram: sent»: не читаем тело из world.actions/журнала.
                 text, outcome = communication.get('text'), row.content.get('outcome')
+                received_seq = None
             else:
                 continue
             source = self._source(row.sources[0])
             if source is None or not hasattr(source, 'seq'):
                 continue
-            candidates.append((source.seq, row, direction, person, text, outcome))
+            candidates.append((source.seq, row, direction, person, text, outcome, received_seq))
         result, budget = [], 2 * self.text_limit
-        for seq, row, direction, person, text, outcome in sorted(candidates, key=lambda item: item[0], reverse=True)[:6]:
+        for seq, row, direction, person, text, outcome, received_seq in sorted(candidates, key=lambda item: item[0], reverse=True)[:6]:
             metadata = {'kind': 'dialogue_turn', 'version': row.version, 'seq': seq, 'direction': direction, 'person': person,
-                        'outcome': outcome, 'content_available': text is not None}
+                        'received_seq': received_seq, 'outcome': outcome, 'content_available': text is not None}
             packed = text_window(metadata, text or '', min(800, self.text_limit, budget))
             if packed is None:
                 break
