@@ -1924,8 +1924,8 @@ kind = "constraint"
 mechanism = "iam.telegram.Receiver (белый список числовых id, только личные диалоги) [spec: docs/spec/permissions.md#roles]"
 check = "Тест на поддельном сервере: чужой числовой id, групповой чат и сообщение по имени пользователя игнорируются; живая проверка — на Mac по барьеру G02 (до неё только на заглушке). D-104: живой рубеж G02/S27; технические проверки не отложены."
 slice = ["S09", "S27"]
-status = "implemented"
-evidence = "docs/evidence/S09-telegram.md; tests/telegram/test_receiver.py::ReceiverTest.test_filter_unknown_group_username_bot_and_unsupported; docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+status = "verified"
+evidence = "docs/evidence/S27-rejection-live.md (реальный чужой числовой отправитель в private и разрешённый отправитель в group отклонены, разрешённое private сохранено, после перезапуска дублей нет); docs/evidence/S27-rejection-checks.json; tests/telegram/test_receiver.py::ReceiverTest.test_filter_unknown_group_username_bot_and_unsupported"
 
 [[req]]
 id = "R-159"

@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-11",
+  "decision": "D-109",
+  "requirement": "R-158",
+  "source_commit": "57c46c0",
+  "source_sha256": {
+    "src/iam/telegram/client.py": "e33abbe3380b5ce66ea93a58fb85aa963e707b7d2398e8da3ab980c249e5fde5",
+    "src/iam/telegram/receiver.py": "41b9968d2abc6d13ad6a8871408a3035e3fed3b93ffaf5ed87031d3fabe71966",
+    "src/iam/state/telegram.py": "ffa219a9133ecd5c42b7ee5b09d719e37e36f707d5ab1455a14292c065b58bbb",
+    "src/iam/storage/store.py": "fdcc2f72c7b144194da54fd95a0fe0f07b58af14e9e0c81073c8d27d8f14132a"
+  },
+  "initial": {
+    "status": "PASS",
+    "phase": "initial",
+    "new_inbox": 1,
+    "total_inbox": 1,
+    "notices": 1,
+    "cases": [
+      {
+        "case": "allowed_private",
+        "event_type": "input.arrived",
+        "event_seq": 2,
+        "sender_is_allowed": true,
+        "chat_type": "private"
+      },
+      {
+        "case": "group_service",
+        "event_type": "system.rejected_sender",
+        "event_seq": 3,
+        "sender_is_allowed": true,
+        "chat_type": "group"
+      },
+      {
+        "case": "allowed_sender_in_group",
+        "event_type": "system.rejected_sender",
+        "event_seq": 4,
+        "sender_is_allowed": true,
+        "chat_type": "group"
+      },
+      {
+        "case": "foreign_start",
+        "event_type": "system.rejected_sender",
+        "event_seq": 5,
+        "sender_is_allowed": false,
+        "chat_type": "private"
+      },
+      {
+        "case": "foreign_private",
+        "event_type": "system.rejected_sender",
+        "event_seq": 6,
+        "sender_is_allowed": false,
+        "chat_type": "private"
+      }
+    ],
+    "last_seq": 6,
+    "read_events": 0,
+    "memory_records": 0,
+    "live_model_calls": 0,
+    "integrity_problems": [],
+    "session_state": "stopped",
+    "life_time_ms": 0
+  },
+  "reopen": {
+    "status": "PASS",
+    "phase": "reopen",
+    "new_inbox": 0,
+    "total_inbox": 1,
+    "notices": 1,
+    "cases": [],
+    "last_seq": 6,
+    "read_events": 0,
+    "memory_records": 0,
+    "live_model_calls": 0,
+    "integrity_problems": [],
+    "session_state": "stopped",
+    "life_time_ms": 0
+  },
+  "network": {
+    "getMe": 1,
+    "getUpdates": 3,
+    "sendMessage": 0
+  },
+  "telegram_ui_messages": 4,
+  "test_group_members": 2,
+  "main_account_restored": true,
+  "baseline_pending_updates": 0,
+  "actual_received_updates": 5,
+  "permanent_before": {
+    "last_seq": 108,
+    "epoch": 1,
+    "version": 56,
+    "state_sha256": "78d9f6a79ec32af0f68d59f04fcd71493a8c3dab31579ca9fe2c01702318cd37",
+    "problems": []
+  },
+  "permanent_after": {
+    "last_seq": 108,
+    "epoch": 1,
+    "version": 56,
+    "state_sha256": "78d9f6a79ec32af0f68d59f04fcd71493a8c3dab31579ca9fe2c01702318cd37",
+    "problems": []
+  },
+  "receiver_tests": {
+    "count": 10,
+    "exit_code": 0,
+    "skipped": 0,
+    "seconds": 0.222
+  },
+  "repository_source_or_test_changes": false,
+  "live_model_calls": 0,
+  "external_backup_verified": false,
+  "remaining_gate": "G16",
+  "slice_accepted": false,
+  "harness_and_raw_sha256": {
+    "check_rejection.py": "0bc43a8349189d87846c8296dd67a65f8da1b0b5e670e8ee60af50560406c76e",
+    "check_rejection.pre-ui.py": "a725437daae9c7298cea783942206758ba2fd8ed2237c61b97e015b25a569197",
+    "baseline-updates.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "updates-initial.json": "1c35c842aba14fd37cdac9a1f16f0317b7a54420b8dc4fd0a8ffc07545937d8e",
+    "updates-reopen.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "receiver-tests.txt": "c5c15f3fce7c8c95b259c4407eb5b47c8ce49466a91d0f46903c40ef0680d2d9"
+  },
+  "independent_review": "PASS: s27_review independently matched real updates, SQLite, source/artifact hashes, screenshots, budget and permanent state; no material findings",
+  "limitation": "Positive marker was changed to exact UI-delivered text before API polling after typeText lost letters; sender/channel criteria unchanged, no resend.",
+  "requirement_status": "verified",
+  "resolved_gate": "G17",
+  "document_tests": {
+    "count": 136,
+    "exit_code": 0,
+    "skipped": 0,
+    "seconds": 12.723
+  },
+  "other_checks": [
+    "memory check",
+    "requirements validate",
+    "requirements coverage check",
+    "scenario validate",
+    "local links",
+    "secret scanner",
+    "git diff check",
+    "source/test unchanged vs 57c46c0"
+  ]
+}
