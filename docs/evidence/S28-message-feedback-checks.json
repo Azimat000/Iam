@@ -1,0 +1,72 @@
+{
+  "status": "PASS_TECHNICAL_FIX_AND_LIVE_DELIVERY",
+  "decision": "D-111",
+  "original_message_arrived": 112,
+  "original_message_read": 122,
+  "rejected_message": 118,
+  "rejection_reason": "too_many_actions",
+  "technical_pause": 144,
+  "resumed_same_session": 146,
+  "calls_at_pause_and_resume": 4,
+  "max_calls": 10,
+  "new_request_with_feedback": 157,
+  "confirmed_outgoing_message": 165,
+  "user_reports_reply_received": true,
+  "last_seq_at_check": 200,
+  "session_state_at_check": "paused",
+  "pause_reason_at_check": "session_limit",
+  "calls_at_check": 10,
+  "latency": {
+    "incoming_event": 147,
+    "sent_event": 165,
+    "end_to_end_seconds": 35.035,
+    "future_option_search_seconds": 9.978,
+    "appraisal_seconds": 14.667,
+    "choice_seconds": 9.71,
+    "telegram_send_seconds": 0.4
+  },
+  "verify_problems": [],
+  "initial_targeted_tests": {
+    "count": 98,
+    "exit_code": 0,
+    "version_note": "Before guard for old rejection format"
+  },
+  "corrected_targeted_tests": {
+    "count": 6,
+    "exit_code": 0,
+    "new_world_tests": 5
+  },
+  "review": "PASS after filtering old-format rejections; initial finding and failed test expectation retained",
+  "no_automatic_resend": true,
+  "no_fabricated_incoming_or_new_triggers": true,
+  "pilot_started": false,
+  "full_tests": {
+    "count": 1516,
+    "seconds": 818.997,
+    "exit_code": 0,
+    "skipped": 0,
+    "coverage_modules": 154,
+    "below_threshold": 0,
+    "changed_critical_module_lines_percent": 100,
+    "changed_critical_module_branches_percent": 100,
+    "log_sha256": "aeb2197717be90d90e94ed1f44069ea1c1626e8b4b0a026d8adbfdf719c7b9f5"
+  },
+  "source_sha256": {
+    "src/iam/world/cycle.py": "00e615529a561ea26fb11cc8040c7a3e0b995027a016e9e5ac308f030e41aa87",
+    "tests/world/test_feedback.py": "d64ebd8383ff63ea5da35d29c0366d86d7571552f54a64a9523b9b80a2b34ea6"
+  },
+  "document_tests": {
+    "count": 136,
+    "seconds": 17.906,
+    "exit_code": 0,
+    "skipped": 0
+  },
+  "independent_live_review": "PASS: metadata in157 linked to118, new proposal158 -> sent165, same session144/146/199, 4->10 calls, timing and source hashes independently verified",
+  "latest_observed_session": {
+    "last_seq": 200,
+    "state": "paused",
+    "pause_reason": "session_limit",
+    "calls": 10,
+    "max_calls": 10
+  }
+}
