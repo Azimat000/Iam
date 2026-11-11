@@ -148,6 +148,21 @@ class LimitTest(CycleCase):
 
 
 class RobustnessTest(CycleCase):
+    def test_failed_input_retry_survives_other_pending_triggers_and_limit(self):
+        self.build(Reply(error=ProviderError('temporary')), Reply((rest(),)), Reply((rest(),)))
+        self.runner.max_cycles = 1
+        self.creator.say('Входящее', 'retry-input')
+        self.runner.ingest()
+        arrived = self.c.find_event(key='rx:stub:retry-input')
+        due = self.due()
+        self.assertEqual(self.runner.run_pending()[0].outcome, 'no_decision')
+        self.assertEqual([(event.event_id, round_) for event, round_ in self.runner.backlog],
+                         [(arrived.event_id, 1), (due.event_id, 0)])
+        self.assertEqual(self.runner.run_pending()[0].trigger, arrived.event_id)
+        self.assertEqual(self.runner.run_pending()[0].trigger, due.event_id)
+        self.assertEqual(self.runner.run_pending(), [])
+        self.assertEqual(len(self.provider.calls), 3)
+
     def test_provider_error_keeps_the_trigger_for_a_later_round(self):
         self.build(Reply(error=ProviderError("лимит")), Reply((rest(),)))
         self.due()

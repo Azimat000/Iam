@@ -11,6 +11,41 @@ from perception.test_perception import PerceptionCase
 
 
 class SignalTest(PerceptionCase):
+    def test_real_cycle_uses_current_life_time_for_switch_cost(self):
+        import json
+        self.read('Прочитанное')
+        self.time.advance(300000)
+        _, trigger = self.arrive(number=2)
+        self.run_reply(trigger, rest())
+        signals = next(json.loads(item['text']) for item in self.provider.calls[-1]['context']
+                       if '"switch_cost"' in item['text'])
+        self.assertEqual(signals['switch_cost'], 0)
+        self.assertNotIn('СКРЫТЫЙ_ТЕКСТ', str(self.provider.calls[-1]))
+
+    def test_switch_cost_fades_in_life_time_without_erasing_history(self):
+        state = self.memory.decision_state()
+        state['affect']['attention'] = {'focus':'dialogue', 'switch_history':[1000]*4}
+        original = copy.deepcopy(state)
+        policy = AttentionPolicy()
+        self.assertEqual(policy.signals(state, {'count':1}, now_ms=1000)['switch_cost'], 1)
+        self.assertEqual(policy.signals(state, {'count':1}, now_ms=151000)['switch_cost'], .5)
+        self.assertEqual(policy.signals(state, {'count':1}, now_ms=301000)['switch_cost'], 0)
+        self.assertEqual(policy.signals(state, {'count':1}, now_ms=0)['switch_cost'], 0)
+        self.assertEqual(state, original)
+
+    def test_closed_or_invalid_intentions_do_not_compete_for_attention(self):
+        state = self.memory.decision_state()
+        state['intentions'] = {str(i):{'status':status} for i,status in enumerate(
+            ('done','abandoned','unknown'))}
+        state['intentions']['invalid'] = 3
+        policy = AttentionPolicy()
+        self.assertEqual(policy.signals(state, {'count':1})['goal_signal'], 0)
+        state['intentions']['open'] = {'status':'active'}
+        self.assertEqual(policy.signals(state, {'count':1})['goal_signal'], .25)
+        state['intentions']['waiting'] = {'status':'waiting_opportunity'}
+        state['intentions']['deferred'] = {'status':'deferred'}
+        self.assertEqual(policy.signals(state, {'count':1})['goal_signal'], .75)
+
     def test_all_five_choices_and_no_notifications(self):
         for n, focus in enumerate(CHOICES):
             iid, trigger = self.arrive(number=100+n)
@@ -41,7 +76,7 @@ class SignalTest(PerceptionCase):
         for group, key, value, feature in [('affect','load', .8, 'load'),
                 ('intentions','int_Task00001', {}, 'goal_signal'),
                 ('relations','123', {'closeness': .7}, 'relationship_signal'),
-                ('affect','attention', {'focus':'activity','switch_history':[1,2]}, 'switch_cost')]:
+                ('affect','attention', {'focus':'activity','switch_history':[0,0]}, 'switch_cost')]:
             changed = copy.deepcopy(state)
             changed[group][key] = value
             self.assertNotEqual(base[feature], policy.signals(changed, notice)[feature])

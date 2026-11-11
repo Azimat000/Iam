@@ -120,6 +120,34 @@ class DialogueTest(PerceptionCase):
         self.assertLess(turns[0]['seq'], turns[1]['seq'])
         self.assertEqual([turn['received_seq'] for turn in turns], [later.seq, earlier.seq])
 
+    def test_current_read_is_distinct_from_old_reply_and_new_unread_notice(self):
+        answer = self.answer('Предыдущая собственная реплика')
+        self.time.advance(1000)
+        iid, trigger = self.arrive('НОВЫЙ_СКРЫТЫЙ_ВОПРОС', 2)
+        self.run_reply(trigger, attend('dialogue', iid))
+        context = self.provider.calls[-1]['context']
+        self.assertNotIn('НОВЫЙ_СКРЫТЫЙ_ВОПРОС', json.dumps(context, ensure_ascii=False))
+        self.assertIn('прежние прочитанные реплики', context[0]['text'])
+        turns = [json.loads(x['text']) for x in context if '"dialogue_turn"' in x['text']]
+        self.assertFalse(any(t['current_read'] for t in turns))
+        own = next(t for t in turns if t['direction'] == 'outgoing')
+        self.assertTrue(own['latest_in_direction'])
+        self.assertEqual(own['age_life_ms'], 1000)
+        read = self.c.find_event(key='rd:' + iid)
+        self.run_reply(read, rest())
+        context = self.provider.calls[-1]['context']
+        turns = [(x['ref'],json.loads(x['text'])) for x in context if '"dialogue_turn"' in x['text']]
+        current = [(ref,t) for ref,t in turns if t['current_read']]
+        self.assertEqual(len(current), 1)
+        self.assertEqual(current[0][1]['text'], 'НОВЫЙ_СКРЫТЫЙ_ВОПРОС')
+        self.assertTrue(current[0][1]['latest_in_direction'])
+        self.assertNotEqual(current[0][0], answer.memory_id)
+        self.assertEqual(sum(t['latest_in_direction'] for ref,t in turns), 2)
+        self.assertTrue(self.memory.fade(current[0][0]).applied)
+        self.assertFalse(any(json.loads(t['text'])['current_read'] for t in self.memory.dialogue(read)))
+        self.memory.off = True
+        self.assertEqual(self.memory.dialogue(read), [])
+
     def test_overview_opens_current_memory_when_not_in_normal_retrieval(self):
         from iam.memory.window import next_window
         answer = self.answer('ДЛИННЫЙ_ОТВЕТ ' * 250)

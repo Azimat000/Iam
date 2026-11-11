@@ -203,7 +203,12 @@ class Cycle:
     def _context(self, trigger: Event, focus: Focus, records: list[MemoryRecord]) -> list[dict]:
         if trigger.type == "input.arrived":   # только факт «есть новое»: содержимое не прочитано (P-1)
             first = {"ref": trigger.event_id, "origin": "observation", "layer": "notice",
-                     "text": "Есть новое сообщение."}
+                     "text": "Есть новое сообщение. Это новое уведомление, его содержание ещё неизвестно; "
+                             "прежние прочитанные реплики не являются текстом этого сообщения."}
+        elif trigger.type == 'input.read':
+            first = {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
+                     'text': 'Повод этого выбора — чтение сообщения. Если запись ещё доступна, она показана в личной памяти; '
+                             'оно могло прийти раньше других уже прочитанных сообщений.'}
         elif trigger.type == "time.moment_due":
             first = {"ref": trigger.event_id, "origin": "observation", "layer": "state",
                      "text": "Наступил плановый момент." + (f" Дело: {focus.query}" if focus.query else "")}
@@ -214,7 +219,8 @@ class Cycle:
             if self.perception is not None:
                 context += self.perception.context(trigger.payload.get('input_id'))
                 if hasattr(self.attention, 'signals'):
-                    signals = self.attention.signals(self.memory.decision_state(), self.perception.notices())
+                    signals = self.attention.signals(self.memory.decision_state(), self.perception.notices(),
+                                                     now_ms=self.ctl.life_time_ms)
                     context.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                                     'text': json.dumps(signals, ensure_ascii=False)})
             return context

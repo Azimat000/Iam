@@ -55,7 +55,7 @@ class Runner:
         self.backlog, reports = [], []
         for i, (event, round_) in enumerate(todo):
             if len(reports) >= self.max_cycles:
-                self.backlog = todo[i:]
+                self.backlog.extend(todo[i:])
                 break
             if not self.is_current(event):
                 continue

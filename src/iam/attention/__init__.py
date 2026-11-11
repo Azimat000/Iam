@@ -6,6 +6,7 @@ from iam.domain.contacts import contact_id
 
 CHOICES = ('activity', 'intention', 'event', 'dialogue', 'rest')
 NOTICE_CAP = 0.25
+SWITCH_WINDOW_MS = 300_000
 
 
 def unit(value):
@@ -28,11 +29,15 @@ class AttentionPolicy(ScaffoldPolicy):
             return Focus(current['focus'], current.get('ref'))
         return super().choose(trigger, state)
 
-    def signals(self, state, notice):
+    def signals(self, state, notice, *, now_ms=0):
         affect = state['affect']
         current = affect.get('attention', {})
         current = current if isinstance(current, dict) else {}
         history = switch_history(state)
+        switching = sum(1 - (now_ms - at) / SWITCH_WINDOW_MS for at in history
+                        if 0 <= now_ms - at < SWITCH_WINDOW_MS)
+        open_goals = sum(isinstance(goal, dict) and goal.get('status', 'active')
+                         in ('active', 'deferred', 'waiting_opportunity') for goal in state['intentions'].values())
         # Старые тестовые/внешние уведомления без канала уже содержали ключ отношения.
         senders = {contact_id(item['channel'], item['sender']) if 'channel' in item else item['sender']
                    for item in notice.get('items', [])}
@@ -41,9 +46,9 @@ class AttentionPolicy(ScaffoldPolicy):
         count = notice['count']
         return {'choices': list(CHOICES), 'current_focus': current.get('focus') if current.get('focus') in CHOICES else None,
                 'notice_signal': min(NOTICE_CAP, count / (count + 4) * NOTICE_CAP),
-                'notice_cap': NOTICE_CAP, 'goal_signal': min(1.0, len(state['intentions']) / 4),
+                'notice_cap': NOTICE_CAP, 'goal_signal': min(1.0, open_goals / 4),
                 'load': unit(affect.get('load')), 'relationship_signal': closeness,
-                'switch_cost': min(1.0, len(history) / 4),
+                'switch_cost': min(1.0, switching / 4), 'switch_window_ms': SWITCH_WINDOW_MS,
                 'emotion_signal': unit(abs(affect.get('emotion', {}).get('reaction', 0))),
                 'mood_signal': affect.get('emotion', {}).get('mood', 0),
                 'rule': 'Сигналы помогают выбору; максимальное число не назначает действие. '

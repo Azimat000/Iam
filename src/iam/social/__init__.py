@@ -62,9 +62,9 @@ class SocialMemory(WorldMemory):
                 context.append({"ref": recent[-1], "origin": "observation", "layer": "state",
                                 "text": json.dumps({"person": person, "history": recent, **values},
                                                    ensure_ascii=False)})
-        return [*context, *self.dialogue()]
+        return [*context, *self.dialogue(trigger)]
 
-    def dialogue(self):
+    def dialogue(self, trigger=None):
         """Ограниченная хронология доступных реплик; транспортный архив не восстанавливается."""
         if self.off:
             return []
@@ -91,9 +91,15 @@ class SocialMemory(WorldMemory):
                 continue
             candidates.append((source.seq, row, direction, person, text, outcome, received_seq))
         result, budget = [], 2 * self.text_limit
+        latest = {direction:max((item[0] for item in candidates if item[2] == direction), default=None)
+                  for direction in ('incoming', 'outgoing')}
         for seq, row, direction, person, text, outcome, received_seq in sorted(candidates, key=lambda item: item[0], reverse=True)[:6]:
             metadata = {'kind': 'dialogue_turn', 'version': row.version, 'seq': seq, 'direction': direction, 'person': person,
-                        'received_seq': received_seq, 'outcome': outcome, 'content_available': text is not None}
+                        'received_seq': received_seq, 'outcome': outcome, 'content_available': text is not None,
+                        'latest_in_direction': seq == latest[direction],
+                        'current_read': direction == 'incoming' and getattr(trigger, 'type', None) == 'input.read'
+                                        and getattr(trigger, 'event_id', None) == row.sources[0],
+                        'age_life_ms': max(0, self.ctl.life_time_ms - row.created_life_ms)}
             packed = text_window(metadata, text or '', min(800, self.text_limit, budget))
             if packed is None:
                 break
