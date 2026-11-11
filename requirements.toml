@@ -192,8 +192,8 @@ kind = "functional"
 mechanism = "iam.telegram.Receiver + inbox"
 check = "Тест: сообщения приняты при остановленном сеансе, обращений к провайдеру ноль; живая проверка с настоящим ботом по барьеру G02. Сценарии каталога: scenarios/required/pause_restart.toml, scenarios/required/unread_message.toml. D-104: живой рубеж G02/S27; технические проверки не отложены."
 slice = ["S09", "S27"]
-status = "implemented"
-evidence = "docs/evidence/S09-telegram.md; tests/telegram/test_receiver.py::ReceiverTest.test_runner_paused_no_model_then_notice_and_no_rights_command; docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+status = "verified"
+evidence = "docs/evidence/S27-acceptance.md (прямая сверка №63/64/66: приём на паузе, 0 обращений, неизменное время жизни); docs/evidence/S27-first-sessions.md; tests/telegram/test_receiver.py"
 
 [[req]]
 id = "R-017"
@@ -2297,8 +2297,8 @@ kind = "constraint"
 mechanism = "iam.telegram.Sender + outbox (pending / sent / uncertain / failed) [spec: docs/spec/events.md#idempotency]"
 check = "Тест на поддельном сервере: потеря подтверждения даёт состояние uncertain; живая проверка по барьеру G02. Сценарии каталога: scenarios/required/action_crash.toml. D-104: живой рубеж G02/S27; технические проверки не отложены."
 slice = ["S09", "S27"]
-status = "implemented"
-evidence = "docs/evidence/S09-telegram.md; tests/telegram/test_sender.py::SenderTest.test_dropped_confirmation_uncertain_never_auto_retried; tests/telegram/test_sender.py::SenderTest.test_uncertain_cycle_records_unknown_not_success_or_memory; docs/evidence/S25-pilot-admission.md (D-104: конкретные свидетельства, ограничения и окончательный рубеж, прежние записи исторические)"
+status = "verified"
+evidence = "docs/evidence/S27-acceptance.md (одна реальная доставка Telegram, контролируемое подавление подтверждения, unknown/uncertain после двух открытий без сетевого повтора, ошибка первого проверочного сценария сохранена); tests/telegram/test_sender.py::SenderTest.test_dropped_confirmation_uncertain_never_auto_retried; tests/telegram/test_sender.py::SenderTest.test_uncertain_cycle_records_unknown_not_success_or_memory"
 
 [[req]]
 id = "R-189"
@@ -2513,8 +2513,8 @@ kind = "process"
 mechanism = "docs/RUNBOOK.md (раздел внешней копии)"
 check = "Раздел RUNBOOK.md описывает внешнюю копию и способ её сделать."
 slice = "S27"
-status = "planned"
-evidence = ""
+status = "verified"
+evidence = "docs/RUNBOOK.md (раздел «Копия и отдельное восстановление», шаг 3); docs/evidence/S27-acceptance.md (требование документирования выполнено, практическая внешняя копия отдельно ожидает G16)"
 
 [[req]]
 id = "R-207"
