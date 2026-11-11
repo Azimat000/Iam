@@ -107,7 +107,7 @@ class SocialMemory(WorldMemory):
         selected = {row.memory_id: row for row in ranked}
         for row in ranked:
             neighbor = adjacent.get(row.memory_id)
-            if neighbor is not None and current not in neighbor.sources and row.text[:self.text_limit] != query:
+            if neighbor is not None and current not in neighbor.sources:
                 selected.setdefault(neighbor.memory_id, neighbor)
         return list(selected.values())[:min(limit, self.working_limit)]
 

@@ -176,3 +176,12 @@ class RecallTest(PerceptionCase):
         retrieved = [e for e in self.c.events_after(0) if e.type == 'memory.retrieved'][-1]
         self.assertNotIn(current.memory_id, retrieved.payload['memory_ids'])
         self.assertIn(old.memory_id, retrieved.payload['memory_ids'])
+
+    def test_old_identical_question_can_recall_its_answer_as_neighbor(self):
+        query = 'Что поставишь у входа?'
+        own = self.exchange(query, 'Медный компас.', 1)
+        iid, _ = self.read(query, 2)
+        trigger = self.c.find_event(key='rd:' + iid)
+        found = self.memory.recall(query, current=trigger.event_id)
+        self.assertIn(own.memory_id, {r.memory_id for r in found})
+        self.assertFalse(any(trigger.event_id in r.sources for r in found))

@@ -60,8 +60,10 @@ class SearchTest(unittest.TestCase):
             rows['c']=SimpleNamespace(text='Слабое совпадение',content={})
             self.assertEqual(diverse(list(rows), {'a':10,'b':9,'c':2}, rows, 2), ['a','b'])
 
-    def test_current_question_does_not_penalize_the_recalled_answer(self):
+    def test_repeated_old_questions_do_not_hide_the_recalled_answer(self):
         query='Какая перчатка была выбрана для зала'
-        rows={'q':SimpleNamespace(text=query), 'answer':SimpleNamespace(text='Перчатка была выбрана для зала'),
-              'other':SimpleNamespace(text='Другое слабое совпадение')}
-        self.assertEqual(diverse(list(rows), {'q':12,'answer':10,'other':3}, rows, 2, query), ['q','answer'])
+        rows={str(n):SimpleNamespace(memory_id=str(n),text=query) for n in range(5)}
+        rows['answer']=SimpleNamespace(memory_id='answer',text='Для зала была выбрана синяя перчатка.')
+        selected=diverse(list(rows), relevance(query, rows.values()), rows, 5)
+        self.assertEqual(selected[:2], ['0','answer'])
+        self.assertEqual(len(selected),5)

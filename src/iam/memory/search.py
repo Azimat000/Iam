@@ -40,7 +40,7 @@ def relevance(query, records):
     return {mid: score for mid, score in scores.items() if score > 0}
 
 
-def diverse(ranked, scores, records, limit, query=''):
+def diverse(ranked, scores, records, limit):
     """Близкие пересказы не занимают весь бюджет; сами записи остаются неизменными."""
     # Для сравнения свидетельств сохраняются отрицания и числа, удаляемые поисковым words().
     tokens = {mid: set(re.findall(r'[^\W_]+', records[mid].text.casefold().replace('ё', 'е'))) for mid in ranked}
@@ -59,7 +59,7 @@ def diverse(ranked, scores, records, limit, query=''):
         def value(mid):
             overlaps = []
             for previous in selected:
-                if (query and records[previous].text.startswith(query)) or identities[mid] != identities[previous]:
+                if identities[mid] != identities[previous]:
                     continue
                 union = tokens[mid] | tokens[previous]
                 overlaps.append(len(tokens[mid] & tokens[previous]) / len(union) if union else 0.0)

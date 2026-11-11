@@ -107,7 +107,7 @@ class PersistentMemory(MemoryLifecycle):
                     -(2 * (mid in direct) + freshness + min(1, max(0, significance))), -r.created_life_ms, mid)
         ranked = sorted(candidates, key=score)
         count = min(limit, self.working_limit)
-        selected = diverse(ranked, matches, available, count, query) if natural and matches else ranked[:count]
+        selected = diverse(ranked, matches, available, count) if natural and matches else ranked[:count]
         return [available[mid] for mid in selected]
 
     def context(self, trigger, first, records):
