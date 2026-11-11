@@ -183,3 +183,67 @@ class SessionTest(StateCase):
         again.command("pause","пауза")
         again.command("resume","продолжить")
         self.assertEqual(again.usage()["calls"],4)
+
+    def test_conversation_survives_old_caps_restart_pause_and_stop(self):
+        s = self.build()
+        s.command("conversation", "обычный разговор")
+        sid = self.c.session_id
+        self.assertIsNone(s.config()["max_calls"])
+        self.assertIsNone(s.config()["max_ms"])
+        for _ in range(12):
+            s.charge()
+        self.time.advance(3_600_000)
+        s.check_limits()
+        self.assertEqual(self.c.session_state, "running")
+        self.assertIsNone(s.exhausted())
+        self.c = self.reopen(self.c)
+        s = SessionRunner(self.c)
+        self.assertEqual(self.c.session_id, sid)
+        self.assertEqual(s.usage()["calls"], 12)
+        s.command("resume", "после перезапуска")
+        s.charge()
+        s.command("pause", "ручная пауза")
+        elapsed = s.usage()["elapsed_ms"]
+        self.time.advance(100_000)
+        self.assertEqual(s.usage()["elapsed_ms"], elapsed)
+        with self.assertRaises(ProviderError):
+            s.charge()
+        s.command("resume", "продолжить")
+        s.command("stop", "ручное завершение")
+        s.command("start", "отдельная проверка")
+        self.assertNotEqual(self.c.session_id, sid)
+        self.assertEqual(s.config()["max_calls"], 10)
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_convert_exhausted_session_preserves_identity_clock_and_counter(self):
+        s = self.build()
+        s.command("start", "проверка", max_calls=1, max_ms=100)
+        sid, started = self.c.session_id, s.config()["started_ms"]
+        s.charge()
+        self.time.advance(100)
+        s.check_limits()
+        self.assertEqual(self.c.session_state, "paused")
+        s.command("conversation", "снять ограничения по просьбе пользователя")
+        self.assertEqual(self.c.session_state, "running")
+        self.assertEqual((self.c.session_id, s.config()["started_ms"], s.usage()["calls"]), (sid, started, 1))
+        s.charge()
+        s.command("conversation", "подтвердить режим работающего сеанса")
+        self.assertEqual(self.c.session_id, sid)
+        self.assertEqual(s.usage()["calls"], 2)
+        self.assertEqual(len([e for e in self.c.events_after(0) if e.type == "session.started"]), 1)
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_conversation_requires_reason_and_no_pending_model(self):
+        s = self.build()
+        with self.assertRaises(ValueError):
+            s.command("conversation", " ")
+        s.in_flight = True
+        with self.assertRaises(SessionConflict):
+            s.command("conversation", "незаконченный запрос")
+        s.in_flight = False
+        s.command("conversation", "ручной выбор")
+        before = s.config()
+        from iam.domain import Op
+        result = self.c.apply(self.prop(self.c, Op("world_time", "world.panel_session.mode", "set", "limited", True), actor="model"))
+        self.assertEqual(result.status, "rejected")
+        self.assertEqual(s.config(), before)

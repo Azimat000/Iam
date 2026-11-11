@@ -64,14 +64,18 @@ def render(page, data, token, *, error=None, notice=None, values=None):
     error_title = 'Не удалось открыть результаты' if page == 'experiments' else 'Действие не выполнено'
     error_html = f'<div class="error" role="alert"><h2>{error_title}</h2><p>{e(error)}</p></div>' if error else ''
     if page == "":
-        remaining = max(0, u["max_ms"] - u["elapsed_ms"])
+        conversation = u.get("mode") == "conversation"
+        remaining = max(0, u["max_ms"] - u["elapsed_ms"]) if u["max_ms"] is not None else None
+        remaining_text = duration(remaining) if remaining is not None else 'Без ограничения времени'
+        calls_text = f'/ {u["max_calls"]}' if u["max_calls"] is not None else 'Без лимита обращений'
+        description = 'Разговор продолжается до вашей паузы или завершения.' if conversation else 'Проверочный сеанс ограничен временем и числом обращений к модели.'
         content = (f'<div class="session-title"><h2>{STATUSES[state]}</h2></div>'
-                   f'<p>{e(REASONS.get(data["pause_reason"], "Сеанс ограничен временем и числом обращений к модели."))}</p>'
+                   f'<p>{e(REASONS.get(data["pause_reason"], description))}</p>'
                    f'<dl class="metrics"><div><dt>Время сеанса</dt><dd>{duration(u["elapsed_ms"])}</dd></div>'
-                   f'<div><dt>Осталось времени</dt><dd>{duration(remaining)}</dd></div>'
-                   f'<div><dt>Обращения</dt><dd>{u["calls"]} <span>/ {u["max_calls"]}</span></dd></div></dl>')
+                   f'<div><dt>Осталось времени</dt><dd>{remaining_text}</dd></div>'
+                   f'<div><dt>Обращения</dt><dd>{u["calls"]} <span>{calls_text}</span></dd></div></dl>')
         if state == "stopped" and u["session_id"]:
-            content += '<p class="help">Выше — итоги последнего сеанса. Лимиты нового сеанса задаются ниже.</p>'
+            content += '<p class="help">Выше — итоги последнего сеанса. Ниже можно начать разговор или проверочный сеанс.</p>'
         if u["in_flight"]:
             content += '<p class="notice">Модель отвечает. Пауза доступна сейчас; ответ, пришедший после неё, проверит ядро.</p>'
         if state == "stopped" and not u["in_flight"]:
@@ -79,20 +83,24 @@ def render(page, data, token, *, error=None, notice=None, values=None):
                     f'<input id="minutes" name="minutes" type="number" min="1" max="30" value="{e(values.get("minutes",30))}" required></div>'
                     f'<div><label for="calls">Обращения (1–10)</label><input id="calls" name="calls" type="number" min="1" max="10" '
                     f'value="{e(values.get("calls",10))}" required></div></div>')
-            content += '<section><h2>Новый сеанс</h2>' + form("start", "Запустить сеанс", token, data, body=body, primary=True, values=values) + '</section>'
+            content += '<section><h2>Разговор</h2><p>Без ограничения времени и числа обращений. Остановить можно в любой момент.</p>'
+            content += form("conversation", "Начать разговор", token, data, primary=True, values=values) + '</section>'
+            content += '<details><summary>Проверочный сеанс с лимитами</summary>' + form("start", "Запустить сеанс", token, data, body=body, values=values) + '</details>'
         elif state == "running":
             content += '<div class="actions">' + form("pause", "Поставить на паузу", token, data, primary=True, values=values)
             content += form("stop", "Завершить сеанс", token, data, values=values) + '</div>'
         elif state == "paused":
-            exhausted = u["calls"] >= u["max_calls"] or remaining == 0
+            exhausted = (u["max_calls"] is not None and u["calls"] >= u["max_calls"]) or remaining == 0
             content += '<div class="actions">'
             if not exhausted and not u["in_flight"]:
                 content += form("resume", "Продолжить сеанс", token, data, primary=True, values=values)
             else:
                 content += '<p>Продолжение недоступно: дождитесь ответа модели или завершите сеанс с исчерпанным лимитом.</p>'
             content += form("stop", "Завершить сеанс", token, data, values=values) + '</div>'
-        content += ('<p class="help">В паузе время жизни стоит. Лимит обращений сохраняется после перезапуска. Это лимиты приложения, а не квота подписки. '
-                    'Для нового бюджета завершите сеанс и запустите следующий. Все команды записываются как вмешательства оператора.</p>'
+        if state in ("running", "paused") and not conversation and not u["in_flight"]:
+            content += form("conversation", "Продолжить без ограничений", token, data, primary=True, values=values)
+        content += ('<p class="help">В паузе время жизни стоит. Режим и счётчик обращений сохраняются после перезапуска. '
+                    'Квота подписки учитывается отдельно. Все команды записываются как вмешательства оператора.</p>'
                     '<section><h2>Последние события</h2>' + event_rows(data["events"][:5]) + '</section>')
     elif page == "events":
         content = '<p>Сначала новые события. Раскройте строку, чтобы увидеть её источник и содержание.</p>' + event_rows(data["events"])
@@ -135,7 +143,8 @@ def render(page, data, token, *, error=None, notice=None, values=None):
     elif page == "experiments":
         content = data['experiment_content']
     elif page == "usage":
-        content = (f'<p>Обращений в текущем сеансе: {u["calls"]} из {u["max_calls"]}. Время: {duration(u["elapsed_ms"])}.</p>'
+        limit_text = f'из {u["max_calls"]}' if u["max_calls"] is not None else 'без лимита обращений'
+        content = (f'<p>Обращений в текущем сеансе: {u["calls"]} {limit_text}. Время: {duration(u["elapsed_ms"])}.</p>'
                    '<p>Учитываются запуски исполнителя, включая ошибки и повторы формата. Денежные оценки для подписки не рассчитываются.</p>'
                    '<h2>Telegram</h2>' + (f'<p>Последний успешный опрос: {e(data["last_poll"])}</p>' if data["last_poll"] else '<p>Успешного опроса ещё не было.</p>'))
         if data["poll_stale"]:

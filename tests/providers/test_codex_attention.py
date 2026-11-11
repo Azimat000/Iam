@@ -56,3 +56,42 @@ class NativeAttentionTest(unittest.TestCase):
         legacy = {'proposals': [{'kind':'attend','rationale':'An old valid answer','cites':[],
                                 'body_json':'{"focus":"dialogue","ref":"inp_Notice0001"}'}], 'explanation':'History'}
         self.assertEqual(_proposals(legacy)[0]['body']['focus'], 'dialogue')
+
+    def test_conflicting_rest_and_attention_are_rejected_before_any_partial_choice(self):
+        for native in (True, False):
+            data = self.wire()
+            data['proposals'] = [{'kind':'no_action','rationale':'Before reading','cites':[],
+                                  'body_json':'{"reason":"Need to read first"}'}]
+            if not native:
+                attention = data.pop('attention')
+                data['proposals'].append({'kind':'attend','rationale':attention['rationale'],'cites':[],
+                    'body_json':json.dumps({'focus':'dialogue','ref':attention['ref']})})
+            with self.subTest(native=native), self.assertRaises(ValueError):
+                _proposals(data)
+        data = self.wire()
+        data['attention'] = None
+        data['proposals'] = [{'kind':'no_action','rationale':'Rest','cites':[],
+                              'body_json':'{"reason":"Rest"}'}]
+        self.assertEqual([p['kind'] for p in _proposals(data)], ['no_action'])
+
+    def test_provider_reasks_once_without_silently_choosing_between_rest_and_read(self):
+        from iam.providers.codex import fake
+        from iam.providers.errors import ProviderFormatError
+        from providers.test_codex import provider, request
+        conflict = self.wire()
+        conflict['proposals'] = [{'kind':'no_action','rationale':'Read first','cites':[],
+                                 'body_json':'{"reason":"Need to read"}'}]
+        bad = fake.reply_text(json.dumps(conflict))
+        good = fake.reply_text(json.dumps(self.wire()))
+        model, runner = provider(bad, good)
+        answer = model.propose(request(allowed_proposals=['attend','no_action']))
+        self.assertEqual([p['kind'] for p in answer['proposals']], ['attend'])
+        self.assertEqual(answer['usage']['calls'], 2)
+        self.assertEqual(model.last_format_codes, ['proposal_schema'])
+        self.assertIn('return proposals=[]', json.loads(runner.calls[0]['stdin'])['prompt'])
+        self.assertIn('both set the same attention state and conflict', json.loads(runner.calls[1]['stdin'])['prompt'])
+        model, runner = provider(bad, bad)
+        with self.assertRaises(ProviderFormatError):
+            model.propose(request(allowed_proposals=['attend','no_action']))
+        self.assertEqual(len(runner.calls), 2)
+        self.assertEqual(model.last_format_codes, ['proposal_schema','proposal_schema'])

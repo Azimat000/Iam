@@ -42,6 +42,9 @@ SYSTEM_PROMPT = LEGACY_SYSTEM_PROMPT.replace(
     "focus (activity, intention, event, dialogue or rest), and ref (target identifier, or null for no target). "
     "A visible inp_ notice is an attention target ref, never a focus value or a citation. "
     "The adapter copies this object to an attend proposal; it does not execute a read."
+    " To choose only attention, return proposals=[] with the attention object. "
+    "Never combine no_action with non-null attention: both set the same attention state and conflict. "
+    "For rest choose either no_action with attention=null, or attention with focus=rest and no no_action."
 )
 RESPONSE_JSON_SCHEMA = copy.deepcopy(LEGACY_RESPONSE_JSON_SCHEMA)
 RESPONSE_JSON_SCHEMA['properties']['proposals']['items']['properties']['kind']['enum'].remove('attend')

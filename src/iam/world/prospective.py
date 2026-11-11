@@ -42,9 +42,10 @@ class ProspectiveCycle(LivingCycle):
     completion_provider_type = AppraisalCompletionProvider
     appraisal_instructions = ASSESSMENT + PROSPECTION + BOUNDARY
 
-    def __init__(self, *args, can_appraise=None, **kwargs):
+    def __init__(self, *args, can_appraise=None, fast_inputs=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.can_appraise = can_appraise
+        self.fast_inputs = fast_inputs
         self._appraised_intention = False
         self._appraisal_sources = frozenset()
         self._reviewed_records = []
@@ -172,7 +173,10 @@ class ProspectiveCycle(LivingCycle):
         self._appraised_intention = False
         self._reviewed_records = records
         try:
-            if self._appraise_experience(rep, trigger, focus, records):
+            fast = self.fast_inputs is not None and self.fast_inputs() and trigger.type in ('input.arrived', 'input.read')
+            if fast:
+                self._stage(rep, 'experience_appraisal', 'skipped', (), {'reason': 'conversation_input'})
+            if fast or self._appraise_experience(rep, trigger, focus, records):
                 # Контекст и версия строятся заново после проверенных интерпретаций.
                 super()._decide(rep, trigger, focus, self._reviewed_records)
         finally:

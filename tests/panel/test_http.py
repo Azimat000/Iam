@@ -139,6 +139,32 @@ class HttpTest(unittest.TestCase):
         return form
 
 
+    def test_conversation_forms_conversion_and_usage_have_no_artificial_caps(self):
+        page = self.client.get("/").text
+        self.assertIn("Начать разговор", page)
+        self.assertIn("Проверочный сеанс с лимитами", page)
+        original = self.fields()
+        self.assertEqual(self.post("conversation", fields=original).status_code, 200)
+        self.assertEqual(self.post("conversation", fields=original).status_code, 409)
+        for route in ("/", "/usage"):
+            page = self.client.get(route).text
+            self.assertNotIn("None", page)
+            self.assertIn("ез лимита обращений", page)
+        self.assertIn("Без ограничения времени", self.client.get("/").text)
+        self.assertEqual(self.post("pause").status_code, 200)
+        self.assertIn("Продолжить сеанс", self.client.get("/").text)
+        self.assertEqual(self.post("resume").status_code, 200)
+        self.assertEqual(self.post("stop").status_code, 200)
+        self.assertEqual(self.post("start", calls="1").status_code, 200)
+        self.assertIn("Продолжить без ограничений", self.client.get("/").text)
+        self.assertEqual(self.post("pause").status_code, 200)
+        sid = self.view()["usage"]["session_id"]
+        self.assertEqual(self.post("conversation").status_code, 200)
+        self.assertEqual(self.view()["usage"]["session_id"], sid)
+        self.assertIsNone(self.view()["usage"]["max_calls"])
+
+
+
 class SecurityUnitTest(unittest.IsolatedAsyncioTestCase):
     async def test_lifespan_passthrough_and_duplicate_hosts(self):
         app = mock.AsyncMock()
@@ -167,6 +193,7 @@ class SecurityUnitTest(unittest.IsolatedAsyncioTestCase):
         async def send(message): output.append(message)
         await LocalOnly(inner,authority="127.0.0.1:1")({"type":"http","method":"HEAD","headers":[(b"host",b"127.0.0.1:1")]},None,send)
         self.assertEqual(output[-1]["body"],b"ok")
+
 
 
 class LaunchTest(unittest.TestCase):

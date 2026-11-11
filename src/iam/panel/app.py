@@ -97,7 +97,7 @@ def create_app(runtime, *, port=8765, experiment_snapshot=SNAPSHOT):
 
     @app.post("/actions/{action}")
     async def act(request: Request, action: str):
-        if action not in ("start", "pause", "resume", "stop", "backup", "restore", "memory_restore", "material_add",
+        if action not in ("start", "conversation", "pause", "resume", "stop", "backup", "restore", "memory_restore", "material_add",
                           "capability_grant", "capability_revoke", "capability_limits", "creator_response"):
             return PlainTextResponse("Неизвестная команда.", 404)
         page = 'requests' if action == 'creator_response' else 'capabilities' if action.startswith('capability_') else 'world' if action == 'material_add' else "memory" if action == "memory_restore" else "backups" if action in ("backup", "restore") else ""

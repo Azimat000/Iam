@@ -2328,13 +2328,13 @@ evidence = "docs/evidence/S10-panel-session.md; tests/panel/test_http.py; tests/
 id = "R-191"
 source = "§5.2"
 lines = "314"
-text = "Сеанс ограничен 30 минутами или 10 обращениями к исполнителю — что наступит раньше."
+text = "Проверочный сеанс ограничен 30 минутами или 10 обращениями; обычный разговор по выбору оператора не имеет этих пределов (D-112)."
 kind = "constraint"
-mechanism = "Бюджет сеанса (S08), применение в SessionRunner [spec: docs/spec/time.md#sessions]"
-check = "Тест: по умолчанию лимит 30 минут и 10 обращений; остановка по первому из них (отдельно проверяется каждый порог и порядок наступления)"
+mechanism = "SessionRunner: ограниченный start и операторский conversation с null-пределами, постоянный SessionLedger [spec: docs/spec/time.md#sessions]"
+check = "Тест: ограниченный start останавливается по первому порогу; conversation превышает оба, сохраняет сеанс и расход после перевода/перезапуска; ручные пауза и завершение работают."
 slice = "S08"
 status = "verified"
-evidence = "docs/evidence/S08-claude-executor.md; tests/providers/test_budget.py; docs/evidence/S10-panel-session.md; tests/panel/test_session.py"
+evidence = "docs/evidence/S08-claude-executor.md; tests/providers/test_budget.py; docs/evidence/S10-panel-session.md; tests/panel/test_session.py; docs/evidence/S28-conversation.md; tests/e2e/test_conversation.py"
 
 [[req]]
 id = "R-192"

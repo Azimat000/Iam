@@ -50,9 +50,9 @@ class SessionRunner:
 
     def exhausted(self, *, include_calls=True):
         u = self.usage()
-        if u["elapsed_ms"] >= u["max_ms"]:
+        if u["max_ms"] is not None and u["elapsed_ms"] >= u["max_ms"]:
             return "time"
-        if include_calls and u["calls"] >= u["max_calls"]:
+        if include_calls and u["max_calls"] is not None and u["calls"] >= u["max_calls"]:
             return "calls"
         return None
 
@@ -71,13 +71,26 @@ class SessionRunner:
         def perform():
             current = self.ctl.session_state
             allowed = {"start": ("stopped",), "pause": ("running",), "resume": ("paused",),
-                       "stop": ("running", "paused")}
+                       "stop": ("running", "paused"), "conversation": ("stopped", "running", "paused")}
             if action not in allowed or current not in allowed[action]:
                 raise SessionConflict("Команда недоступна в текущем состоянии сеанса.")
-            if action in ("start", "resume") and self.in_flight:
+            if action in ("start", "resume", "conversation") and self.in_flight:
                 raise SessionConflict("Дождитесь окончания текущего обращения к модели.")
             if action == "resume" and self.exhausted():
                 raise SessionConflict("Лимит исчерпан. Завершите этот сеанс и начните новый.")
+            if action == "conversation":
+                if not reason.strip():
+                    raise ValueError("Укажите причину действия.")
+                cfg = ({"session_id": new_id("ses"), "started_ms": self.ctl.life_time_ms}
+                       if current == "stopped" else dict(self.config()))
+                cfg.update(mode="conversation", max_calls=None, max_ms=None)
+                self._apply_ok(self.ctl.intervene("technical_fix", reason, (
+                    Op("world_time", "world.panel_session", "set", cfg, True),), target="session"))
+                if current == "stopped":
+                    self._apply_ok(self.ctl.start_session(session_id=cfg["session_id"]))
+                elif current == "paused":
+                    self._apply_ok(self.ctl.resume_session())
+                return
             if action == "start":
                 if type(max_calls) is not int or type(max_ms) is not int or not 1 <= max_calls <= 10 or not 1 <= max_ms <= 1_800_000:
                     raise ValueError("Лимиты: от 1 до 10 обращений и не больше 30 минут.")

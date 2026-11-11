@@ -129,9 +129,12 @@ class Runtime:
             def can_appraise():
                 usage = self.session.usage()
                 # Поиск и оценка не должны потратить последний вызов обычного выбора.
-                return usage["max_calls"] - usage["calls"] > appraisal_calls
+                return usage["max_calls"] is None or usage["max_calls"] - usage["calls"] > appraisal_calls
 
-            cycle_type, cycle_options = OptionsCycle, {"can_appraise": can_appraise}
+            cycle_type, cycle_options = OptionsCycle, {
+                "can_appraise": can_appraise,
+                "fast_inputs": lambda: self.session.config().get("mode") == "conversation",
+            }
         provider = self.session.provider(provider, charge=self.demo)
         world = PersistentWorld(self.ctl, external=world)
         world.initialize()

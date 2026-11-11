@@ -71,6 +71,8 @@ def _proposals(data: dict) -> list[dict]:
         if jsonschema.errors("proposal", proposal):
             raise ValueError
         proposals.append(proposal)
+    if {'no_action', 'attend'} <= {proposal['kind'] for proposal in proposals}:
+        raise ValueError('Conflicting attention choices')
     return proposals
 
 

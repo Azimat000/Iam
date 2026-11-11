@@ -39,7 +39,7 @@ class SessionLedger:
     def reserve(self, session_id, max_calls, request_id):
         with self.store.transaction():
             data = self.read(session_id)
-            if len(data["attempts"]) >= max_calls:
+            if max_calls is not None and len(data["attempts"]) >= max_calls:
                 return False
             data["attempts"].append({"request_id": request_id, "at": self.ctl.clock.calendar_now(),
                                      "life_ms": self.ctl.life_time_ms})
