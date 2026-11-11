@@ -14,6 +14,7 @@ from iam.motivation import Motivation
 from iam.persona.context import character_context
 from iam.state import EventSpec, KindDecision, Violation
 from . import READ, WRITE, MOVE, PROJECT_KEY_PATTERN
+from .conversation import interaction_context
 
 PROJECT_CREATION = (
     f'Если сама решишь создать работу, выбери новый project_id ({PROJECT_KEY_PATTERN}); '
@@ -256,7 +257,7 @@ class LivingCycle(Cycle):
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
-        return context
+        return [*context, *interaction_context(trigger, context)]
 
     def _verified(self, rep, response, result):
         super()._verified(rep,response,result)
