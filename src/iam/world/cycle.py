@@ -157,6 +157,24 @@ class LivingCycle(Cycle):
             result['closed_as'] = status
         return result
 
+    def _proposal_feedback(self):
+        # Only technical outcomes: rejected payloads can contain unread or forgotten text.
+        if self.memory.off:
+            return []
+        events = self.ctl.events_after(0)
+        start = max((event.seq for event in events if event.type == 'session.started'
+                     and event.payload['session_id'] == self.ctl.session_id), default=0)
+        if not start:
+            return []
+        rejected = [event for event in events if event.seq > start and event.type == 'proposal.rejected'
+                    and event.payload.get('kind') in self.allowed_proposals
+                    and isinstance(event.payload.get('reason'), str)][-3:]
+        return [{'ref': event.event_id, 'origin': 'observation', 'layer': 'state',
+                 'text': json.dumps({'kind': 'proposal_feedback', 'status': 'rejected',
+                                     'proposal_kind': event.payload['kind'],
+                                     'reason': event.payload['reason'], 'executed': False}, ensure_ascii=False)}
+                for event in rejected]
+
     def _context(self, trigger, focus, records):
         context = super()._context(trigger, focus, records)
         state = self.world.state
@@ -197,11 +215,16 @@ class LivingCycle(Cycle):
                 catalog['telegram_message_rule'] = (
                     'Если сама захочешь написать создателю, используй вид message с полями '
                     'capability_id: cap_Telegram01, to: creator, text: текст сообщения. '
-                    'Доступность определяется реестром возможностей. Для сообщений не используй вид action.'
+                    'Доступность определяется реестром возможностей. Для сообщений не используй вид action. '
+                    'За один ответ допустимо только одно исполняемое предложение: action либо message. '
+                    'Запись собственного текста в проект сама по себе не отправляет его в Telegram. '
+                    'proposal_feedback сообщает об отказе ядра: это предложение не было выполнено или отправлено. '
+                    'Следующий выбор может учесть отказ; повторная отправка автоматически не выполняется.'
                 )
         context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
                            'text': self.reflection.guidance(context)})
         context.extend(character_context(self.ctl, self.memory))
+        context.extend(self._proposal_feedback())
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
                     {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                      'text': json.dumps(catalog, ensure_ascii=False)}]
