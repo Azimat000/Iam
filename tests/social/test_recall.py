@@ -5,6 +5,7 @@ from iam.state import verify, EventSpec
 from iam.cycle import Cycle
 from iam.interfaces import Capability
 from iam.social import SocialMemory
+from iam.memory import PersistentMemory
 from iam.stubs import say, rest, attend, StubCapabilities
 from perception.test_perception import PerceptionCase
 from social.test_dialogue import DialogueTest
@@ -129,3 +130,17 @@ class RecallTest(PerceptionCase):
         self.assertEqual(theirs['origin'], 'stated_by_other')
         mine = next(x for x in context if x['ref']==own and x['layer']=='personal')
         self.assertEqual(json.loads(mine['text'])['outcome'], 'unknown')
+
+    def test_relevant_earlier_evidence_is_not_displaced_by_neighbors(self):
+        for n, text in enumerate(('Выставка: медный компас', 'Выставка: сломанные часы',
+                                  'Выставка: красный шарф', 'Выставка: стеклянный шар'), 1):
+            self.exchange(text, 'Подумаю над этим вариантом.', n)
+        query = 'Что мы предлагали на выставку: компас, часы, шарф и шар?'
+        iid, _ = self.read(query, 10)
+        direct = PersistentMemory.recall(self.memory, query, limit=5)
+        self.assertEqual(len(direct), 5)
+        self.assertEqual([r.memory_id for r in self.memory.recall(query)], [r.memory_id for r in direct])
+        self.run_reply(self.c.find_event(key='rd:'+iid), rest())
+        visible = {item['ref'] for item in self.provider.calls[-1]['context'] if item['layer']=='personal'}
+        self.assertTrue({r.memory_id for r in direct} <= visible)
+        self.assertEqual(verify(self.c.store), [])

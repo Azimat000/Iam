@@ -103,9 +103,9 @@ class SocialMemory(WorldMemory):
             j = i + (1 if turn[2] == 'incoming' else -1)
             if 0 <= j < len(turns) and turns[j][3] == turn[3] and turns[j][2] != turn[2]:
                 adjacent[turn[1].memory_id] = turns[j][1]
-        selected = {}
+        # Найденные по запросу основания нельзя вытеснять нерелевантными соседями.
+        selected = {row.memory_id: row for row in ranked}
         for row in ranked:
-            selected.setdefault(row.memory_id, row)
             neighbor = adjacent.get(row.memory_id)
             if neighbor is not None and row.text[:self.text_limit] != query:
                 selected.setdefault(neighbor.memory_id, neighbor)
