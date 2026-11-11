@@ -11,9 +11,14 @@ GUIDANCE = (
     'его новым по времени получения: received_seq сохраняет исходный порядок. '
     'Если выбираешь ответить, сначала учти, что собеседник говорит сейчас: он мог сменить тему, '
     'возразить, спросить о тебе или попросить восстановить разговор. Продолжение прежнего рассуждения '
-    'само по себе не отвечает на такое обращение. last_outgoing — последняя попытка отправки: '
+    'само по себе не отвечает на такое обращение. speaker=interlocutor — слова собеседника, speaker=self — твои. '
+    'last_outgoing — последняя доступная в этом окне попытка отправки: '
     'только outcome=confirmed подтверждает доставку; failed и unknown не означают, что собеседник получил слова. '
-    'Это прошлый исход, а не новое обращение собеседника. '
+    'Это прошлый исход, а не новое обращение собеседника. Утверждения о том, что ты уже сказала или сделала, '
+    'в ответе и в его объяснении сверяй с доступными собственными подтверждёнными исходами. '
+    'Чужие слова и текущее намерение ответить не подтверждают твоего прежнего действия. '
+    'Если нужного исхода нет в ограниченном окне или его слова недоступны, это неизвестность, '
+    'а не доказательство, что действие было или никогда не было. '
     'Можно прямо обозначить желание продолжить или отложить беседу, уточнить непонятное, '
     'выразить собственное мнение либо выбрать другое занятие. Ни готового ответа, ни чувства эта сводка не задаёт.'
 )
@@ -35,14 +40,17 @@ def interaction_context(trigger, context):
             notices.append((item['ref'], data))
     if not turns and not notices and trigger.type not in ('input.arrived', 'input.read'):
         return []
-    current = next(({'ref':ref, 'version':turn['version'], 'received_seq':turn['received_seq'],
+    current = next(({'ref':ref, 'speaker':'interlocutor', 'version':turn['version'], 'received_seq':turn['received_seq'],
                       'text':turn['text'], 'excerpt':turn['excerpt']}
                     for ref,turn in turns if turn.get('current_read') is True), None)
     frame = {
         'kind':'current_interaction', 'occasion':trigger.type,
         'read_now':current,
         'latest_read_ref':next((ref for ref,t in turns if t.get('direction')=='incoming' and t.get('latest_in_direction')),None),
-        'last_outgoing':next(({'ref':ref,'outcome':t['outcome'],'content_available':t['content_available']}
+        'last_outgoing':next(({'ref':ref, 'speaker':'self', 'version':t['version'], 'seq':t['seq'],
+                              'outcome':t['outcome'], 'content_available':t['content_available'],
+                              'text':t['text'] if t['content_available'] else None,
+                              'excerpt':t['excerpt'] if t['content_available'] else None}
                               for ref,t in turns if t.get('direction')=='outgoing' and t.get('latest_in_direction')),None),
         'unread_targets':[ref for ref,data in notices[:5]],
         'more_unread_targets':len(notices)>5,

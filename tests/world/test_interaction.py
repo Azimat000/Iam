@@ -3,6 +3,7 @@ import copy
 import json
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from iam.interfaces import Capability
 from iam.providers.codex import build_prompt
@@ -32,6 +33,13 @@ class InteractionTest(PerceptionCase):
         # The actual provider receives the same available data, not an alternative DB path.
         self.assertEqual(json.loads(build_prompt(self.provider.calls[-1]))['context'][-1]['text'],context[-1]['text'])
         return frame
+
+    def answer(self, text, number=1):
+        iid, _ = self.read('Вопрос '+str(number),number)
+        self.world.will('cap_Chat0001','confirm')
+        report = self.run_reply(self.c.find_event(key='rd:'+iid),say('cap_Chat0001','creator',text))
+        self.assertTrue(report.actions,report)
+        return self.c.store.get_memory(report.actions[0].memory_id)
 
     def test_current_turn_and_unread_targets_are_distinct_from_previous_words(self):
         iid, _ = self.read('Прежняя тема',1)
@@ -68,8 +76,68 @@ class InteractionTest(PerceptionCase):
             outgoing=self.frame()['last_outgoing']
             self.assertEqual(outgoing['outcome'],{'confirm':'confirmed','fail':'failed','unknown':'unknown'}[behaviour])
             self.assertTrue(outgoing['content_available'])
+            self.assertEqual(outgoing['speaker'],'self')
+            self.assertEqual(outgoing['text'],'Попытка '+str(number))
             record=self.c.store.get_memory(outgoing['ref'])
             self.assertEqual(record.content['communication']['text'],'Попытка '+str(number))
+
+    def test_interlocutor_closing_is_not_presented_as_own_previous_words(self):
+        own = self.answer('Выбираю соседа Геннадия из-за шороха листьев.')
+        iid,arrival = self.read('Спасибо за разговор. До встречи!',2)
+        self.run_reply(self.c.find_event(key='rd:'+iid),rest())
+        frame = self.frame()
+        self.assertEqual(frame['read_now']['speaker'],'interlocutor')
+        self.assertEqual(frame['read_now']['text'],'Спасибо за разговор. До встречи!')
+        self.assertEqual(frame['read_now']['received_seq'],arrival.seq)
+        outgoing = frame['last_outgoing']
+        self.assertEqual((outgoing['speaker'],outgoing['ref'],outgoing['version']),('self',own.memory_id,1))
+        self.assertEqual(outgoing['text'],'Выбираю соседа Геннадия из-за шороха листьев.')
+        self.assertEqual(outgoing['outcome'],'confirmed')
+        self.assertLess(outgoing['seq'],arrival.seq)
+        # Declining to answer is still valid and does not manufacture a delivered reply.
+        self.assertEqual(len([e for e in self.c.events_after(0) if e.type=='message.out_sent']),1)
+        self.assertEqual(verify(self.c.store),[])
+
+    def test_last_outgoing_keeps_the_same_bounded_excerpt(self):
+        self.answer(('Длинный собственный ответ '*200)+'СКРЫТЫЙ_КОНЕЦ')
+        iid,_ = self.read('Новый вопрос',2)
+        self.run_reply(self.c.find_event(key='rd:'+iid),rest())
+        frame = self.frame()['last_outgoing']
+        turn = next(json.loads(x['text']) for x in self.provider.calls[-1]['context']
+                    if x['ref']==frame['ref'] and '"dialogue_turn"' in x['text'])
+        self.assertEqual((frame['text'],frame['excerpt']),(turn['text'],turn['excerpt']))
+        self.assertTrue(frame['excerpt']['more'])
+        self.assertLess(len(frame['text']),800)
+        self.assertNotIn('СКРЫТЫЙ_КОНЕЦ',json.dumps(frame,ensure_ascii=False))
+
+    def test_own_words_are_not_resurrected_after_fade_revision_or_memory_off(self):
+        for n,mode in enumerate(('fade','revise','off'),1):
+            text='НЕ_ВОЗВРАЩАТЬ_'+mode
+            own=self.answer(text,n*2)
+            if mode=='fade':self.assertTrue(self.memory.fade(own.memory_id).applied)
+            elif mode=='revise':
+                self.assertTrue(self.memory.revise(own.memory_id,'Пересмотрено',sources=own.sources,reason='Уточнение').applied)
+            else:self.memory.off=True
+            _,arrival=self.arrive('Ещё непрочитано',n*2+1)
+            self.run_reply(arrival,rest())
+            self.assertIsNone(self.frame()['last_outgoing'])
+            self.assertNotIn(text,json.dumps(self.provider.calls[-1],ensure_ascii=False))
+
+    def test_legacy_delivery_without_words_stays_unknown_in_summary(self):
+        def legacy(action,outcome,event):
+            record=self.memory.prepare(kind='episodic',origin='observation',text='Telegram: sent',
+                sources=(event.event_id,),content={'outcome':outcome.status,'experience':'live','action_id':action.action_id})
+            return record,self.memory.write(record)
+        with patch.object(self.memory,'remember_outcome',side_effect=legacy):
+            self.answer('ТОЛЬКО_В_АРХИВЕ_ДОСТАВКИ')
+        _,arrival=self.arrive('Новый вопрос',2)
+        self.run_reply(arrival,rest())
+        outgoing=self.frame()['last_outgoing']
+        self.assertEqual(outgoing['outcome'],'confirmed')
+        self.assertFalse(outgoing['content_available'])
+        self.assertIsNone(outgoing['text'])
+        self.assertIsNone(outgoing['excerpt'])
+        self.assertNotIn('ТОЛЬКО_В_АРХИВЕ_ДОСТАВКИ',json.dumps(self.provider.calls[-1],ensure_ascii=False))
 
     def test_ignoring_is_allowed_and_pending_notice_remains_available(self):
         iid, event = self.arrive('UNREAD_SECRET',1)
