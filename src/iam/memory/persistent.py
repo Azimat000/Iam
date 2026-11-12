@@ -9,7 +9,7 @@ from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
 from .lifecycle import MemoryLifecycle
 from .window import text_window
-from .search import relevance, diverse, historical
+from .search import relevance, diverse, historical_candidates
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
@@ -65,12 +65,15 @@ class PersistentMemory(MemoryLifecycle):
         packed = self._window(max(rows, key=lambda r: (r.created_life_ms, r.memory_id))) if rows else None
         return json.loads(packed)['text'] if packed is not None else ''
 
-    def _window(self, r, start=0):
+    def _window(self, r, start=0, *, recall_role=None):
         metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
                     'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
                     'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
                     'version': r.version, 'observation_scope': self.observation_scope(r)}
-        return text_window(metadata, r.text, self.text_limit, start)
+        if recall_role is not None:
+            metadata["recall_role"] = recall_role
+        limit = min(self.text_limit, 2000) if recall_role is not None else self.text_limit
+        return text_window(metadata, r.text, limit, start)
 
     def retrieve(self, query, *, limit=5):
         return self._retrieve(query, limit=limit, natural=False)
@@ -108,9 +111,6 @@ class PersistentMemory(MemoryLifecycle):
         ranked = sorted(candidates, key=score)
         count = min(limit, self.working_limit)
         selected = diverse(ranked, matches, available, count) if natural and matches else ranked[:count]
-        if natural and matches:
-            # Только прямые релевантные кандидаты могут занимать исторические места.
-            selected = historical([mid for mid in ranked if mid in direct], selected, available, count)
         return [available[mid] for mid in selected]
 
     def context(self, trigger, first, records):
@@ -151,7 +151,32 @@ class PersistentMemory(MemoryLifecycle):
         unique = {}
         for item in ordered:
             unique.setdefault(item['ref'], item)
-        return list(unique.values())[:self.working_limit]
+        base = list(unique.values())[:self.working_limit]
+        return [*base, *self._historical_context(trigger, records, base)]
+
+    def _historical_context(self, trigger, records, base):
+        # Дополнительное явно помеченное окно: максимум 2 × min(text_limit, 2000).
+        # Исходный рабочий буфер и все его факты остаются неизменными.
+        if self.off or getattr(trigger, 'type', None) != 'input.read' or not records:
+            return []
+        query = self.retrieval_query(trigger)
+        if not query.strip():
+            return []
+        available = {r.memory_id: r for r in self.records()}
+        shown = {item['ref'] for item in base}
+        candidates = historical_candidates(query, available, min(len(records), self.working_limit),
+                                           current=trigger.event_id)
+        result = []
+        for mid in candidates:
+            if mid in shown:
+                continue
+            row = available[mid]
+            text = self._window(row, recall_role='historical_episode')
+            if text is not None:
+                item = {'ref': mid, 'origin': row.origin, 'layer': row.layer, 'text': text}
+                if self._safe_item(item):
+                    result.append(item)
+        return result
 
     @property
     def sensory(self):

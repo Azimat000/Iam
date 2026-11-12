@@ -1,18 +1,20 @@
 """Календарное окно не подменяет приёмку; аудит читает согласованную копию."""
 import contextlib
 import hashlib
+import importlib.util
 import io
 import json
 from pathlib import Path
 import shutil
 import sqlite3
-import sys
 
 from iam.state import EventSpec
 from state.helpers import StateCase
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-import pilot_audit
+_spec = importlib.util.spec_from_file_location(
+    'pilot_audit', Path(__file__).resolve().parents[1] / 'tools' / 'pilot_audit.py')
+pilot_audit = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pilot_audit)
 
 
 class PilotAuditTest(StateCase):

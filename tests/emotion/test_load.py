@@ -8,6 +8,12 @@ class LoadTest(unittest.TestCase):
         self.assertEqual(value, 0)
         self.assertEqual(clock['effort'], 0)
 
+    def test_legacy_malformed_attention_starts_at_rest_without_invented_effort(self):
+        for attention in (None, 3, [], 'activity'):
+            value, clock = advance({'attention': attention}, {}, WORK_MS)
+            self.assertEqual(value, 0)
+            self.assertEqual(clock, {'life_ms': WORK_MS, 'effort': 0, 'focus': 'rest'})
+
     def test_work_rest_and_same_time_are_bounded(self):
         affect = {'attention': {'focus': 'activity', 'since_life_ms': 0}}
         _, affect['load_clock'] = advance(affect, {}, 0)

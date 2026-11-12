@@ -12,7 +12,6 @@ class ProjectionTest(LivingCase):
             set_("traits", "traits", [{"name": "care", "value": 0.5}]),
             set_("traits", "values", [{"name": "care", "weight": 0.8}]),
             set_("preferences", "likes", [{"topic_or_activity": "reading", "score": 0.4}]),
-            set_("affect", "load", 0.2),
         )).applied)
         reading = self.read()
         work = self.write("В вымышленном рассказе я управляла кораблём.")
@@ -26,6 +25,8 @@ class ProjectionTest(LivingCase):
         for row in (autobiographical, method):
             self.assertTrue(self.m.write(row).applied)
 
+        # Set the source immediately before projection; earlier activity updates load.
+        self.assertTrue(self.c.apply(self.prop(self.c, set_("affect", "load", 0.2))).applied)
         model = SelfModel(SocialMemory(self.c), self.caps)
         data = model.view()
         self.assertEqual(set(data["parts"]), set(PARTS))

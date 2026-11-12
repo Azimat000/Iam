@@ -7,6 +7,24 @@ from world.helpers import LivingCase
 
 
 class LearningContextTest(LivingCase):
+    def test_return_to_first_skill_prioritizes_its_latest_assessment(self):
+        for n, project in enumerate(('poem', 'second', 'third', 'poem'), 1):
+            self.time.advance(1000)
+            source = self.read()
+            iid = 'goal' + str(n)
+            self.run_reply(self.goal(source, iid=iid, project=project))
+            result = self.write('Свет у окна ' + str(n) + '.\nВесна у порога.', project=project)
+            self.run_reply(self.transition('done', iid=iid, result=result),
+                           replies=(self.assessment(), self.assessment('evaluation')))
+        learning = self.cycle.motivation.learning
+        shown = [json.loads(item['text'])['skill_assessment'] for item in learning.context()]
+        self.assertEqual({item['skill_id'] for item in shown}, {'third', 'poem'})
+        self.assertEqual(sum(item['skill_id'] == 'poem' for item in shown), 2)
+        refs = {row.memory_id for row in learning.assessments().values()
+                if row.content['skill_assessment']['skill_id'] == 'poem'}
+        self.write('Поздняя работа', project='later')
+        self.assertTrue(refs <= {item['ref'] for item in self.p.calls[-1]['context']})
+
     def test_old_assessments_allow_learning_after_restart_and_later_use(self):
         source = self.read()
         for n in (1, 2):

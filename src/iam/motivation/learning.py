@@ -35,7 +35,8 @@ class Learning:
         groups = {}
         for row in sorted(self.assessments().values(), key=lambda row: (row.created_life_ms, row.memory_id)):
             groups.setdefault(row.content['skill_assessment']['skill_id'], []).append(row)
-        selected = [row for group in list(groups.values())[-2:] for row in group[-2:]]
+        recent_groups = sorted(groups.values(), key=lambda group: (group[-1].created_life_ms, group[-1].memory_id))
+        selected = [row for group in recent_groups[-2:] for row in group[-2:]]
         rows = {row.memory_id: row for row in self.memory.records()}
         selected += [rows[value['source']] for value in list(self.procedures().values())[-2:]]
         context = []

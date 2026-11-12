@@ -7,6 +7,8 @@ REST_MS = 10 * 60 * 1000
 
 def advance(affect, intentions, now):
     attention = affect.get('attention', {})
+    if not isinstance(attention, dict):
+        attention = {}
     previous = affect.get('load_clock')
     effort = 0.0
     if isinstance(previous, dict):

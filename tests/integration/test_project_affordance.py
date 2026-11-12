@@ -3,6 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
+from iam.clock import LifeClock
+from state.helpers import FakeTime
 from iam.domain import new_id
 from iam.state import StateController
 from iam.storage import Store
@@ -36,13 +38,15 @@ class ProjectAffordanceTest(unittest.TestCase):
                     'project_id': 'new_notes-2', 'operation': 'write', 'text': 'Подготовить собственную заметку',
                     'criterion': 'В заметке два примера'}}
             requests = []
+            time = FakeTime()
             for candidate, cycle_type, proposal in ((path, ExperimentCycle, goal), (control, LegacyGuidanceCycle, rest())):
                 def reply(request):
                     requests.append(request)
                     return Reply((proposal,))
 
                 with Store.open(candidate) as store:
-                    ctl = StateController(store)
+                    ctl = StateController(store, clock=LifeClock.recover(
+                        store, monotonic=time.mono, calendar=time.calendar))
                     session, cycle, _ = wire(ctl, provider=ScriptedProvider([reply]), cycle_type=cycle_type)
                     session.command('start', 'Выбор')
                     self.assertEqual(tick(cycle).outcome, 'done')
