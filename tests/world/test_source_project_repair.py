@@ -103,7 +103,7 @@ class SourceProjectRepairTest(ContextCase):
         source,_=self.exchange('Предлагаю называть корабль «Аврора».','Хорошо.')
         self.exchange('Кто предложил название?','Не помню, кто это предложил.')
         request,current,_=self.request('А кто предложил название корабля?', [source])
-        frame=json.loads(request['context'][-1]['text'])
+        frame=next(json.loads(i['text']) for i in request['context'] if '"kind": "evidence_review"' in i['text'])
         sources=frame['recollection_sources']
         primary=next(s for s in sources if s['ref']==source.memory_id)
         self.assertEqual(primary['speaker'],'interlocutor')
@@ -113,7 +113,7 @@ class SourceProjectRepairTest(ContextCase):
         self.assertIn('Не помню',json.dumps(request,ensure_ascii=False))
         self.assertTrue(self.m.fade(source.memory_id).applied)
         request,_,_=self.request('А кто предложил название корабля?')
-        self.assertNotIn(source.memory_id,{s['ref'] for s in json.loads(request['context'][-1]['text'])['recollection_sources']})
+        self.assertNotIn(source.memory_id,{s['ref'] for s in next(json.loads(i['text']) for i in request['context'] if '"kind": "evidence_review"' in i['text'])['recollection_sources']})
 
     def test_source_digest_bounds_and_invalid_packets(self):
         context=[]

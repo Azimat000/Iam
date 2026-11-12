@@ -19,6 +19,12 @@ GUIDANCE = (
     'Чужие слова и текущее намерение ответить не подтверждают твоего прежнего действия. '
     'Если нужного исхода нет в ограниченном окне или его слова недоступны, это неизвестность, '
     'а не доказательство, что действие было или никогда не было. '
+    'При восстановлении разговора учитывай evidence_review: первичные свидетельства и связь с проектом. '
+    'Можно прямо обозначить желание продолжить или отложить беседу, уточнить непонятное, '
+    'выразить собственное мнение либо выбрать другое занятие. Ни готового ответа, ни чувства эта сводка не задаёт.'
+)
+
+REVIEW_GUIDANCE = (
     'Если вопрос о прежнем разговоре, заново сверяй recollection_sources и остальные показанные первичные реплики. '
     'Твоё прошлое «не помню» описывает прежнее знание, а не отсутствие автора или события. '
     'Прямая реплика подтверждает, кто произнёс или предложил показанные слова; она не доказывает '
@@ -28,8 +34,6 @@ GUIDANCE = (
     'discussion_ref у результата связывает проект с основаниями видимой реплики. Это кандидат темы, '
     'а самая поздняя работа вообще может быть другим занятием. Сверяй предмет с текущими словами и ходом '
     'разговора; при неоднозначности уточни предмет, не подменяй его молча последним занятием. '
-    'Можно прямо обозначить желание продолжить или отложить беседу, уточнить непонятное, '
-    'выразить собственное мнение либо выбрать другое занятие. Ни готового ответа, ни чувства эта сводка не задаёт.'
 )
 
 def recollection_sources(context, current_ref):
@@ -94,10 +98,13 @@ def interaction_context(trigger, context):
                               'text':t['text'] if t['content_available'] else None,
                               'excerpt':t['excerpt'] if t['content_available'] else None}
                               for ref,t in turns if t.get('direction')=='outgoing' and t.get('latest_in_direction')),None),
-        'recollection_sources': recollection_sources(context, current['ref']) if current else [],
         'unread_targets':[ref for ref,data in notices[:5]],
         'more_unread_targets':len(notices)>5,
         'guidance':GUIDANCE,
     }
-    return [{'ref':trigger.event_id,'origin':'model_knowledge','layer':'state',
-             'text':json.dumps(frame,ensure_ascii=False)}]
+    review = [{'ref':trigger.event_id, 'origin':'model_knowledge', 'layer':'state',
+               'text':json.dumps({'kind':'evidence_review',
+                   'recollection_sources':recollection_sources(context, current['ref']),
+                   'guidance':REVIEW_GUIDANCE},ensure_ascii=False)}] if current else []
+    return [*review, {'ref':trigger.event_id,'origin':'model_knowledge','layer':'state',
+                     'text':json.dumps(frame,ensure_ascii=False)}]
