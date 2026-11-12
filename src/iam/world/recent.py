@@ -54,7 +54,7 @@ def result_view(memory, row, context, state, *, full_catalog=False):
     return None
 
 
-def recent_work(memory, state, context):
+def recent_work(memory, state, context, *, project_id=None, discussion_ref=None):
     if memory.off:
         return [], None
     # Порядок берём из подтверждающих событий, никогда из текста работ/журнала.
@@ -64,7 +64,8 @@ def recent_work(memory, state, context):
         receipt = action.get('receipt', {})
         project = receipt.get('target')
         latest = state.get('projects', {}).get(project, {}).get('latest_work')
-        if (action.get('capability_id') != WRITE or action.get('status') != 'confirmed'
+        if (project_id is not None and project != project_id
+                or action.get('capability_id') != WRITE or action.get('status') != 'confirmed'
                 or receipt.get('scope') != 'artifact' or latest != aid):
             continue
         event = memory.ctl.find_event(event_id=receipt['event_id'])
@@ -84,10 +85,15 @@ def recent_work(memory, state, context):
         # Уже видимая запись сохраняет прежний полный канал каталога.
         # Тело берём из памяти; дополнительное окно для неё не создаём.
         shown.update(current_work=True, project_id=project, seq=seq, version=row.version)
+        if discussion_ref:
+            shown['discussion_ref'] = discussion_ref
         return ([], shown) if memory._safe_item(shown) else ([], None)
     metadata = {'recall_role': 'recent_activity', 'action_id': row.content['action_id'],
                 'project_id': project, 'seq': seq, 'current_work': True,
                 'meaning': 'последняя доступная актуальная версия собственной работы; не оценка её качества'}
+    if discussion_ref:
+        metadata['discussion_ref'] = discussion_ref
+        metadata['meaning'] = 'актуальная версия проекта из оснований видимой реплики; кандидат темы, не доказанное намерение'
     # Показанное окно и его дублируемый фрагмент в каталоге вместе укладываются в2000.
     low, high, selected = 0, min(2000, memory.text_limit), None
     while low <= high:
@@ -101,6 +107,8 @@ def recent_work(memory, state, context):
         if result is None:
             low = size + 1
             continue
+        if discussion_ref:
+            result['discussion_ref'] = discussion_ref
         if len(packed) + len(json.dumps(result, ensure_ascii=False)) <= 2000:
             selected = item, result
             low = size + 1
