@@ -1,7 +1,9 @@
 """Редактируемый текст не выдаётся за уже выбранный замысел; фильтры прежние."""
+import copy
 import json
 from iam.stubs import rest, act
 from iam.world import WRITE
+from iam.state import verify
 from world.helpers import LivingCase
 
 
@@ -51,3 +53,37 @@ class ProjectViewTest(LivingCase):
         self.assertTrue(self.m.fade(source.memory_id).applied)
         self.assertEqual(self.catalog()['projects'], {})
         self.assertNotIn('HIDDEN_WORK_TEXT', json.dumps(self.p.calls[-1]['context']))
+
+    def test_goal_view_preserves_choices_criteria_and_completion_without_audit_payload(self):
+        source = self.read()
+        first = self.goal(source)
+        first['body']['not_before_life_ms'] = self.c.life_time_ms
+        self.run_reply(first)
+        self.run_reply(self.goal(source, iid='other_goal', criterion='Другая исходная задача'))
+        before = copy.deepcopy(self.c.state['intentions'])
+        shown = self.catalog()['intentions']
+        self.assertEqual(set(shown), set(before))
+        for key, goal in shown.items():
+            for field in ('text', 'criterion', 'project_id', 'operation', 'status', 'sources', 'created_life_ms'):
+                self.assertEqual(goal[field], before[key][field])
+            for field in ('history', 'source_versions', 'initial_fingerprint', 'knows', 'wants', 'created_seq'):
+                self.assertNotIn(field, goal)
+        self.assertEqual(shown['my_goal']['not_before_life_ms'], before['my_goal']['not_before_life_ms'])
+        self.assertNotIn('not_before_life_ms', shown['other_goal'])
+        self.assertEqual(self.c.state['intentions'], before)
+        result = self.write('Свет у окна.\nСвет на столе.')
+        report = self.run_reply(self.transition('done', result=result), replies=(
+            self.assessment(), self.assessment('evaluation')))
+        self.assertEqual(report.outcome, 'done')
+        self.assertEqual(self.c.state['intentions']['my_goal']['status'], 'done')
+        self.assertEqual(self.c.state['intentions']['other_goal'], before['other_goal'])
+        self.assertEqual(verify(self.c.store), [])
+
+    def test_goal_view_never_restores_forgotten_or_disabled_sources(self):
+        source = self.read()
+        self.run_reply(self.goal(source))
+        self.m.off = True
+        self.assertEqual(self.catalog()['intentions'], {})
+        self.m.off = False
+        self.assertTrue(self.m.fade(source.memory_id).applied)
+        self.assertEqual(self.catalog()['intentions'], {})

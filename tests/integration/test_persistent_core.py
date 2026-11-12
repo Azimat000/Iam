@@ -284,7 +284,11 @@ class PersistentCoreTest(unittest.TestCase):
                 catalog = json.loads(request["context"][-1]["text"])
                 source = catalog["motivation"]["interests"]["light"]["source"]
                 self.assertEqual(source, motive)
-                self.assertEqual(catalog["intentions"]["light"], self.intention)
+                self.assertEqual(ctl.state["intentions"]["light"], self.intention)
+                self.assertEqual(catalog["intentions"]["light"], {
+                    key: self.intention[key] for key in
+                    ("text", "criterion", "project_id", "operation", "status", "sources", "created_life_ms")
+                })
                 self.assertIn(emotion, {entry["ref"] for entry in request["context"]})
                 return Reply((act(WRITE, {"project_id": "light", "title": "Новая зарисовка",
                                           "text": "Свет у окна стал мягче."}, cites=(source, emotion)),))

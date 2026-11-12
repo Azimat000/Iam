@@ -38,7 +38,10 @@ def appraise(spec, state, previous, past, now):
     sensitivity = trait_value(traits, 'sensitivity', 0.5)
     disposition = trait_value(traits, 'irritability', 0.0)
     mood = previous['mood'] if previous else 0.0
-    goals = min(1.0, len(state['intentions']) / 4) * spec['relevance']
+    open_goals = sum(isinstance(goal, dict) and goal.get('status') in
+                     ('active', 'waiting_opportunity', 'deferred')
+                     for goal in state['intentions'].values())
+    goals = min(1.0, open_goals / 4) * spec['relevance']
     load = bounded(state['affect'].get('load'))
     reaction = bounded(spec['valence'] * (0.6 + 0.4 * sensitivity + 0.1 * goals)
                        + 0.1 * mood + 0.1 * past - 0.1 * load - 0.1 * disposition, -1, 1)

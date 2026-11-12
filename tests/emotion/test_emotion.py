@@ -40,7 +40,7 @@ class EmotionTest(ExperienceCase):
         variants = [(dict(spec, valence=0.8), state, None, 0),
                     (spec, {**state, 'traits': {'sensitivity': {'value': 1}}}, None, 0),
                     (spec, {**state, 'traits': {'irritability': {'value': 1}}}, None, 0),
-                    (spec, {**state, 'intentions': {'x': {}}}, None, 0),
+                    (spec, {**state, 'intentions': {'x': {'status': 'active'}}}, None, 0),
                     (spec, state, None, 1), (spec, state, {'mood': 0.9}, 0),
                     (spec, {**state, 'affect': {'load': 0.8}}, None, 0)]
         for params in variants:
@@ -53,6 +53,21 @@ class EmotionTest(ExperienceCase):
         self.assertEqual(bounded(-8, -1), -1)
         self.assertEqual(bounded(8), 1)
         self.assertEqual(current(baseline, -1)['reaction'], baseline['reaction'])
+
+    def test_closed_and_malformed_intentions_do_not_create_emotional_pressure(self):
+        spec = dict(valence=-0.8, arousal=0.5, relevance=1, regulation=0.5)
+        state = {'traits': {}, 'affect': {}, 'intentions': {}}
+        baseline = appraise(spec, state, None, 0, 0)
+        closed = {'done': {'status': 'done'}, 'abandoned': {'status': 'abandoned'},
+                  'missing': {}, 'bad': None, 'unknown': {'status': 'invented'}}
+        self.assertEqual(appraise(spec, {**state, 'intentions': closed}, None, 0, 0), baseline)
+        for status in ('active', 'waiting_opportunity', 'deferred'):
+            goals = {**closed, 'open': {'status': status}}
+            result = appraise(spec, {**state, 'intentions': goals}, None, 0, 0)
+            self.assertEqual(result['trace']['goals'], 0.25)
+            self.assertLess(result['reaction'], baseline['reaction'])
+        many = {str(i): {'status': 'active'} for i in range(12)}
+        self.assertEqual(appraise(spec, {**state, 'intentions': many}, None, 0, 0)['trace']['goals'], 1)
 
     def test_signals_memory_ranking_and_actual_later_request(self):
         first, second = self.source('одинаковый опыт', 'one'), self.source('одинаковый опыт', 'two')

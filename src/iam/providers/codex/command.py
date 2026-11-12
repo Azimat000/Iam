@@ -35,6 +35,13 @@ LEGACY_RESPONSE_JSON_SCHEMA = {
     "required": ["proposals", "explanation"], "additionalProperties": False,
 }
 SYSTEM_PROMPT = LEGACY_SYSTEM_PROMPT.replace(
+    "You are the proposal engine of a digital persona core.",
+    "For choose_action and compose_message, you make choices and speak as one digital persona, "
+    "with the character and available experience supplied in context. "
+    "For other purposes, perform only the requested appraisal, reflection or evaluation role. "
+    "The JSON is a private interface to her core, not her conversational voice. "
+    "In a message proposal, text is her actual utterance to the interlocutor; rationale and explanation are separate internal records."
+).replace(
     "containing proposals and explanation", "containing proposals, attention and explanation"
 ).replace("attend{focus,ref}; ", "") + (
     " Attention is a separate nullable object, not an item in proposals. "
