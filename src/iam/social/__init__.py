@@ -11,8 +11,13 @@ from .context import authorship, adjacent, neighbor_context
 
 class SocialMemory(WorldMemory):
     def _window(self, row, start=0, *, recall_role=None, metadata=None, limit=None):
+        # Для работы/знания социальная хронология не нужна. Условия совпадают
+        # с _turns; авторство по-прежнему подтверждается доступным прочтением.
+        is_utterance = (row.kind == 'episodic' and row.version == 1 and len(row.sources) == 1
+                        and (row.origin == 'stated_by_other'
+                             or self.observation_scope(row) == 'outgoing_words_only'))
         turn = next((turn for turn in self._turns() if turn[1].memory_id == row.memory_id
-                     and turn[1].version == row.version), None)
+                     and turn[1].version == row.version), None) if is_utterance else None
         extra = {**(authorship(turn) if turn is not None else {}), **(metadata or {})}
         return super()._window(row, start, recall_role=recall_role, metadata=extra, limit=limit)
 

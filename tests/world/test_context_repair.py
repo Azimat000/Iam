@@ -6,11 +6,25 @@ from social.test_context_repair import ContextCase
 
 class WorkContextRepairTest(ContextCase):
     def test_latest_version_is_shown_even_when_retrieval_contains_old_work(self):
+        oldest = self.write('НАБРОСОК: безымянная башня.', project='scene')
+        self.time.advance(1000)
         old = self.write('ЧЕРНОВИК: башня и дождь.', project='scene')
         self.time.advance(1000)
         latest = self.write('НОВАЯ СЦЕНА: смотритель закрыл окно, оставив лампу у двери.', project='scene')
         hits = self.distract()
-        request, _, _ = self.request('Как получилось? Покажи последнюю работу.', [old, *hits[:4]])
+        from iam.social import SocialMemory
+        from iam.world import PersistentWorld
+        from iam.world.cycle import LivingCycle
+        from iam.stubs import StubWorld, StubCreatorBridge
+        self.c.pause_session('operator')
+        self.c = self.reopen(self.c)
+        self.m = SocialMemory(self.c)
+        self.world = PersistentWorld(self.c, external=StubWorld())
+        self.cycle = LivingCycle(self.c, self.p, self.m, self.world, self.caps, StubCreatorBridge())
+        self.c.resume_session()
+        initial = [oldest, old, *hits[:3]]
+        request, _, _ = self.request('Как получилось? Покажи последнюю работу.', initial)
+        self.assertTrue({row.memory_id for row in initial} <= {item['ref'] for item in request['context']})
         latest_packet = next(packet for packet in self.packets(request, latest.memory_id)
                              if packet.get('recall_role') == 'recent_activity')
         self.assertTrue(latest_packet['current_work'])
@@ -99,3 +113,39 @@ class WorkContextRepairTest(ContextCase):
         catalog = next(json.loads(item['text']) for item in request['context'] if item['text'].startswith('{"library"'))
         self.assertNotIn(unknown.memory_id, {item['memory_id'] for item in catalog['world_results']})
         self.assertEqual(catalog['world_results'][0]['memory_id'], previous.memory_id)
+
+    def test_long_visible_results_are_presented_fully_from_memory_not_world(self):
+        from unittest.mock import PropertyMock
+        from iam.world import PersistentWorld, READ
+        from iam.stubs import act
+        self.c.pause_session('operator')
+        material_text = 'Подробности наблюдения. ' * 300 + 'КОНЕЦ_МАТЕРИАЛА'
+        material = self.world.add_material('Наблюдение', material_text, 'Проверка полного результата')
+        self.c.resume_session()
+        report = self.run_reply(act(READ, {'material_id': material}))
+        reading = self.c.store.get_memory(report.actions[0].memory_id)
+        work_text = 'Записи у реки. ' * 450 + 'КОНЕЦ_РАБОТЫ'
+        work = self.write(work_text, project='river')
+        state = self.world.state
+        for row in (reading, work):
+            state['actions'][row.content['action_id']]['outcome'] = 'НЕ_БРАТЬ_ИЗ_WORLD'
+        state['works'][work.content['action_id']]['text'] = 'НЕ_БРАТЬ_ИЗ_WORKS'
+        with patch.object(PersistentWorld, 'state', new_callable=PropertyMock, return_value=state):
+            request, _, _ = self.request('Покажи доступные результаты.', [reading, work])
+        self.assertNotIn('НЕ_БРАТЬ_ИЗ_', json.dumps(request, ensure_ascii=False))
+        catalog = next(json.loads(item['text']) for item in request['context'] if item['text'].startswith('{"library"'))
+        self.assertLessEqual(len(catalog['world_results']), 3)
+        for row, expected in ((reading, material_text), (work, work_text)):
+            result = next(item for item in catalog['world_results'] if item['memory_id'] == row.memory_id)
+            self.assertEqual(result['text'], expected)
+            self.assertEqual(result['result_presentation'], 'catalog_window')
+            self.assertTrue(result['result_complete'])
+            window = result['result_window']
+            self.assertEqual(result['text'], row.text[window['start']:window['end']])
+            self.assertFalse(window['more'])
+            personal = next(packet for packet in self.packets(request, row.memory_id) if 'text_window' in packet)
+            self.assertTrue(personal['text_window']['more'])
+        with patch.object(self.m, '_blocked', return_value=['КОНЕЦ_РАБОТЫ', 'КОНЕЦ_МАТЕРИАЛА']):
+            request, _, _ = self.request('Покажи доступные результаты.', [reading, work])
+        self.assertNotIn('КОНЕЦ_РАБОТЫ', json.dumps(request, ensure_ascii=False))
+        self.assertNotIn('КОНЕЦ_МАТЕРИАЛА', json.dumps(request, ensure_ascii=False))

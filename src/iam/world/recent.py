@@ -1,10 +1,10 @@
-"""Последняя доступная работа и результаты только из уже показанных окон памяти."""
+"""Последняя работа и ограниченные результаты из доступной памяти."""
 import json
 
 from . import WRITE
 
 
-def result_view(memory, row, context, state):
+def result_view(memory, row, context, state, *, full_catalog=False):
     if row.origin != 'observation' or row.version != 1 or row.content.get('outcome') != 'confirmed':
         return None
     action = state.get('actions', {}).get(row.content.get('action_id'), {})
@@ -33,7 +33,13 @@ def result_view(memory, row, context, state):
         if (type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(row.text)
                 or packet.get('text') != row.text[start:end] or end <= len(prefix)):
             continue
-        start = max(start, len(prefix))
+        # Прежний каталог — самостоятельное предъявление полного результата
+        # уже видимой записи (до8000). Новые добавочные окна не расширяем.
+        catalog_window = full_catalog and packet.get('recall_role') in (None, 'historical_episode')
+        if catalog_window:
+            start, end = len(prefix), min(len(row.text), len(prefix) + 8000)
+        else:
+            start = max(start, len(prefix))
         public = {key: value for key, value in receipt.items() if key != 'previous_fingerprint'}
         return {'memory_id': row.memory_id, **public,
                 'action_id': row.content['action_id'], 'project_id': receipt['target'],
@@ -42,6 +48,7 @@ def result_view(memory, row, context, state):
                     and state.get('projects', {}).get(receipt['target'], {}).get('latest_work') == row.content['action_id'],
                 'observation_scope': memory.observation_scope(row),
                 'text': row.text[start:end],
+                'result_presentation': 'catalog_window' if catalog_window else 'memory_fragment',
                 'result_window': {'start': start, 'end': end, 'total': len(row.text), 'more': end < len(row.text)},
                 'result_complete': start == len(prefix) and end == len(row.text)}
     return None
@@ -72,10 +79,10 @@ def recent_work(memory, state, context):
     # Если последняя версия недоступна, прошлую не выдаём за последнюю.
     if row is None:
         return [], None
-    shown = result_view(memory, row, context, state)
+    shown = result_view(memory, row, context, state, full_catalog=True)
     if shown is not None:
-        # Уже показанный фрагмент не режем повторно ради дублирующего нового окна.
-        # В каталог он поступал и раньше; его тело теперь ограничено этим окном.
+        # Уже видимая запись сохраняет прежний полный канал каталога.
+        # Тело берём из памяти; дополнительное окно для неё не создаём.
         shown.update(current_work=True, project_id=project, seq=seq, version=row.version)
         return ([], shown) if memory._safe_item(shown) else ([], None)
     metadata = {'recall_role': 'recent_activity', 'action_id': row.content['action_id'],

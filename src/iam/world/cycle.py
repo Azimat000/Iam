@@ -236,7 +236,7 @@ class LivingCycle(Cycle):
                     or current[row.memory_id].version != row.version or row.content.get('outcome') != 'confirmed'
                     or recent_result is not None and row.memory_id == recent_result['memory_id']):
                 continue
-            result = result_view(self.memory, row, context, state)
+            result = result_view(self.memory, row, context, state, full_catalog=True)
             if result is not None and self.memory._safe_item(result):
                 results.append(result)
         goals = {} if self.motivation.off else self.intentions.visible()
