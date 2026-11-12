@@ -68,16 +68,20 @@ def connect(path: str | Path, *, readonly: bool = False) -> Connection:
                               factory=Connection)
     else:
         con = sqlite3.connect(str(path), isolation_level=None, factory=Connection)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA busy_timeout = 5000")
-    con.execute("PRAGMA foreign_keys = ON")
-    con.execute("PRAGMA trusted_schema = OFF")
-    if not readonly:
-        con.execute("PRAGMA journal_mode = WAL")
-        con.execute("PRAGMA synchronous = FULL")
-    con.guard = Guard()
-    con.set_authorizer(con.guard)
-    return con
+    try:
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA busy_timeout = 5000")
+        con.execute("PRAGMA foreign_keys = ON")
+        con.execute("PRAGMA trusted_schema = OFF")
+        if not readonly:
+            con.execute("PRAGMA journal_mode = WAL")
+            con.execute("PRAGMA synchronous = FULL")
+        con.guard = Guard()
+        con.set_authorizer(con.guard)
+        return con
+    except BaseException:
+        con.close()
+        raise
 
 
 _savepoints = itertools.count(1)
