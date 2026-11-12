@@ -6,7 +6,7 @@ from iam.cycle.cycle import DEFAULT_ALLOWED, _ACTION_EVENTS, _RESULT_STATUS, Cyc
 from iam.cycle.handlers import make_kind_handlers
 from iam.domain import Op, new_id
 from iam.interfaces import ActionRequest
-from iam.intentions import Intentions
+from iam.intentions import Intentions, OPERATIONS
 from iam.intentions.completion import CompletionProvider
 from iam.memory import PersistentMemory
 from iam.metacognition import Reflection
@@ -225,7 +225,8 @@ class LivingCycle(Cycle):
         current = {r.memory_id: r for r in self.memory.records()} if not self.memory.off else {}
         visible = {item['ref'] for item in context}
         results = []
-        for row in records:
+        result_records = {row.memory_id: row for row in [*records, *current.values()]}
+        for row in result_records.values():
             if (row.memory_id not in visible or row.memory_id not in current or row.version != 1
                     or current[row.memory_id].version != row.version or row.content.get('outcome') != 'confirmed'):
                 continue
@@ -238,11 +239,28 @@ class LivingCycle(Cycle):
                                 'observation_scope': self.memory.observation_scope(row),
                                 'text': action['outcome']})
         goals = {} if self.motivation.off else self.intentions.visible()
+        intention_results = {}
+        for key, goal in goals.items():
+            if goal['status'] != 'active':
+                continue
+            matches = []
+            for result in results[:3]:
+                event = self.ctl.find_event(event_id=result['event_id'])
+                action = state['actions'][current[result['memory_id']].content['action_id']]
+                if (result['target'] == goal['project_id']
+                        and action['capability_id'] == OPERATIONS[goal['operation']]
+                        and event.seq > goal['created_seq']
+                        and event.life_time_ms >= goal.get('not_before_life_ms', 0)):
+                    matches.append({'memory_id': result['memory_id'], 'event_id': result['event_id'],
+                                    'criterion_verified': False})
+            if matches:
+                intention_results[key] = matches
         catalog = {'library': {key: {'title': value['title']} for key, value in list(state.get('library', {}).items())[:30]},
                    'space': state.get('space', {}),
                    'projects': {key: self._project_view(value) for key, value in state.get('projects', {}).items()
                                 if any(item['event_id'] == state.get('works', {}).get(value['latest_work'], {}).get('event_id')
                                        for item in results) and self.memory._safe_item(value)},
+                   'intention_results': intention_results,
                    'intentions': {key: self._intention_view(value) for key, value in goals.items()},
                    'world_results': results[:3], 'motivation': self.motivation.signals(records)}
         if hasattr(self.capabilities, 'entries'):
@@ -269,6 +287,7 @@ class LivingCycle(Cycle):
                 )
         context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
                            'text': self.reflection.guidance(context)})
+        context.extend(self.motivation.learning.context())
         context.extend(character_context(self.ctl, self.memory))
         context.extend(self._proposal_feedback())
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},

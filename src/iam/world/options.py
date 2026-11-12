@@ -31,6 +31,9 @@ class OptionsCycle(ProspectiveCycle):
     option_buffer_chars = 5000
 
     def _prepare_appraisal(self, request, bases):
+        # Чужое утверждение — опыт общения, но не собственный результат для новой цели.
+        if not any(row.origin == 'observation' for row in bases):
+            return request
         started = time.monotonic()
         query = copy.deepcopy(request)
         rid = new_id('req')

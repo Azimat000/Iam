@@ -62,6 +62,43 @@ class SocialMemory(WorldMemory):
                 context.append({"ref": recent[-1], "origin": "observation", "layer": "state",
                                 "text": json.dumps({"person": person, "history": recent, **values},
                                                    ensure_ascii=False)})
+                if getattr(trigger, 'type', None) == 'input.read':
+                    current = next((row for row in self.records() if row.memory_id in recent
+                                    and trigger.event_id in row.sources), None)
+                    if current is not None:
+                        rule = {
+                            'kind': 'social_update_option', 'person': person, 'source': current.memory_id,
+                            'rule': 'Если этот разговор изменил твоё отношение, можно вместе с обычным ответом '
+                                    'предложить memory_write. Можно ничего не менять. Чужие слова не доказывают '
+                                    'свою истинность. Близость, доверие и readiness независимы; readiness — '
+                                    'готовность менять мнение или поведение по теме. Не разрешение и не согласие.',
+                            'format': {'kind': 'memory_write', 'cites': [current.memory_id],
+                                       'body': {'draft': {'kind': 'semantic', 'origin': 'own_hypothesis',
+                                       'content': {'text': 'своя интерпретация до 512 знаков',
+                                       'social': {'person': person}}}}},
+                            'optional_fields': 'social: closeness, trust_as_source, readiness — свои оценки '
+                                               'от 0 до 1; хотя бы одно поле. Для readiness нужен topic '
+                                               '(1–64 латинские буквы, цифры, _ или -); без readiness topic не нужен.'}
+                        detail = json.dumps(rule, ensure_ascii=False)
+                        if len(detail) <= self.text_limit:
+                            context.append({'ref': trigger.event_id, 'origin': 'model_knowledge',
+                                            'layer': 'state', 'text': detail})
+        if not self.off:
+            interpreted = self.experience.state(self.ctl.state)
+            rows = {row.memory_id: row for row in self.records()}
+            pointers = self.ctl.state['preferences'].get('s21_readiness_sources', {})
+            for topic, value in list(interpreted['preferences'].get('change_readiness', {}).items())[-4:]:
+                row = self.experience._record(pointers.get(topic), rows)
+                if row is None:
+                    continue
+                packet = {'kind': 'social_readiness', 'topic': topic, 'readiness': value,
+                          'person': row.content.get('interpretation', {}).get('person'),
+                          'source': row.memory_id, 'sources': list(row.sources),
+                          'meaning': 'собственная готовность менять мнение или поведение по теме; не право и не согласие'}
+                detail = json.dumps(packet, ensure_ascii=False)
+                if len(detail) <= self.text_limit and self._safe_item(packet):
+                    context.append({'ref': row.memory_id, 'origin': row.origin,
+                                    'layer': 'interpretation', 'text': detail})
         return [*context, *self.dialogue(trigger)]
 
     def _turns(self):

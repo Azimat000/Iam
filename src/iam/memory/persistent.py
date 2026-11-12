@@ -9,7 +9,7 @@ from iam.state import EventSpec, KindDecision, Proposal, Violation
 from iam.storage import NotFound
 from .lifecycle import MemoryLifecycle
 from .window import text_window
-from .search import relevance, diverse
+from .search import relevance, diverse, historical
 
 LAYERS = ("personal", "interpretation")
 OUTCOMES = {"action.confirmed": "confirmed", "message.out_sent": "confirmed",
@@ -108,6 +108,9 @@ class PersistentMemory(MemoryLifecycle):
         ranked = sorted(candidates, key=score)
         count = min(limit, self.working_limit)
         selected = diverse(ranked, matches, available, count) if natural and matches else ranked[:count]
+        if natural and matches:
+            # Только прямые релевантные кандидаты могут занимать исторические места.
+            selected = historical([mid for mid in ranked if mid in direct], selected, available, count)
         return [available[mid] for mid in selected]
 
     def context(self, trigger, first, records):

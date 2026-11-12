@@ -22,6 +22,7 @@ from iam.interfaces import (ActionOutcome, ActionRequest, Capabilities, Cognitiv
                             CreatorRequest, Delivery, Memory, StateController, World)
 from iam.state import ApplyResult, EventSpec, Proposal
 from iam.state.rules import reflection_request_id
+from iam.emotion.load import advance as advance_load
 
 from .attention import AttentionPolicy, Focus
 from .handlers import EXECUTABLE, action_id_for, make_kind_handlers
@@ -122,7 +123,15 @@ class Cycle:
                 value = decision.ops[0].value
                 if (old.get('focus'), old.get('ref')) != (value['focus'], value['ref']):
                     history = [*history, ctx.life_time_ms]
-                decision = KindDecision((Op('affect', 'attention', 'set', dict(value, switch_history=history), True),))
+                state = ctx.state
+                goals = {} if self.memory.off or getattr(self.memory, 'motivation_off', False) else {
+                    key: goal for key, goal in state['intentions'].items()
+                    if self.memory._intention_available(goal) and self.memory._safe_item(goal)}
+                load, tracker = advance_load(state['affect'], goals, ctx.life_time_ms)
+                tracker['focus'] = value['focus']
+                decision = KindDecision((Op('affect', 'attention', 'set', dict(value, switch_history=history), True),
+                                         Op('affect', 'load', 'set', load, True),
+                                         Op('affect', 'load_clock', 'set', tracker, True)))
             return decision
         return handler
 
@@ -137,6 +146,8 @@ class Cycle:
             return self._end(rep, "skipped", "already_done")
         self._stage(rep, "event", "ok", (trigger.event_id,), {"type": trigger.type})
         state = self.memory.decision_state() if hasattr(self.memory, 'decision_state') else self.ctl.state
+        if self.perception is not None:
+            state["affect"]["load"], _ = advance_load(state["affect"], state["intentions"], self.ctl.life_time_ms)
         focus = self.attention.choose(trigger, state)
         if self.perception is not None:
             focus = replace(focus, query=self.memory.retrieval_query(trigger, focus.query))
@@ -157,6 +168,12 @@ class Cycle:
     def _move(self, ops: Iterable[Op], reason: str, spec: EventSpec, caused_by: Iterable[str], *, actor: str = "core",
               actor_ref: str = "cycle", transition_id: str | None = None) -> ApplyResult:
         """Один переход состояния на текущей версии; применяет и проверяет привратник."""
+        if self.perception is not None and spec.type in ('action.attempted', 'message.out_requested'):
+            state = self.memory.decision_state()
+            load, tracker = advance_load(state['affect'], state['intentions'], self.ctl.life_time_ms)
+            tracker['focus'] = 'activity'
+            ops = [*ops, Op('affect', 'load', 'set', load, True),
+                   Op('affect', 'load_clock', 'set', tracker, True)]
         t = Transition(transition_id or new_id("trn"), self.ctl.persona_id, self.ctl.epoch, self.ctl.state_version,
                        tuple(ops), reason, tuple(caused_by))
         return self.ctl.apply(Proposal(t, actor, actor_ref, spec))
@@ -180,7 +197,13 @@ class Cycle:
             value['switch_history'] = switch_history(self.ctl.state)
         spec = EventSpec("attention.chosen", f"att:{rep.cycle_id}", {
             "cycle_id": rep.cycle_id, "trigger": trigger.event_id, "focus": focus.focus, "ref": focus.ref})
-        res = self._move([Op("affect", "attention", "set", value, True)], f"внимание: цикл {rep.cycle_id}", spec,
+        ops = [Op("affect", "attention", "set", value, True)]
+        if self.perception is not None:
+            state = self.memory.decision_state()
+            load, tracker = advance_load(state["affect"], state["intentions"], value["since_life_ms"])
+            ops += [Op("affect", "load", "set", load, True),
+                    Op("affect", "load_clock", "set", tracker, True)]
+        res = self._move(ops, f"внимание: цикл {rep.cycle_id}", spec,
                          (trigger.event_id,))
         ids = tuple(e.event_id for e in res.events[:1])
         self._stage(rep, "attention", "ok" if res.applied else "failed", ids, {"focus": focus.focus, "status": res.status})

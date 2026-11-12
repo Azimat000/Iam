@@ -12,7 +12,10 @@ ASSESSMENT = (
     'Если новый опыт вызвал у тебя эмоциональную реакцию, можешь описать её отдельной записью appraisal. '
     'Что именно ты почувствовала и какой доступный опыт это вызвал? Отсутствие реакции допустимо. '
     'Желание продолжать дело и эмоциональная реакция различаются. '
-    'Можно предложить до двух memory_write по прежним форматам эмоции, убеждения или мотивации. '
+    'Можно предложить до двух memory_write по прежним форматам эмоции, убеждения, отношений (social) или мотивации. '
+    'Прочитанные слова собеседника дают опыт общения, но не доказывают истинность сказанного. '
+    'Близость, доверие к источнику и готовность менять мнение или поведение по теме можно пересмотреть независимо, '
+    'в любую сторону или оставить без изменений. '
     'Оценки — твои гипотезы с видимыми источниками, не объективно установленные свойства. '
 )
 PROSPECTION = (
@@ -20,7 +23,9 @@ PROSPECTION = (
     'после нынешнего действия или сеанса. Если да, выбери его содержание и исходный критерий сама '
     'и предложи полный intention/create по прежнему контракту, опираясь на доступный собственный опыт. '
     'Намерение останется доступным следующему выбору и после перезапуска. Оно не считается выполненным. '
-    'Проверь открытые намерения в intentions. Если новый опыт помогает уже выбранному результату, '
+    'Проверь открытые намерения в intentions и пары intention_results. В следующем обычном выборе '
+    'можно предложить проверку done по доступному результату, отложить или оставить прежнюю цель; '
+    'создавать новое намерение вместо пересмотра прежнего необязательно. Если новый опыт помогает уже выбранному результату, '
     'можно сохранить только оценку и продолжить прежний проект в обычном выборе. '
     'Новый ключ сам по себе не делает результат новым. Продолжать прежнее дело необязательно. '
 )
@@ -88,9 +93,12 @@ class ProspectiveCycle(LivingCycle):
         context = self._context(trigger, focus, records)
         visible = {item['ref'] for item in context}
         available = {row.memory_id: row for row in self.memory.records()}
-        bases = [row for row in records if row.memory_id in visible and row.memory_id in available
-                 and row.version == available[row.memory_id].version == 1
-                 and row.origin == 'observation' and row.content.get('experience') == 'live'
+        bases = [row for row in available.values() if row.memory_id in visible and row.version == 1
+                 and (row.origin == 'observation' or row.origin == 'stated_by_other'
+                      and row.kind == 'episodic' and any(
+                          self.ctl.find_event(event_id=ref) is not None
+                          and self.ctl.find_event(event_id=ref).type == 'input.read' for ref in row.sources))
+                 and row.content.get('experience') == 'live'
                  and self.ctl.find_event(key=self._source_key(row)) is None]
         if not bases:
             self._stage(rep, 'experience_appraisal', 'skipped', detail={'reason': 'no_new_visible_experience'})

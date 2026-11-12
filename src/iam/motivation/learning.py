@@ -1,4 +1,6 @@
 """Измерение конкретного умения по исходным критериям, а не числу файлов."""
+import json
+
 from iam.domain import Op
 from iam.state import KindDecision, Violation
 from iam.world import identifier, text
@@ -25,6 +27,26 @@ class Learning:
                         'fingerprint':assessment['result_fingerprint'],
                         'independent_observation':False}})
         return self.memory.write(record)
+
+    def context(self):
+        """Цитируемые оценки и приёмы, чьи структурные поля не входят в обычное окно памяти."""
+        if self.memory.off or self.owner.off:
+            return []
+        groups = {}
+        for row in sorted(self.assessments().values(), key=lambda row: (row.created_life_ms, row.memory_id)):
+            groups.setdefault(row.content['skill_assessment']['skill_id'], []).append(row)
+        selected = [row for group in list(groups.values())[-2:] for row in group[-2:]]
+        rows = {row.memory_id: row for row in self.memory.records()}
+        selected += [rows[value['source']] for value in list(self.procedures().values())[-2:]]
+        context = []
+        for row in selected:
+            packet = {'kind': row.kind, 'text': row.text, 'sources': list(row.sources),
+                      **{key: row.content[key] for key in ('skill_assessment', 'procedure') if key in row.content}}
+            detail = json.dumps(packet, ensure_ascii=False)
+            if len(detail) <= self.memory.text_limit and self.memory._safe_item(packet):
+                context.append({'ref': row.memory_id, 'origin': row.origin,
+                                'layer': 'interpretation', 'text': detail})
+        return context
 
     def measurements(self):
         if self.memory.off or self.owner.off:

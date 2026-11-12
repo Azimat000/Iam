@@ -69,3 +69,51 @@ def diverse(ranked, scores, records, limit):
         selected.append(best)
         remaining.remove(best)
     return selected
+
+
+def historical(ranked, selected, records, limit):
+    """Ранние эпизоды занимают лишь избыточные места среди первых 2N попаданий.
+
+    Единственный представитель автора, исхода, отрицаний или чисел не удаляется.
+    В остальных случаях освобождается наиболее повторённый текст, а не хвост
+    ранжирования. Ранний эпизод не считается более истинным, чем поздняя поправка.
+    """
+    if limit < 3:
+        return selected
+    candidates = [mid for mid in ranked[:2 * limit]
+                  if records[mid].kind == 'episodic' and records[mid].version == 1
+                  and records[mid].origin in ('observation', 'stated_by_other')]
+    anchors = sorted(candidates, key=lambda mid: (records[mid].created_life_ms, ranked.index(mid)))[:limit // 2]
+    result = list(selected)
+    tokens = {mid: set(re.findall(r'[^\W_]+', records[mid].text.casefold().replace('ё', 'е')))
+              for mid in set(result) | set(anchors)}
+    negations = {'не', 'ни', 'нет', 'нельзя', 'никогда', 'not', 'no', 'never', 'without'}
+
+    def identity(mid):
+        row = records[mid]
+        communication = row.content.get('communication')
+        return (row.origin, row.independence_group, row.claim_kind, row.content.get('outcome'),
+                communication.get('person') if isinstance(communication, dict) else None,
+                frozenset(tokens[mid] & negations), frozenset(t for t in tokens[mid] if t.isdecimal()))
+
+    identities = {mid: identity(mid) for mid in tokens}
+    for anchor in anchors:
+        if anchor in result:
+            continue
+        redundant = [mid for mid in result if mid not in anchors and any(
+            other != mid and identities[other] == identities[mid] for other in result)]
+        if not redundant:
+            continue
+
+        def novelty(mid):
+            others = set().union(*(tokens[other] for other in result if other != mid))
+            return len(tokens[mid] - others) / max(1, len(tokens[mid]))
+
+        victim = min(redundant, key=lambda mid: (novelty(mid), -result.index(mid)))
+        others = set().union(*(tokens[mid] for mid in result if mid != victim))
+        lost = tokens[victim] - others
+        gained = tokens[anchor] - set().union(*(tokens[mid] for mid in result))
+        # Новизна должна возрастать, а удаляемый текст — преимущественно повторяться.
+        if len(gained) > len(lost) and len(tokens[victim] & others) > len(lost):
+            result[result.index(victim)] = anchor
+    return result
