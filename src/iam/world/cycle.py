@@ -15,6 +15,7 @@ from iam.persona.context import character_context
 from iam.state import EventSpec, KindDecision, Violation
 from . import READ, WRITE, MOVE, PROJECT_KEY_PATTERN
 from .conversation import interaction_context
+from .recent import recent_work, result_view
 
 PROJECT_CREATION = (
     f'Если сама решишь создать работу, выбери новый project_id ({PROJECT_KEY_PATTERN}); '
@@ -224,22 +225,20 @@ class LivingCycle(Cycle):
             context.append({'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
                             'text': 'До остановки принятое действие не было начато. Автоматического повтора нет; можно сделать новый выбор.'})
         state = self.world.state
+        recent, recent_result = recent_work(self.memory, state, context)
+        context.extend(recent)
         current = {r.memory_id: r for r in self.memory.records()} if not self.memory.off else {}
         visible = {item['ref'] for item in context}
-        results = []
+        results = [recent_result] if recent_result is not None else []
         result_records = {row.memory_id: row for row in [*records, *current.values()]}
         for row in result_records.values():
             if (row.memory_id not in visible or row.memory_id not in current or row.version != 1
-                    or current[row.memory_id].version != row.version or row.content.get('outcome') != 'confirmed'):
+                    or current[row.memory_id].version != row.version or row.content.get('outcome') != 'confirmed'
+                    or recent_result is not None and row.memory_id == recent_result['memory_id']):
                 continue
-            action = state.get('actions', {}).get(row.content.get('action_id'), {})
-            if 'receipt' in action:
-                # Проверочное прошлое не возвращается в доступную память через receipt.
-                public_receipt = {key: value for key, value in action['receipt'].items()
-                                  if key != 'previous_fingerprint'}
-                results.append({'memory_id': row.memory_id, **public_receipt,
-                                'observation_scope': self.memory.observation_scope(row),
-                                'text': action['outcome']})
+            result = result_view(self.memory, row, context, state)
+            if result is not None and self.memory._safe_item(result):
+                results.append(result)
         goals = {} if self.motivation.off else self.intentions.visible()
         intention_results = {}
         for key, goal in goals.items():

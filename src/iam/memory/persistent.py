@@ -65,14 +65,17 @@ class PersistentMemory(MemoryLifecycle):
         packed = self._window(max(rows, key=lambda r: (r.created_life_ms, r.memory_id))) if rows else None
         return json.loads(packed)['text'] if packed is not None else ''
 
-    def _window(self, r, start=0, *, recall_role=None):
+    def _window(self, r, start=0, *, recall_role=None, metadata=None, limit=None):
+        extra = metadata or {}
         metadata = {'source': r.source.to_dict(), 'source_details': r.content.get('source_details', []), 'created_at': r.created_at,
                     'created_life_ms': r.created_life_ms, 'experience': r.content.get('experience', 'unknown'),
                     'outcome': r.content.get('outcome'), 'sources': list(r.sources), 'kind': r.kind,
                     'version': r.version, 'observation_scope': self.observation_scope(r)}
+        metadata.update(extra)
         if recall_role is not None:
             metadata["recall_role"] = recall_role
-        limit = min(self.text_limit, 2000) if recall_role is not None else self.text_limit
+        limit = min(self.text_limit, 2000 if recall_role is not None else self.text_limit,
+                    limit if limit is not None else self.text_limit)
         return text_window(metadata, r.text, limit, start)
 
     def retrieve(self, query, *, limit=5):

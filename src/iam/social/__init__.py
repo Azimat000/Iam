@@ -6,9 +6,16 @@ from iam.domain.contacts import contact_id
 from iam.memory.window import text_window
 from iam.perception import Perception
 from iam.world.cycle import WorldMemory
+from .context import authorship, adjacent, neighbor_context
 
 
 class SocialMemory(WorldMemory):
+    def _window(self, row, start=0, *, recall_role=None, metadata=None, limit=None):
+        turn = next((turn for turn in self._turns() if turn[1].memory_id == row.memory_id
+                     and turn[1].version == row.version), None)
+        extra = {**(authorship(turn) if turn is not None else {}), **(metadata or {})}
+        return super()._window(row, start, recall_role=recall_role, metadata=extra, limit=limit)
+
     @staticmethod
     def contact(arrival):
         sender = str(arrival.payload.get("sender", "unknown"))
@@ -51,6 +58,15 @@ class SocialMemory(WorldMemory):
                 "readiness": state["preferences"].get("change_readiness", {})}
 
     def context(self, trigger, first, records):
+        # Один согласованный набор метаданных на чистую сборку контекста; между
+        # вызовами ничего не кешируем, чтобы забывание/пересмотр учитывались сразу.
+        self._context_turns = self._turns()
+        try:
+            return self._social_context(trigger, first, records)
+        finally:
+            self._context_turns = None
+
+    def _social_context(self, trigger, first, records):
         context = super().context(trigger, first, records)
         visible = {item["ref"] for item in context}
         relations = self.experience.state(self.ctl.state)["relations"]
@@ -99,12 +115,16 @@ class SocialMemory(WorldMemory):
                 if len(detail) <= self.text_limit and self._safe_item(packet):
                     context.append({'ref': row.memory_id, 'origin': row.origin,
                                     'layer': 'interpretation', 'text': detail})
-        return [*context, *self.dialogue(trigger)]
+        dialogue = self.dialogue(trigger)
+        return [*context, *neighbor_context(self, trigger, records, [*context, *dialogue]), *dialogue]
 
     def _turns(self):
         """Доступные реплики с порядком и авторством; тело берётся только из памяти."""
         if self.off:
             return []
+        cached = getattr(self, '_context_turns', None)
+        if cached is not None:
+            return cached
         rows = self.records()
         arrivals = self._read_arrivals()
         people = {ref: person for person, profile in self.history().items() for ref in profile['history']}
@@ -134,18 +154,13 @@ class SocialMemory(WorldMemory):
         if not query.strip() or not ranked:
             return ranked
         turns = self._turns()
-        adjacent = {}
-        for i, turn in enumerate(turns):
-            # Ближайшая реплика другой стороны помогает вспомнить ответ и его автора.
-            j = i + (1 if turn[2] == 'incoming' else -1)
-            if 0 <= j < len(turns) and turns[j][3] == turn[3] and turns[j][2] != turn[2]:
-                adjacent[turn[1].memory_id] = turns[j][1]
+        neighbors = adjacent(self, turns)
         # Найденные по запросу основания нельзя вытеснять нерелевантными соседями.
         selected = {row.memory_id: row for row in ranked}
         for row in ranked:
-            neighbor = adjacent.get(row.memory_id)
-            if neighbor is not None and current not in neighbor.sources:
-                selected.setdefault(neighbor.memory_id, neighbor)
+            neighbor = neighbors.get(row.memory_id)
+            if neighbor is not None and current not in neighbor[1].sources:
+                selected.setdefault(neighbor[1].memory_id, neighbor[1])
         return list(selected.values())[:min(limit, self.working_limit)]
 
     def dialogue(self, trigger=None):
@@ -155,7 +170,8 @@ class SocialMemory(WorldMemory):
         latest = {direction:max((item[0] for item in candidates if item[2] == direction), default=None)
                   for direction in ('incoming', 'outgoing')}
         for seq, row, direction, person, text, outcome, received_seq in sorted(candidates, key=lambda item: item[0], reverse=True)[:6]:
-            metadata = {'kind': 'dialogue_turn', 'version': row.version, 'seq': seq, 'direction': direction, 'person': person,
+            metadata = {'speaker': 'interlocutor' if direction == 'incoming' else 'self',
+                        'kind': 'dialogue_turn', 'version': row.version, 'seq': seq, 'direction': direction, 'person': person,
                         'received_seq': received_seq, 'outcome': outcome, 'content_available': text is not None,
                         'latest_in_direction': seq == latest[direction],
                         'current_read': direction == 'incoming' and getattr(trigger, 'type', None) == 'input.read'
