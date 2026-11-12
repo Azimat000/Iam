@@ -1,6 +1,10 @@
 """Одинаковое прошлое и вызовы; в контроле варианты не доходят до выбора."""
 import json
 import unittest
+from unittest.mock import patch
+from iam.clock import LifeClock
+from iam.state import StateController
+from state.helpers import FakeTime
 from iam.stubs import ScriptedProvider, Reply, rest
 from integration import intention_probe as probe, test_intention_probe as fixtures
 
@@ -13,7 +17,12 @@ class OptionsProbeTest(unittest.TestCase):
         def factory(name, transport):
             return ScriptedProvider([Reply((self.goal(name[0]),), explanation='PRIVATE_OPTION_EXPLANATION'),
                                      Reply(()), Reply((rest(),))])
-        result = probe.run_probe(self.source,self.output,protocol='options',provider_factory=factory)
+        time = FakeTime()
+        def controller(store):
+            return StateController(store, clock=LifeClock.recover(
+                store, monotonic=time.mono, calendar=time.calendar))
+        with patch.object(probe, 'StateController', side_effect=controller):
+            result = probe.run_probe(self.source,self.output,protocol='options',provider_factory=factory)
         self.assertEqual((result['status'],result['decisions'],result['model_calls']),('completed',4,0))
         manifest = json.loads((self.output/'manifest.json').read_text())
         self.assertEqual((manifest['max_decisions'],manifest['max_model_calls'],manifest['cell_model_calls']),(4,16,4))
