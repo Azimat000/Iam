@@ -116,6 +116,11 @@ class PausingProvider:
     def name(self) -> str:
         return self.inner.name
 
+    @property
+    def compose_message(self):
+        # Стадия речи проходит те же проверки паузы и лимита, что и любой запрос.
+        return self.propose if callable(getattr(self.inner, 'compose_message', None)) else None
+
     def propose(self, request: dict) -> dict:
         if self._ctl.session_state != "running":
             raise ProviderError("сеанс не идёт: модель не вызывается")

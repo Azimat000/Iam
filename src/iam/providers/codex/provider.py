@@ -119,6 +119,12 @@ class CodexProvider:
                 return self._propose(request, session)
         return self._propose(request)
 
+    def compose_message(self, request: dict) -> dict:
+        """Явная возможность отдельной речи; тот же исполнитель, модель и учёт запуска."""
+        if request['purpose'] != 'compose_message':
+            raise ValueError('Composition requires its own request purpose')
+        return self.propose(request)
+
     def _propose(self, request: dict, session=None) -> dict:
         started, self.last_calls = time.monotonic(), 0
         timeout = min(self.timeout_s, request["limits"]["deadline_ms"] / 1000)

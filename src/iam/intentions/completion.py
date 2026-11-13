@@ -148,7 +148,8 @@ class CompletionProvider:
             if saved.event is not None:
                 self.intentions.reviews[key] = dict(summary, event_id=saved.event.event_id)
             break
-        return response
+        from iam.world.speech import compose
+        return compose(self, request, response, started)
 
     def clean(self, value):
         return json.loads(self.scanner.redact(json.dumps(value, ensure_ascii=False))[0])

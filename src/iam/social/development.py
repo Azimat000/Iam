@@ -2,6 +2,35 @@
 import json
 
 
+def conversation_experience(memory, context):
+    """Доступные предварительные выводы об общении возвращаются без оценки мастерства."""
+    if memory.off:
+        return []
+    visible = {item['ref'] for item in context}
+    histories = memory.history()
+    contacts = {person: set(profile['history']) for person, profile in histories.items()
+                if visible.intersection(profile['history'])}
+    rows = memory.records()
+    result = []
+    for row in sorted(rows, key=lambda r: (r.created_life_ms, r.memory_id), reverse=True):
+        if (row.version != 1 or row.origin != 'own_hypothesis' or row.kind not in ('procedural', 'semantic')
+                or row.content.get('interpretation') or row.content.get('skill_assessment')
+                or row.content.get('procedure')):
+            continue
+        people = [person for person, refs in contacts.items() if refs.intersection(row.sources)]
+        if not people:
+            continue
+        packed = memory._window(row)
+        if packed is None:
+            continue
+        item = {'ref': row.memory_id, 'origin': row.origin, 'layer': row.layer, 'text': packed}
+        if memory._safe_item(item):
+            result.append(item)
+        if len(result) == 3:
+            break
+    return list(reversed(result))
+
+
 def relationship_context(memory, context, trigger):
     if memory.off:
         return []

@@ -134,6 +134,10 @@ class SessionRunner:
         class Counted:
             name = inner.name
 
+            @property
+            def compose_message(self):
+                return self.propose if callable(getattr(inner, 'compose_message', None)) else None
+
             def propose(self, request):
                 selected = owner.ctl.state["preferences"].get("provider_config")
                 if selected is not None and selected != {"name": inner.name, "model": getattr(inner, "model", None)}:
