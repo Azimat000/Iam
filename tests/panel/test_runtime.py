@@ -178,24 +178,29 @@ class RuntimeTest(unittest.TestCase):
         self.seed()
         started,release=threading.Event(),threading.Event()
         client=mock.Mock(bot_id=123,timeout=0)
+        sent=[]
         def call(method,params):
             if method=="getUpdates":return []
+            sent.append(dict(params))
             started.set()
             if not release.wait(5):raise TimeoutError("test release")
             return {"message_id":1,"chat":{"id":123,"type":"private"}}
         client.call.side_effect=call
         raw={"kind":"message","rationale":"проверка отправки","body":{
             "capability_id":"cap_Telegram01","to":"123","text":"тест"}}
+        draft={**raw,"body":{**raw['body'],"text":"черновик"}}
         with mock.patch("iam.panel.runtime.Client",return_value=client), mock.patch(
-            "iam.panel.runtime.subprocess_runner",FakeCodex([reply([raw])])):
+            "iam.panel.runtime.subprocess_runner",FakeCodex([reply([draft]),reply([raw])])):
             rt=self.runtime(auth_file=str(self.auth),telegram_user=123)
             try:
-                rt.submit("command","start","отправка",max_calls=1).result(5)
+                rt.submit("command","start","отправка",max_calls=2).result(5)
                 rt.inject=lambda: rt.ctl.record_event(EventSpec("input.arrived","rx:test:1",{"text":"test"}))
                 rt.submit("inject").result(5)
                 self.assertTrue(started.wait(5))
                 view=rt.submit("view").result(2)
                 self.assertTrue(view["sending"])
+                self.assertEqual(view['usage']['calls'],2)
+                self.assertEqual(sent[0]['text'],'тест')
                 self.assertEqual(view["session_state"],"running")
                 from iam.panel.views import render
                 text=render("",view,"token")

@@ -69,12 +69,15 @@ class RelationshipContextTest(unittest.TestCase):
         from iam.stubs import Reply
         f=DialogueTest();self.addCleanup(f.doCleanups);f.setUp()
         answer=f.answer('Сейчас я слишком быстро перешла к советам.')
+        f.cycle.allowed_proposals=(*f.cycle.allowed_proposals,'memory_write')
         note={'proposal_id':new_id('prop'),'kind':'memory_write','rationale':'Личный опыт',
               'cites':[answer.memory_id], 'body':{'draft':{'kind':'procedural','origin':'own_hypothesis',
               'content':{'text':'В следующий раз сначала дослушать, а не сразу предлагать решение.'}}}}
-        trigger=f.due()
+        from iam.clock import life_moment
+        self.assertTrue(f.c.schedule_moment(life_moment(new_id('mom'),f.c.life_time_ms,'test')).applied)
+        trigger=f.c.fire_due_moments()[0].events[0]
         f.provider.queue(Reply((note,)))
-        f.cycle.run(trigger)
+        self.assertEqual(f.cycle.run(trigger).outcome,'done')
         own=next(r for r in f.memory.records() if r.kind=='procedural')
         result=conversation_experience(f.memory,[{'ref':answer.memory_id}])
         self.assertEqual([i['ref'] for i in result],[own.memory_id])
