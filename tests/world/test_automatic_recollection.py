@@ -23,9 +23,11 @@ class AutomaticRecollectionTest(ContextCase):
             blocks = [i for i in request['context'] if i['ref'] == row.memory_id]
             for block in blocks:
                 packet = json.loads(block['text'])
-                self.assertEqual(packet['content_in'], 'world_results')
+                self.assertEqual(packet['content_in'], 'result_catalog')
                 self.assertNotIn('text', packet)
             self.assertEqual(json.dumps(request, ensure_ascii=False).count('ЗАКЛЮЧИТЕЛЬНАЯ_СТРОКА'), 1)
+            catalog = next(json.loads(i['text']) for i in request['context'] if '"world_results"' in i['text'])
+            self.assertEqual(catalog['world_results'][0]['text'], body)
         extra, result = recent_work(self.m, self.world.state, [])
         self.assertLessEqual(len(extra[0]['text']) + len(json.dumps(result, ensure_ascii=False)), 2000)
         self.assertNotIn('перелистывания', GUIDANCE)
@@ -62,6 +64,23 @@ class AutomaticRecollectionTest(ContextCase):
         self.assertTrue(result['result_complete'])
         from iam.memory.window import next_window
         self.assertEqual(next_window(row, request['context']), 0)
+
+    def test_index_without_presented_result_cannot_complete_intention(self):
+        source = self.read()
+        self.run_reply(self.goal(source, project='observatory'))
+        row = self.write('Свет на куполе.\nОкно открыто.', project='observatory')
+        request, _, _ = self.request('Обсудим обсерваторию.', [row, source])
+        proposal = self.transition('done', result=row)
+        _, shown = self.cycle.intentions.result(proposal, request)
+        self.assertEqual(shown['text'], 'Свет на куполе.\nОкно открыто.')
+        context = request['context']
+        request['context'] = [item for item in context if not item['text'].startswith('{"library"')]
+        self.assertIn(row.memory_id, {item['ref'] for item in request['context']})
+        with self.assertRaisesRegex(ValueError, 'Результат не показан в текущем контексте'):
+            self.cycle.intentions.result(proposal, request)
+        request['context'] = [item for item in context if item['ref'] != row.memory_id]
+        with self.assertRaisesRegex(ValueError, 'Результат не виден'):
+            self.cycle.intentions.result(proposal, request)
 
     def test_rejects_malformed_unverifiable_result_and_unsafe_index(self):
         from dataclasses import replace

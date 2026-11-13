@@ -101,7 +101,8 @@ def verify(store: Store) -> list[str]:
             final = step
             key = (step.epoch, step.state_version)
             try:
-                snaps[key] = snap = store.get_snapshot(*key)
+                snap = store.get_snapshot(*key)
+                snaps[key] = snap.at_seq
             except NotFound:
                 problems.append(f"нет снимка версии {step.state_version}" + (f" (эпоха {step.epoch})" if step.epoch > 1 else ""))
                 continue
@@ -110,13 +111,17 @@ def verify(store: Store) -> list[str]:
                                 f"с воспроизведённым состоянием")
     except ReplayError as e:
         problems.append(str(e))
+    expected_memory = final.memory if final is not None else {}
+    for row in store.con.execute("SELECT memory_id FROM memory_records ORDER BY memory_id"):
+        if row['memory_id'] not in expected_memory:
+            problems.append(f"запись памяти {row['memory_id']} в хранилище отсутствует в журнале")
     if final is None:
         latest = store.latest_snapshot()
         return problems + ([f"снимок есть, а переходов в журнале нет: версия {latest.state_version}"] if latest else [])
     problems += final.problems
-    for (epoch, version), snap in snaps.items():   # последнее событие каждой версии известно после полного прохода
-        if snap.at_seq != final.snapshots_at[(epoch, version)]:
-            problems.append(f"снимок версии {version} (эпоха {epoch}): at_seq={snap.at_seq}, последнее событие "
+    for (epoch, version), at_seq in snaps.items():   # полные снимки после проверки больше не нужны
+        if at_seq != final.snapshots_at[(epoch, version)]:
+            problems.append(f"снимок версии {version} (эпоха {epoch}): at_seq={at_seq}, последнее событие "
                             f"seq={final.snapshots_at[(epoch, version)]}")
     latest = store.latest_snapshot()
     if latest is None or (latest.epoch, latest.state_version) != (final.epoch, final.state_version):

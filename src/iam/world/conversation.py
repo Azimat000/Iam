@@ -7,8 +7,8 @@ GUIDANCE = (
     'Чтобы узнать их, можно выбрать attention с focus=dialogue и ref из unread_targets; '
     'после принятого чтения возникает отдельный выбор. Слова видны лишь пока запись доступна в памяти. '
     'Прочтение не обязывает соглашаться или отвечать. '
-    'read_now — доступный фрагмент прочитанного именно сейчас сообщения. Время чтения не делает '
-    'его новым по времени получения: received_seq сохраняет исходный порядок. '
+    'read_now — краткий обзор; content_ref указывает более полное уже показанное личное окно. Учитывай его целиком. '
+    'received_seq сохраняет порядок получения независимо от времени чтения. '
     'Если выбираешь ответить, сначала учти, что собеседник говорит сейчас: он мог сменить тему, '
     'возразить, спросить о тебе или попросить восстановить разговор. Продолжение прежнего рассуждения '
     'само по себе не отвечает на такое обращение. speaker=interlocutor — слова собеседника, speaker=self — твои. '
@@ -23,6 +23,34 @@ GUIDANCE = (
     'Можно прямо обозначить желание продолжить или отложить беседу, уточнить непонятное, '
     'выразить собственное мнение либо выбрать другое занятие. Ни готового ответа, ни чувства эта сводка не задаёт.'
 )
+
+def current_content(trigger, context, current):
+    """Ссылка на более полное уже предъявленное чтение, без повторения тела."""
+    if current is None:
+        return
+    best = current['excerpt']['end']
+    for item in context:
+        if (item['ref'] != current['ref'] or item['layer'] != 'personal'
+                or item['origin'] != 'stated_by_other'):
+            continue
+        try:
+            data = json.loads(item['text'])
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        window, text = data.get('text_window'), data.get('text')
+        if (data.get('version') != current['version'] or trigger.event_id not in data.get('sources', [])
+                or not isinstance(window, dict) or not isinstance(text, str)):
+            continue
+        end = window.get('end')
+        if (window.get('start') != 0 or type(end) is not int or end != len(text) or end <= best
+                or window.get('total') != current['excerpt']['total'] or end > window['total']
+                or not text.startswith(current['text'])):
+            continue
+        best = end
+        current['content_ref'] = item['ref']
+        current['content_window'] = dict(window)
 
 REVIEW_GUIDANCE = (
     'Если вопрос о прежнем разговоре, заново сверяй recollection_sources и остальные показанные первичные реплики. '
@@ -90,6 +118,7 @@ def interaction_context(trigger, context):
     current = next(({'ref':ref, 'speaker':'interlocutor', 'version':turn['version'], 'received_seq':turn['received_seq'],
                       'text':turn['text'], 'excerpt':turn['excerpt']}
                     for ref,turn in turns if turn.get('current_read') is True), None)
+    current_content(trigger, context, current)
     frame = {
         'kind':'current_interaction', 'occasion':trigger.type,
         'read_now':current,

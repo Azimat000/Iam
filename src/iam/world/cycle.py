@@ -56,7 +56,8 @@ GUIDANCE = (
     'Свободная речь не разрешает придумывать воспоминания, человеческое тело, прожитые события или выполненные действия. '
     'Можно сказать, что занята, или не отвечать. Характер, собственная позиция и выбор сохраняются. '
     'Ядро автоматически подготавливает доступное содержание воспоминаний. '
-    'Содержание работы находится в world_results; блок content_in — ссылка на него, а не просьба открыть память. '
+    'Содержание работы находится в world_results; content_in=result_catalog — ссылка на этот каталог, '
+    'а не просьба открыть память. '
     'result_complete=false означает частичное воспоминание длинной работы; не суди о целом по фрагменту. '
     'Если содержания действительно недостаточно, вырази неуверенность обычными словами. '
     'Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. '
@@ -250,9 +251,9 @@ class LivingCycle(Cycle):
             result = result_view(self.memory, row, context, state, full_catalog=True)
             if result is not None and self.memory._safe_item(result):
                 results.append(result)
-        # Каталог уже содержит предъявленное содержание. Не повторяем его в
-        # личных блоках; сохраняем происхождение и позиции для прежнего чтения.
-        presented = {r['memory_id']: r for r in results[:3]}
+        # Собственные работы предъявляем один раз в каталоге. Прочитанные
+        # материалы сохраняют прежний личный блок с текстом и границами чтения.
+        presented = {r['memory_id']: r for r in results[:3] if r['scope'] == 'artifact'}
         indexed = set()
         compact = []
         for item in context:
@@ -266,7 +267,7 @@ class LivingCycle(Cycle):
             packet.pop('text', None)
             if presented[item['ref']].get('discussion_ref'):
                 packet['discussion_ref'] = presented[item['ref']]['discussion_ref']
-            packet['content_in'] = 'world_results'
+            packet['content_in'] = 'result_catalog'
             packet['text_window'] = presented[item['ref']]['result_window']
             item['text'] = json.dumps(packet, ensure_ascii=False)
         context = compact

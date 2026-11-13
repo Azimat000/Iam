@@ -28,7 +28,7 @@ class WorkContextRepairTest(ContextCase):
         latest_packet = next(packet for packet in self.packets(request, latest.memory_id)
                              if packet.get('recall_role') == 'recent_activity')
         self.assertTrue(latest_packet['current_work'])
-        self.assertEqual(latest_packet['content_in'], 'world_results')
+        self.assertEqual(latest_packet['content_in'], 'result_catalog')
         self.assertNotIn('text', latest_packet)
         catalog = next(json.loads(item['text']) for item in request['context'] if item['text'].startswith('{"library"'))
         self.assertEqual(catalog['world_results'][0]['memory_id'], latest.memory_id)
@@ -67,7 +67,7 @@ class WorkContextRepairTest(ContextCase):
         packet = json.loads(recent['text'])
         window = result['result_window']
         self.assertEqual(result['text'], latest.text[window['start']:window['end']])
-        self.assertEqual(packet['content_in'], 'world_results')
+        self.assertEqual(packet['content_in'], 'result_catalog')
         self.assertNotIn('text', packet)
         self.m.text_limit = 100
         request, _, _ = self.request_small('Как получилось?')
@@ -146,9 +146,15 @@ class WorkContextRepairTest(ContextCase):
             self.assertEqual(result['text'], row.text[window['start']:window['end']])
             self.assertFalse(window['more'])
             personal = next(packet for packet in self.packets(request, row.memory_id) if 'text_window' in packet)
-            self.assertEqual(personal['content_in'], 'world_results')
-            self.assertEqual(personal['text_window'], result['result_window'])
-            self.assertNotIn('text', personal)
+            if row.memory_id == work.memory_id:
+                self.assertEqual(personal['content_in'], 'result_catalog')
+                self.assertEqual(personal['text_window'], result['result_window'])
+                self.assertNotIn('text', personal)
+            else:
+                self.assertNotIn('content_in', personal)
+                personal_window = personal['text_window']
+                self.assertEqual(personal['text'], row.text[personal_window['start']:personal_window['end']])
+                self.assertIn('Подробности наблюдения.', personal['text'])
         with patch.object(self.m, '_blocked', return_value=['КОНЕЦ_РАБОТЫ', 'КОНЕЦ_МАТЕРИАЛА']):
             request, _, _ = self.request('Покажи доступные результаты.', [reading, work])
         self.assertNotIn('КОНЕЦ_РАБОТЫ', json.dumps(request, ensure_ascii=False))

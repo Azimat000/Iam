@@ -83,6 +83,42 @@ class ProspectiveCycle(LivingCycle):
     def _prepare_appraisal(self, request, bases):
         return request
 
+    def _appraisal_context(self, trigger, focus, records, available):
+        """На автономной оценке один старый разговор получает слот памяти."""
+        selected, item = None, None
+        limit = min(self.retrieval_limit, self.memory.working_limit - 1)
+        if trigger.type not in ('input.arrived', 'input.read') and limit > 0:
+            candidates = []
+            for row in available.values():
+                if (row.origin != 'stated_by_other' or row.kind != 'episodic' or row.version != 1
+                        or row.content.get('experience') != 'live'
+                        or self.ctl.find_event(key=self._source_key(row)) is not None):
+                    continue
+                reads = [event for ref in row.sources
+                         if (event := self.ctl.find_event(event_id=ref)) is not None and event.type == 'input.read']
+                if reads:
+                    candidates.append((min(event.seq for event in reads), row.memory_id, row))
+            for _, _, row in sorted(candidates):
+                packed = self.memory._window(row)
+                if packed is None or not json.loads(packed)['text']:
+                    continue
+                candidate = {'ref': row.memory_id, 'origin': row.origin, 'layer': row.layer, 'text': packed}
+                if self.memory._safe_item(candidate):
+                    selected, item = row, candidate
+                    break
+        if selected is not None:
+            records = [selected, *(row for row in records if row.memory_id != selected.memory_id)][:min(limit, max(1, len(records)))]
+        # Полная сборка сохраняет согласованность каталога и отдельных ссылок.
+        context = self._context(trigger, focus, records)
+        if selected is not None and not any(entry['ref'] == selected.memory_id for entry in context):
+            # Интерпретации могут занять весь базовый буфер до retrieved records.
+            # Меняем только один такой слот, не результат мира и не его ссылку.
+            slots = [i for i, entry in enumerate(context[:self.memory.working_limit])
+                     if entry['layer'] == 'interpretation' and entry['ref'] in available]
+            if slots:
+                context[slots[-1]] = item
+        return context
+
     def _appraise_experience(self, rep, trigger, focus, records):
         if self.memory.off or self.motivation.off:
             self._stage(rep, 'experience_appraisal', 'skipped', detail={'reason': 'disabled'})
@@ -90,9 +126,9 @@ class ProspectiveCycle(LivingCycle):
         if self.can_appraise is not None and not self.can_appraise():
             self._stage(rep, 'experience_appraisal', 'skipped', detail={'reason': 'call_budget'})
             return True
-        context = self._context(trigger, focus, records)
-        visible = {item['ref'] for item in context}
         available = {row.memory_id: row for row in self.memory.records()}
+        context = self._appraisal_context(trigger, focus, records, available)
+        visible = {item['ref'] for item in context}
         bases = [row for row in available.values() if row.memory_id in visible and row.version == 1
                  and (row.origin == 'observation' or row.origin == 'stated_by_other'
                       and row.kind == 'episodic' and any(

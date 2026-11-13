@@ -94,7 +94,7 @@ def recent_work(memory, state, context, *, project_id=None, discussion_ref=None)
     if not row.text.startswith(prefix):
         return [], None
     index = {'recall_role': 'recent_activity', 'version': row.version,
-             'current_work': True, 'project_id': project, 'content_in': 'world_results',
+             'current_work': True, 'project_id': project, 'content_in': 'result_catalog',
              'sources': list(row.sources), 'observation_scope': memory.observation_scope(row)}
     if discussion_ref:
         index['discussion_ref'] = discussion_ref
