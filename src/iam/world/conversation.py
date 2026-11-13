@@ -2,26 +2,25 @@
 import json
 
 GUIDANCE = (
-    'Это текущая ситуация разговора, отдельно от фоновых работ и прежней переписки. '
-    'Непрочитанное уведомление означает, что собеседник уже прислал сообщение, а ты ещё не знаешь его слов. '
-    'Чтобы узнать их, можно выбрать attention с focus=dialogue и ref из unread_targets; '
-    'после принятого чтения возникает отдельный выбор. Слова видны лишь пока запись доступна в памяти. '
-    'Прочтение не обязывает соглашаться или отвечать. '
-    'read_now — краткий обзор; content_ref указывает более полное уже показанное личное окно. Учитывай его целиком. '
-    'received_seq сохраняет порядок получения независимо от времени чтения. '
-    'Если выбираешь ответить, сначала учти, что собеседник говорит сейчас: он мог сменить тему, '
-    'возразить, спросить о тебе или попросить восстановить разговор. Продолжение прежнего рассуждения '
-    'само по себе не отвечает на такое обращение. speaker=interlocutor — слова собеседника, speaker=self — твои. '
-    'last_outgoing — последняя доступная в этом окне попытка отправки: '
-    'только outcome=confirmed подтверждает доставку; failed и unknown не означают, что собеседник получил слова. '
-    'Это прошлый исход, а не новое обращение собеседника. Утверждения о том, что ты уже сказала или сделала, '
-    'в ответе и в его объяснении сверяй с доступными собственными подтверждёнными исходами. '
-    'Чужие слова и текущее намерение ответить не подтверждают твоего прежнего действия. '
-    'Если нужного исхода нет в ограниченном окне или его слова недоступны, это неизвестность, '
-    'а не доказательство, что действие было или никогда не было. '
-    'При восстановлении разговора учитывай evidence_review: первичные свидетельства и связь с проектом. '
-    'Можно прямо обозначить желание продолжить или отложить беседу, уточнить непонятное, '
-    'выразить собственное мнение либо выбрать другое занятие. Ни готового ответа, ни чувства эта сводка не задаёт.'
+    'Это текущая ситуация общения. Слова unread_targets неизвестны: можно выбрать attention '
+    'с focus=dialogue и ref уведомления; после чтения возникает отдельный выбор. '
+    'Прочтение не обязывает отвечать или соглашаться. '
+    'read_now — обзор; content_ref указывает более полное уже показанное окно: учитывай его целиком. '
+    'latest_read_ref означает последнее открытие, а не получение. conversation_heads указывает '
+    'последнюю по received_seq видимую прочитанную реплику каждого контакта. '
+    'older_than_ref отмечает чтение старой реплики после более новой от того же человека. '
+    'Позднее открытое старое «на сегодня хватит» не завершает последующий разговор. '
+    'Этот порядок сам по себе не отменяет договорённостей и не выбирает главный вопрос. '
+    'Если отвечаешь, учти нынешнюю тему, возражение или вопрос; прежнее рассуждение может быть уже неуместно. '
+    'speaker=interlocutor — слова собеседника, speaker=self — твои. '
+    'last_outgoing — последняя доступная попытка отправки: только outcome=confirmed подтверждает доставку. '
+    'failed и unknown не подтверждают получение слов. Это прошлый исход, не новое обращение. '
+    'Слова о своих прежних действиях сверяй с доступными собственными подтверждёнными исходами. '
+    'Чужие слова и намерение ответить не подтверждают твоего действия. '
+    'Недоступные слова неизвестны; отсутствие исхода в окне не доказывает, было действие или нет. '
+    'evidence_review содержит первичные свидетельства и связь с проектом. '
+    'Можно продолжить или отложить беседу, уточнить, высказать своё мнение либо заняться другим. '
+    'Сводка не задаёт ответа или чувства.'
 )
 
 def current_content(trigger, context, current):
@@ -98,6 +97,21 @@ def recollection_sources(context, current_ref):
     return result
 
 
+def conversation_heads(turns):
+    """Порядок получения доступных прочитанных слов отдельно для каждого контакта."""
+    heads = {}
+    for ref, turn in turns:
+        if (turn.get('direction') != 'incoming' or turn.get('speaker') != 'interlocutor'
+                or turn.get('outcome') != 'read' or turn.get('content_available') is not True
+                or not isinstance(turn.get('person'), str) or not turn['person']
+                or type(turn.get('received_seq')) is not int):
+            continue
+        person, seq = turn['person'], turn['received_seq']
+        if person not in heads or seq > heads[person]['received_seq']:
+            heads[person] = {'ref': ref, 'received_seq': seq}
+    return heads
+
+
 def interaction_context(trigger, context):
     turns, notices = [], []
     for item in context:
@@ -115,13 +129,20 @@ def interaction_context(trigger, context):
             notices.append((item['ref'], data))
     if not turns and not notices and trigger.type not in ('input.arrived', 'input.read'):
         return []
-    current = next(({'ref':ref, 'speaker':'interlocutor', 'version':turn['version'], 'received_seq':turn['received_seq'],
+    heads = conversation_heads(turns)
+    current = next(({'ref':ref, 'speaker':'interlocutor', 'person':turn.get('person'),
+                      'version':turn['version'], 'received_seq':turn.get('received_seq'),
                       'text':turn['text'], 'excerpt':turn['excerpt']}
                     for ref,turn in turns if turn.get('current_read') is True), None)
+    if current is not None:
+        head = heads.get(current['person']) if isinstance(current['person'], str) else None
+        if head is not None and type(current['received_seq']) is int and head['received_seq'] > current['received_seq']:
+            current['older_than_ref'] = head['ref']
     current_content(trigger, context, current)
     frame = {
         'kind':'current_interaction', 'occasion':trigger.type,
         'read_now':current,
+        'conversation_heads':heads,
         'latest_read_ref':next((ref for ref,t in turns if t.get('direction')=='incoming' and t.get('latest_in_direction')),None),
         'last_outgoing':next(({'ref':ref, 'speaker':'self', 'version':t['version'], 'seq':t['seq'],
                               'outcome':t['outcome'], 'content_available':t['content_available'],
