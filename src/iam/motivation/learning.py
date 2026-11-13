@@ -8,6 +8,7 @@ from iam.world import identifier, text
 
 class Learning:
     instructions = (
+        'Оценку practice предлагай только в обычном choose_action; в appraise не предлагай practice. '
         'Практику можно оценить, не завершая активное намерение: memory_write '
         'draft={kind:semantic,origin:own_hypothesis,content:{text:зачем оценить,'
         'practice:{intention_id,result_ref,skill_id:свой переносимый ключ умения}}}; '

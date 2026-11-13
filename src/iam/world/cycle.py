@@ -335,8 +335,10 @@ class LivingCycle(Cycle):
         if options:
             catalog['practice_options'] = options
             catalog_item['text'] = json.dumps(catalog, ensure_ascii=False)
+        context.insert(1, {'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
+                           'text': self.motivation.learning.instructions})
         context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
-                     'text': GUIDANCE + self.motivation.learning.instructions}, catalog_item]
+                     'text': GUIDANCE}, catalog_item]
         return [*context, *interaction_context(trigger, context)]
 
     def _verified(self, rep, response, result):
