@@ -88,32 +88,39 @@ def recent_work(memory, state, context, *, project_id=None, discussion_ref=None)
         if discussion_ref:
             shown['discussion_ref'] = discussion_ref
         return ([], shown) if memory._safe_item(shown) else ([], None)
-    metadata = {'recall_role': 'recent_activity', 'action_id': row.content['action_id'],
-                'project_id': project, 'seq': seq, 'current_work': True,
-                'meaning': 'последняя доступная актуальная версия собственной работы; не оценка её качества'}
+    # Содержание один раз — в каталоге; отдельный ref сохраняет право цитирования.
+    # Длинная работа автоматически представляется начальным фрагментом, не целым.
+    prefix = f"Подтверждён успех: {state['actions'][aid]['kind']} {WRITE}. "
+    if not row.text.startswith(prefix):
+        return [], None
+    index = {'recall_role': 'recent_activity', 'version': row.version,
+             'current_work': True, 'project_id': project, 'content_in': 'world_results',
+             'sources': list(row.sources), 'observation_scope': memory.observation_scope(row)}
     if discussion_ref:
-        metadata['discussion_ref'] = discussion_ref
-        metadata['meaning'] = 'актуальная версия проекта, связанного с видимой репликой; кандидат темы, не доказанное намерение'
-    # Показанное окно и его дублируемый фрагмент в каталоге вместе укладываются в2000.
-    low, high, selected = 0, min(2000, memory.text_limit), None
+        index['discussion_ref'] = discussion_ref
+    low, high, selected = len(prefix) + 1, len(row.text), None
     while low <= high:
-        size = (low + high) // 2
-        packed = memory._window(row, recall_role='recent_activity', metadata=metadata, limit=size)
-        if packed is None:
-            low = size + 1
-            continue
-        item = {'ref': row.memory_id, 'origin': row.origin, 'layer': row.layer, 'text': packed}
-        result = result_view(memory, row, [item], state)
+        end = (low + high) // 2
+        # result_view проверяет точное соответствие доступной записи и подтверждению.
+        window = json.dumps({'version': row.version, 'text': row.text[len(prefix):end],
+                             'text_window': {'start': len(prefix), 'end': end}}, ensure_ascii=False)
+        result = result_view(memory, row, [{'ref': row.memory_id, 'layer': row.layer, 'text': window}], state)
         if result is None:
-            low = size + 1
-            continue
+            return [], None
+        result['result_presentation'] = 'automatic_recollection'
         if discussion_ref:
             result['discussion_ref'] = discussion_ref
-        if len(packed) + len(json.dumps(result, ensure_ascii=False)) <= 2000:
-            selected = item, result
-            low = size + 1
+        index['text_window'] = result['result_window']
+        packed_index = json.dumps(index, ensure_ascii=False)
+        if len(packed_index) + len(json.dumps(result, ensure_ascii=False)) <= min(2000, memory.text_limit):
+            selected = packed_index, result
+            low = end + 1
         else:
-            high = size - 1
-    if selected is None or not memory._safe_item(selected[0]) or not memory._safe_item(selected[1]):
+            high = end - 1
+    if selected is None:
         return [], None
-    return [selected[0]], selected[1]
+    packed_index, result = selected
+    item = {'ref': row.memory_id, 'origin': row.origin, 'layer': row.layer, 'text': packed_index}
+    if not memory._safe_item(item) or not memory._safe_item(result):
+        return [], None
+    return [item], result

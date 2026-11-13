@@ -28,7 +28,8 @@ class WorkContextRepairTest(ContextCase):
         latest_packet = next(packet for packet in self.packets(request, latest.memory_id)
                              if packet.get('recall_role') == 'recent_activity')
         self.assertTrue(latest_packet['current_work'])
-        self.assertIn('НОВАЯ СЦЕНА', latest_packet['text'])
+        self.assertEqual(latest_packet['content_in'], 'world_results')
+        self.assertNotIn('text', latest_packet)
         catalog = next(json.loads(item['text']) for item in request['context'] if item['text'].startswith('{"library"'))
         self.assertEqual(catalog['world_results'][0]['memory_id'], latest.memory_id)
         self.assertEqual(catalog['world_results'][0]['text'], 'НОВАЯ СЦЕНА: смотритель закрыл окно, оставив лампу у двери.')
@@ -64,9 +65,10 @@ class WorkContextRepairTest(ContextCase):
         self.assertFalse(result['result_complete'])
         self.assertNotIn('НЕПОКАЗАННЫЙ_КОНЕЦ_РАБОТЫ', json.dumps(request, ensure_ascii=False))
         packet = json.loads(recent['text'])
-        window = packet['text_window']
-        self.assertEqual(packet['text'], latest.text[window['start']:window['end']])
-        self.assertIn(result['text'], packet['text'])
+        window = result['result_window']
+        self.assertEqual(result['text'], latest.text[window['start']:window['end']])
+        self.assertEqual(packet['content_in'], 'world_results')
+        self.assertNotIn('text', packet)
         self.m.text_limit = 100
         request, _, _ = self.request_small('Как получилось?')
         self.assertFalse(any('"recall_role": "recent_activity"' in item['text'] for item in request['context']))
@@ -144,7 +146,9 @@ class WorkContextRepairTest(ContextCase):
             self.assertEqual(result['text'], row.text[window['start']:window['end']])
             self.assertFalse(window['more'])
             personal = next(packet for packet in self.packets(request, row.memory_id) if 'text_window' in packet)
-            self.assertTrue(personal['text_window']['more'])
+            self.assertEqual(personal['content_in'], 'world_results')
+            self.assertEqual(personal['text_window'], result['result_window'])
+            self.assertNotIn('text', personal)
         with patch.object(self.m, '_blocked', return_value=['КОНЕЦ_РАБОТЫ', 'КОНЕЦ_МАТЕРИАЛА']):
             request, _, _ = self.request('Покажи доступные результаты.', [reading, work])
         self.assertNotIn('КОНЕЦ_РАБОТЫ', json.dumps(request, ensure_ascii=False))

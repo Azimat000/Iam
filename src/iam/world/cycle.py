@@ -37,7 +37,7 @@ GUIDANCE = (
     'current_read отмечает прочитанное сообщение, вызвавшее этот выбор; latest_in_direction — последнюю '
     'доступную реплику каждой стороны, а не обязательно новый вопрос. age_life_ms — её возраст в собственном времени. '
     'content_available=false означает, что слова старой отправки не сохранились в личной памяти. '
-    'excerpt.more=true означает неполный обзор; полный доступный текст можно читать в исходной mem_. '
+    'excerpt.more=true означает неполный обзор реплики. '
     'Старый вопрос и собственный ответ не являются новым обращением. Новое уведомление ещё не раскрывает текст. '
     'Если выбираешь message, text — твои слова этому собеседнику, а не отчёт о том, как ты поддерживаешь разговор. '
     'Участвуй в текущем обмене: на шутку можно откликнуться шуткой, на возражение — своей мыслью, '
@@ -55,12 +55,10 @@ GUIDANCE = (
     'а при неизвестности выбирай фразу без указания рода; не угадывай его по имени. '
     'Свободная речь не разрешает придумывать воспоминания, человеческое тело, прожитые события или выполненные действия. '
     'Можно сказать, что занята, или не отвечать. Характер, собственная позиция и выбор сохраняются. '
-    'Поле text_window у воспоминания показывает часть текста: start/end/total — позиции символов. '
-    'Если more=true, конец ещё не прочитан; не делай вывод о всём сообщении по началу. '
-    'Чтобы открыть следующую часть, выбери attention={rationale:причина,cites:[],focus:event,ref:этот mem_} '
-    'на верхнем уровне ответа Codex (proposals=[] для одного чтения); адаптер преобразует это в attend. '
-    'После последней части тот же выбор перечитывает начало. Это не новое входящее. '
-    'Для выводов цитируй исходную mem_: событие перелистывания не является новым опытом. '
+    'Ядро автоматически подготавливает доступное содержание воспоминаний. '
+    'Содержание работы находится в world_results; блок content_in — ссылка на него, а не просьба открыть память. '
+    'result_complete=false означает частичное воспоминание длинной работы; не суди о целом по фрагменту. '
+    'Если содержания действительно недостаточно, вырази неуверенность обычными словами. '
     'Доступен постоянный текстовый мир: библиотека, собственные тексты и пространство. '
     'Выбери подходящий сейчас вариант из разрешённых предложений, включая отдых. '
     'Если хочешь позднее вернуться к будущему результату, можно сохранить intention '
@@ -182,7 +180,13 @@ class LivingCycle(Cycle):
         if self.reflection.running:
             return self._end(CycleReport(cycle_id(trigger.event_id, round_), trigger.event_id),
                              "skipped", "reflection_in_progress")
-        self._schedule_intentions()
+        # Старые поводы при восстановлении не требуют повторного полного обхода
+        # целей. Один обход на эпоху всё же восстанавливает потерянные напоминания.
+        epoch = (self.ctl.session_id, self.ctl.epoch, self.ctl.session_resume_count)
+        done = self.ctl.find_event(key=f"att:{cycle_id(trigger.event_id, round_)}") is not None
+        if self.ctl.session_state == 'running' and (not done or getattr(self, '_scheduled_epoch', None) != epoch):
+            self._schedule_intentions()
+            self._scheduled_epoch = epoch
         return super().run(trigger, round_=round_)
 
     def _project_view(self, value):
@@ -246,6 +250,26 @@ class LivingCycle(Cycle):
             result = result_view(self.memory, row, context, state, full_catalog=True)
             if result is not None and self.memory._safe_item(result):
                 results.append(result)
+        # Каталог уже содержит предъявленное содержание. Не повторяем его в
+        # личных блоках; сохраняем происхождение и позиции для прежнего чтения.
+        presented = {r['memory_id']: r for r in results[:3]}
+        indexed = set()
+        compact = []
+        for item in context:
+            if item['ref'] in indexed:
+                continue
+            compact.append(item)
+            if item['ref'] not in presented:
+                continue
+            indexed.add(item['ref'])
+            packet = json.loads(item['text'])
+            packet.pop('text', None)
+            if presented[item['ref']].get('discussion_ref'):
+                packet['discussion_ref'] = presented[item['ref']]['discussion_ref']
+            packet['content_in'] = 'world_results'
+            packet['text_window'] = presented[item['ref']]['result_window']
+            item['text'] = json.dumps(packet, ensure_ascii=False)
+        context = compact
         goals = {} if self.motivation.off else self.intentions.visible()
         intention_results = {}
         for key, goal in goals.items():

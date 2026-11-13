@@ -114,6 +114,11 @@ class StateController:
         return self._state["world_time"].get("session_state", "stopped")
 
     @property
+    def session_resume_count(self) -> int:
+        """Поколение возобновления без копирования полной истории состояния."""
+        return self._state['world_time'].get('resume_count', 0)
+
+    @property
     def session_id(self) -> str | None:
         return self._state["world_time"].get("session_id")
 
