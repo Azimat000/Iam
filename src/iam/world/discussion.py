@@ -1,7 +1,7 @@
 """Связь видимой доставленной реплики с доступной работой, без чтения архивных тел."""
 import json
 
-from . import WRITE
+from .subject import project_source, subject_candidates
 from .recent import recent_work
 
 
@@ -42,6 +42,26 @@ def discussion_work(memory, state, context):
     if current is None:
         return [], None
     rows = {r.memory_id: r for r in memory.records()}
+    candidates = subject_candidates(memory, state, context, turns, current, rows)
+    if candidates is not None:
+        if len(candidates) == 1:
+            project, ref = next(iter(candidates.items()))
+            extra, result = recent_work(memory, state, context, project_id=project, discussion_ref=ref)
+            if result is not None:
+                return extra, result
+            packet = {'kind': 'discussion_project', 'message_ref': ref, 'project_id': project,
+                      'available_current_result': False,
+                      'meaning': 'Первичная реплика указывает на кандидата проекта; актуальный текст недоступен.'}
+        else:
+            packet = {'kind': 'discussion_project', 'ambiguous': True,
+                      'candidates': [{'project_id': project, 'message_ref': ref}
+                                     for project, ref in sorted(candidates.items())][:8],
+                      'meaning': 'Первичные слова совместимы с несколькими проектами. Уточни предмет, '
+                                 'не подставляй последнее занятие или собственный прошлый ответ.'}
+        if len(json.dumps(packet, ensure_ascii=False)) <= 2000 and memory._safe_item(packet):
+            return [{'ref': next(iter(candidates.values())), 'origin': 'observation', 'layer': 'state',
+                     'text': json.dumps(packet, ensure_ascii=False)}], None
+        return [], None
     # Журнал даёт лишь подтверждение доставки и ссылки; слова берём только
     # из доступных уже показанных сообщений, текст работы — через recent_work.
     for item, turn in sorted(turns, key=lambda pair: pair[1]['seq'], reverse=True):
@@ -57,14 +77,9 @@ def discussion_work(memory, state, context):
         projects = set()
         for ref in proposal.get('cites', []):
             source = rows.get(ref)
-            if (source is None or source.version != 1 or source.origin != 'observation'
-                    or source.content.get('outcome') != 'confirmed'):
-                continue
-            action = state.get('actions', {}).get(source.content.get('action_id'), {})
-            receipt = action.get('receipt', {})
-            if (action.get('capability_id') == WRITE and action.get('status') == 'confirmed'
-                    and receipt.get('scope') == 'artifact' and receipt.get('event_id') in source.sources):
-                projects.add(receipt['target'])
+            project = project_source(memory, state, source) if source is not None else None
+            if project is not None:
+                projects.add(project)
         if len(projects) != 1:
             continue
         project = next(iter(projects))

@@ -93,7 +93,7 @@ def recent_work(memory, state, context, *, project_id=None, discussion_ref=None)
                 'meaning': 'последняя доступная актуальная версия собственной работы; не оценка её качества'}
     if discussion_ref:
         metadata['discussion_ref'] = discussion_ref
-        metadata['meaning'] = 'актуальная версия проекта из оснований видимой реплики; кандидат темы, не доказанное намерение'
+        metadata['meaning'] = 'актуальная версия проекта, связанного с видимой репликой; кандидат темы, не доказанное намерение'
     # Показанное окно и его дублируемый фрагмент в каталоге вместе укладываются в2000.
     low, high, selected = 0, min(2000, memory.text_limit), None
     while low <= high:
