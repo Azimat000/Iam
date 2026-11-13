@@ -61,3 +61,22 @@ class RelationshipContextTest(unittest.TestCase):
             self.assertEqual(relationship_context(self.f.m, visible, self.f.due()), [])
         self.f.m.text_limit = 10
         self.assertEqual(relationship_context(self.f.m, visible, self.f.due()), [])
+
+    def test_own_outgoing_words_can_anchor_later_conversation_experience(self):
+        from iam.social.development import conversation_experience
+        from social.test_dialogue import DialogueTest
+        from iam.domain import new_id
+        from iam.stubs import Reply
+        f=DialogueTest();self.addCleanup(f.doCleanups);f.setUp()
+        answer=f.answer('Сейчас я слишком быстро перешла к советам.')
+        note={'proposal_id':new_id('prop'),'kind':'memory_write','rationale':'Личный опыт',
+              'cites':[answer.memory_id], 'body':{'draft':{'kind':'procedural','origin':'own_hypothesis',
+              'content':{'text':'В следующий раз сначала дослушать, а не сразу предлагать решение.'}}}}
+        trigger=f.due()
+        f.provider.queue(Reply((note,)))
+        f.cycle.run(trigger)
+        own=next(r for r in f.memory.records() if r.kind=='procedural')
+        result=conversation_experience(f.memory,[{'ref':answer.memory_id}])
+        self.assertEqual([i['ref'] for i in result],[own.memory_id])
+        self.assertTrue(f.memory.fade(answer.memory_id).applied)
+        self.assertEqual(conversation_experience(f.memory,[{'ref':answer.memory_id}]),[])

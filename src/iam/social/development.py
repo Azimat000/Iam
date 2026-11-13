@@ -8,8 +8,11 @@ def conversation_experience(memory, context):
         return []
     visible = {item['ref'] for item in context}
     histories = memory.history()
-    contacts = {person: set(profile['history']) for person, profile in histories.items()
-                if visible.intersection(profile['history'])}
+    contacts = {person: set(profile['history']) for person, profile in histories.items()}
+    for _, row, direction, person, text, _, _ in memory._turns():
+        if direction == 'outgoing' and text is not None:
+            contacts.setdefault(person, set()).add(row.memory_id)
+    contacts = {person: refs for person, refs in contacts.items() if visible.intersection(refs)}
     rows = memory.records()
     result = []
     for row in sorted(rows, key=lambda r: (r.created_life_ms, r.memory_id), reverse=True):
