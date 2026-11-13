@@ -9,10 +9,16 @@ def conversation_experience(memory, context):
     visible = {item['ref'] for item in context}
     histories = memory.history()
     contacts = {person: set(profile['history']) for person, profile in histories.items()}
-    for _, row, direction, person, text, _, _ in memory._turns():
+    turns = memory._turns()
+    for _, row, direction, person, text, _, _ in turns:
         if direction == 'outgoing' and text is not None:
             contacts.setdefault(person, set()).add(row.memory_id)
     contacts = {person: refs for person, refs in contacts.items() if visible.intersection(refs)}
+    # Событие чтения/исхода может быть непосредственным основанием вывода,
+    # но само по себе не активирует контакт без видимой доступной реплики.
+    for _, row, _, person, _, _, _ in turns:
+        if person in contacts and row.memory_id in contacts[person]:
+            contacts[person].update(row.sources)
     rows = memory.records()
     result = []
     for row in sorted(rows, key=lambda r: (r.created_life_ms, r.memory_id), reverse=True):

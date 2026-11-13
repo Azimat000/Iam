@@ -9,6 +9,18 @@ from social import test_development_repair as fixtures
 
 
 class ConversationExperienceTest(fixtures.SocialDevelopmentTest):
+    def test_direct_read_event_basis_returns_only_with_visible_available_contact(self):
+        self.enable();source,trigger=self.incoming()
+        note=self.note(source);note['cites']=[trigger.event_id]
+        self.p.queue(Reply((note,)))
+        self.assertEqual(self.cycle.run(trigger).outcome,'done')
+        own=next(r for r in self.m.records() if r.kind=='procedural')
+        self.assertEqual(own.sources,(trigger.event_id,))
+        self.assertEqual([i['ref'] for i in conversation_experience(self.m,[{'ref':source.memory_id}])],[own.memory_id])
+        self.assertEqual(conversation_experience(self.m,[{'ref':trigger.event_id}]),[])
+        self.assertTrue(self.m.fade(source.memory_id).applied)
+        self.assertEqual(conversation_experience(self.m,[{'ref':source.memory_id}]),[])
+
     def note(self, source, text='Когда мне рассказывают о неприятном дне, сначала выслушать, не раздавать советы.'):
         return {'proposal_id':new_id('prop'),'kind':'memory_write','rationale':'Собственный вывод',
                 'cites':[source.memory_id],'body':{'draft':{'kind':'procedural','origin':'own_hypothesis','content':{'text':text}}}}
