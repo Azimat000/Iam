@@ -18,7 +18,8 @@ class PanelTelegramTest(unittest.TestCase):
         recipient = 876543210987
         text = "Ответ из тестовой панели"
         provider = FakeCodex([reply([{"kind": "message", "rationale": "Ответ на приветствие",
-                                    "body": {"capability_id": "cap_Telegram01", "to": "creator", "text": text}}])])
+                                    "body": {"capability_id": "cap_Telegram01", "to": "creator", "text": value}}])
+                              for value in ('Черновик',text)])
         client = Mock(bot_id=123, timeout=0)
         client.call.side_effect = lambda method, params: ([] if method == "getUpdates" else {
             "message_id": 1, "chat": {"id": recipient, "type": "private"}})
@@ -31,7 +32,7 @@ class PanelTelegramTest(unittest.TestCase):
                 runtime = Runtime(db, telegram_user=recipient, interval=0.01)
                 runtime.start()
                 try:
-                    runtime.submit("command", "start", "проверка", max_calls=1).result(5)
+                    runtime.submit("command", "start", "проверка", max_calls=2).result(5)
                     runtime.inject = lambda: runtime.ctl.record_event(
                         EventSpec("input.arrived", "rx:test:1", {"text": "Привет"}))
                     runtime.submit("inject").result(5)
@@ -49,3 +50,5 @@ class PanelTelegramTest(unittest.TestCase):
         prompt = json.loads(provider.calls[0]["stdin"])["prompt"]
         self.assertIn("to: creator", prompt)
         self.assertNotIn(str(recipient), prompt)
+        self.assertEqual(len(provider.calls),2)
+        self.assertNotIn(str(recipient),json.loads(provider.calls[1]['stdin'])['prompt'])

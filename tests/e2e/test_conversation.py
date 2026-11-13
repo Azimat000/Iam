@@ -14,7 +14,7 @@ from iam.storage import Store
 
 
 class ConversationRuntimeTest(unittest.TestCase):
-    def test_six_read_reply_turns_keep_one_session_and_charge_twelve_choices(self):
+    def test_six_read_reply_turns_keep_one_session_and_charge_eighteen_calls(self):
         recipient = 876543210987
         provider = FakeCodex()
         client = Mock(bot_id=123, timeout=0)
@@ -37,6 +37,8 @@ class ConversationRuntimeTest(unittest.TestCase):
                         iid = new_id('inp')
                         provider.queue(reply([{'kind': 'attend', 'rationale': 'Прочесть сообщение',
                             'body': {'focus': 'dialogue', 'ref': iid}}]),
+                            reply([{'kind': 'message', 'rationale': 'Выбрать ответ',
+                            'body': {'capability_id': 'cap_Telegram01', 'to': 'creator', 'text': f'Черновик {number}'}}]),
                             reply([{'kind': 'message', 'rationale': 'Ответить на прочитанное',
                             'body': {'capability_id': 'cap_Telegram01', 'to': 'creator', 'text': f'Ответ {number}'}}]))
                         rt.inject = lambda iid=iid, number=number: rt.ctl.record_event(EventSpec(
@@ -51,7 +53,8 @@ class ConversationRuntimeTest(unittest.TestCase):
                                 break
                         else:
                             self.fail('Нет подтверждённого ответа на очередное сообщение')
-                    self.assertEqual(view['usage']['calls'], 12)
+                    self.assertEqual(view['usage']['calls'], 18)
+                    self.assertEqual([call.args[1]['text'] for call in sent], [f'Ответ {n}' for n in range(6)])
                     self.assertEqual(view['usage']['session_id'], sid)
                     self.assertEqual(view['session_state'], 'running')
                     self.assertIsNone(view['usage']['max_calls'])
@@ -64,7 +67,12 @@ class ConversationRuntimeTest(unittest.TestCase):
                 self.assertEqual(verify(store), [])
                 requests = [e.payload['request'] for e in store.events() if e.type == 'proposal.requested']
                 self.assertEqual([q['purpose'] for q in requests], ['choose_action'] * 12)
-        self.assertEqual(len(provider.calls), 12)
+                composed = [e for e in store.events() if e.type == 'proposal.assessed'
+                            and e.payload.get('phase') == 'conversation_composition']
+                self.assertEqual(len(composed),6)
+                self.assertTrue(all(e.payload['error'] is None for e in composed))
+        self.assertEqual(len(provider.calls), 18)
         prompts = [json.loads(call['stdin'])['prompt'] for call in provider.calls]
         self.assertNotIn('Вопрос 0', prompts[0])
         self.assertIn('Вопрос 0', prompts[1])
+        self.assertIn('Вопрос 0', prompts[2])
