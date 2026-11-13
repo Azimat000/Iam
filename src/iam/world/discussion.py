@@ -44,6 +44,16 @@ def discussion_work(memory, state, context):
     rows = {r.memory_id: r for r in memory.records()}
     candidates = subject_candidates(memory, state, context, turns, current, rows)
     if candidates is not None:
+        if not candidates:
+            item = next(item for item, turn in turns if turn is current)
+            packet = {'kind': 'discussion_project', 'unresolved': True, 'message_ref': item['ref'],
+                      'available_current_result': False,
+                      'meaning': 'Явный предмет текущей реплики не сопоставлен доступной работе. '
+                                 'Уточни предмет; прежний собственный ответ не подтверждает другую тему.'}
+            if memory._safe_item(packet):
+                return [{'ref': item['ref'], 'origin': 'observation', 'layer': 'state',
+                         'text': json.dumps(packet, ensure_ascii=False)}], None
+            return [], None
         if len(candidates) == 1:
             project, ref = next(iter(candidates.items()))
             extra, result = recent_work(memory, state, context, project_id=project, discussion_ref=ref)
