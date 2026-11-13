@@ -195,3 +195,20 @@ class SpeechTest(LivingCase):
         self.assertEqual(result['provider']['model'],'gpt-6-luna')
         self.assertEqual(result['usage']['calls'],1)
         self.assertEqual(len(runner.calls),1)
+
+    def test_final_composition_retains_conversation_rules_without_tool_catalog(self):
+        from iam.world.cycle import GUIDANCE
+        from iam.world.style import CONVERSATION_STYLE
+        request, response = self.setup_request()
+        request['context'].append({'ref': request['context'][0]['ref'], 'origin': 'model_knowledge',
+                                   'layer': 'state', 'text': GUIDANCE})
+        self.p.queue(self.answer)
+        self.perform(request, response)
+        final = json.loads(self.p.calls[-1]['context'][-1]['text'])['instructions']
+        self.assertIn(CONVERSATION_STYLE, GUIDANCE)
+        self.assertIn(CONVERSATION_STYLE, final)
+        self.assertIn('Не заканчивай каждый отклик обобщением, уроком или вопросом.', final)
+        self.assertIn('Вопрос возникает из собственного интереса.', final)
+        self.assertIn('Сверь текст со своими уже отправленными словами', final)
+        self.assertNotIn('cap_Project01 params=', final)
+        self.assertNotIn(GUIDANCE, [item['text'] for item in self.p.calls[-1]['context']])

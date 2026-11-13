@@ -6,8 +6,9 @@ import time
 from iam.domain import new_id
 from iam.interfaces import ProviderError
 from iam.intentions.completion import valid_response
+from .style import CONVERSATION_STYLE
 
-INSTRUCTIONS = (
+INSTRUCTIONS = CONVERSATION_STYLE + (
     'Ты продолжаешь собственный разговор. Решение вступить в разговор уже принято; '
     'теперь сформулируй свои слова по показанной переписке, характеру и опыту. '
     'Это не помощь клиенту и не отчёт о выполнении задания. Можно коротко ответить, '
