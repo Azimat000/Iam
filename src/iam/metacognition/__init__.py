@@ -4,6 +4,7 @@ import json
 from iam.cycle.validator import tool_use_signs
 from iam.domain import Op
 from iam.selfmodel import LEVELS, PARTS, SelfModel
+from iam.selfmodel.social import candidates as social_candidates, roots as social_roots
 from iam.state import KindDecision, Violation
 
 GUIDANCE = (
@@ -18,6 +19,10 @@ INSTRUCTIONS = (
     'level: observation|hypothesis|stable_change, text: краткое объяснение}. '
     'cites — только ссылки mem_ или evt_ из пакета. Для stable_change добавь trait (имя существующей черты) '
     'и delta (от -0.05 до 0.05), а в cites укажи независимые подтверждённые результаты разных действий. '
+    'Другой явный вариант stable_change: basis_kind:social_experience. Тогда нужны минимум три разных '
+    'прочитанных эпизода общения и собственная social/appraisal интерпретация каждого, все шесть mem_ в cites. '
+    'Размах опыта не менее 60000 мс своего времени; повторные слова и уже использованные основания не подходят. '
+    'Это гипотеза о влиянии общения на тебя, а не доказательство истинности слов собеседника. '
     'Для history/observation текст должен точно совпадать с полем episode одного из следов. '
     'Если осмысливаешь связь чувств, интереса и своего выбора, отдели наблюдения от своей интерпретации. '
     'Ссылайся на те записи и действия, на которых действительно основан вывод. '
@@ -54,6 +59,8 @@ class Reflection:
                 and isinstance(message, str) and 0 < len(message.strip()) <= 1000):
             return self.reject("reflection_shape")
         fields = {"part", "level", "text", "trait", "delta"} if level == "stable_change" else {"part", "level", "text"}
+        if level == 'stable_change' and body.get('basis_kind') == 'social_experience':
+            fields.add('basis_kind')
         if set(body) != fields:
             return self.reject("reflection_shape")
         visible = {item["ref"] for item in request["context"] if item["origin"] != "model_knowledge"}
@@ -119,9 +126,12 @@ class Reflection:
         used_fingerprints = {key for entry in previous for key in entry["fingerprints"]}
         actions = state["world_time"].get("world", {}).get("actions", {})
         roots = {}
-        for ref in refs:
-            if ref in rows:
-                roots.update(self.model.roots(rows[ref], actions))
+        if body.get('basis_kind') == 'social_experience':
+            roots = social_roots(self.model.memory, rows, refs)
+        else:
+            for ref in refs:
+                if ref in rows:
+                    roots.update(self.model.roots(rows[ref], actions))
         fingerprints = {fingerprint for fingerprint, _ in roots.values()}
         times = [at for _, at in roots.values()]
         if (len(fingerprints) < self.min_bases or len(fingerprints) != len(roots) or used.intersection(roots)
@@ -129,11 +139,19 @@ class Reflection:
             return None
         updated = list(traits)
         updated[index] = {**traits[index], "value": new, "source": source}
-        return updated, {"trait": name, "before": old, "after": new, "bases": sorted(roots),
-                         "fingerprints": sorted(fingerprints)}
+        audit = {"trait": name, "before": old, "after": new, "bases": sorted(roots),
+                 "fingerprints": sorted(fingerprints)}
+        if body.get('basis_kind') == 'social_experience':
+            audit['basis_kind'] = 'social_experience'
+        return updated, audit
 
     def guidance(self, context):
         text = GUIDANCE
+        pairs = social_candidates(self.model, self.ctl.state, self.min_bases, self.min_span_life_ms)
+        if pairs:
+            text += (' Есть несколько доступных эпизодов общения с твоими собственными оценками. '
+                     'Если хочешь осмыслить, как они на тебя повлияли, можно выбрать reflection. '
+                     'В отдельном запросе будут предъявлены эти основания; вывод и изменение необязательны.')
         if not self.ctl.state["selfmodel"].get("reflections"):
             return text
         rows = self.model.records()
@@ -163,6 +181,10 @@ class Reflection:
                 description = json.dumps({"text": row.text[:400], "sources": list(row.sources)}, ensure_ascii=False)
                 context.append({"ref": row.memory_id, "origin": row.origin, "layer": row.layer, "text": description})
                 seen.add(row.memory_id)
+        for item in social_candidates(self.model, self.ctl.state, self.min_bases, self.min_span_life_ms):
+            if item['ref'] not in seen:
+                context.append(item)
+                seen.add(item['ref'])
         state = self.ctl.state
         for index, item in enumerate(context):
             episode = self._episode(rows[item["ref"]], state)

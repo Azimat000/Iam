@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+import re
 import time
 
 from iam.domain import jsonschema, new_id
@@ -14,16 +15,25 @@ from ..run import Runner, subprocess_runner
 from .auth import read_auth
 from .auth_session import auth_session
 from .classify import _json, classify
+from .presentation import present_context
 from .command import (DEFAULT_MODEL, REPO_ROOT, SYSTEM_PROMPT, RESPONSE_JSON_SCHEMA,
                       WIRE3_RESPONSE_JSON_SCHEMA, CodexSandboxConfig, docker_run)
 
 
 def build_prompt(request: dict) -> str:
     view = {"purpose": request["purpose"],
-            "context": [{k: item[k] for k in ("ref", "origin", "layer", "text")} for item in request["context"]],
+            "context": present_context([{k: item[k] for k in ("ref", "origin", "layer", "text")}
+                                        for item in request["context"]]),
             "allowed_proposals": request["allowed_proposals"], "allowed_actions": request["allowed_actions"],
             "max_output_tokens": request["limits"]["max_output_tokens"]}
-    return json.dumps(view, ensure_ascii=False, indent=1)
+    return json.dumps(view, ensure_ascii=False, separators=(',', ':'))
+
+
+def citation_refs(request: dict) -> list[str]:
+    """Only presented block references are citations; nested provenance stays private."""
+    return list(dict.fromkeys(item['ref'] for item in request['context']
+                              if isinstance(item.get('ref'), str)
+                              and re.fullmatch(r'(evt|mem)_[A-Za-z0-9]{8,40}', item['ref'])))
 
 
 def _proposals(data: dict) -> list[dict]:
@@ -114,6 +124,7 @@ class CodexProvider:
         timeout = min(self.timeout_s, request["limits"]["deadline_ms"] / 1000)
         deadline = started + timeout
         prompt = SYSTEM_PROMPT + "\n\n" + build_prompt(request)
+        refs = citation_refs(request)
         if self.sandbox.auth_file is None and self._run is subprocess_runner:
             raise ProviderAuthError("Codex requires subscription credentials")
         format_code = "unclassified_format"
@@ -126,7 +137,7 @@ class CodexProvider:
             command = docker_run(self.sandbox, model=self.model)
             actual_prompt = prompt if attempt == 0 else prompt + (
                 "\n\nYour previous reply was rejected. Reply again with exactly one JSON object matching the schema.")
-            payload = json.dumps({"auth": auth, "prompt": actual_prompt}, ensure_ascii=False)
+            payload = json.dumps({"auth": auth, "prompt": actual_prompt, "citation_refs": refs}, ensure_ascii=False)
             run = self._run(command.argv, payload, remaining, command.kill_argv())
             self.last_calls += 1
             if session is not None:
@@ -141,6 +152,10 @@ class CodexProvider:
                     proposals = _proposals(result.data)
                 except (ValueError, RecursionError):
                     format_code = "proposal_schema"
+                    self.last_format_codes.append(format_code)
+                    continue
+                if any(ref not in refs for proposal in proposals for ref in proposal['cites']):
+                    format_code = "citation_scope"
                     self.last_format_codes.append(format_code)
                     continue
                 return self._response(request, proposals, result, started, False)

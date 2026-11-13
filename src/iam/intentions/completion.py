@@ -1,4 +1,4 @@
-"""Две ограниченные оценки done. Сырые ответы сохраняются после удаления секретов."""
+"""Одна двухфазная оценка завершения или практики; исходные критерии неизменны."""
 import copy
 import hashlib
 import json
@@ -79,6 +79,12 @@ def text_field(value, limit):
     return isinstance(value, str) and 0 < len(value.strip()) <= limit
 
 
+def practice_requested(proposal):
+    draft = proposal['body'].get('draft')
+    return (proposal['kind'] == 'memory_write' and isinstance(draft, dict)
+            and isinstance(draft.get('content'), dict) and 'practice' in draft['content'])
+
+
 class CompletionProvider:
     def __init__(self, provider, intentions):
         self.inner, self.intentions = provider, intentions
@@ -93,15 +99,33 @@ class CompletionProvider:
         response = self.inner.propose(request)
         if not valid_response(response, request) or not self.may_review(request):
             return response
-        for pr in response['proposals']:
-            if not (pr['kind'] == 'intention' and pr['body'].get('op') == 'transition'
-                    and pr['body'].get('to_status') == 'done'):
-                continue
+        done = [pr for pr in response['proposals'] if pr['kind'] == 'intention'
+                and pr['body'].get('op') == 'transition' and pr['body'].get('to_status') == 'done']
+        learning = getattr(self.intentions, 'learning', None)
+        practice = [] if done or learning is None else [pr for pr in response['proposals'] if practice_requested(pr)]
+        for pr in done or practice:
+            skill_id = None
             try:
-                goal, result = self.intentions.result(pr, request)
+                if pr in practice:
+                    goal, result, skill_id = learning.practice_candidate(pr, request)
+                else:
+                    goal, result = self.intentions.result(pr, request)
             except (KeyError, TypeError, ValueError):
                 continue
             key = digest({'request': request, 'proposal': pr, 'goal': goal})
+            if skill_id is not None:
+                reservation_key = learning.practice_key(goal, result, skill_id)
+                ctl = self.intentions.ctl
+                if ctl.find_event(key=reservation_key) is not None:
+                    continue
+                if (ctl.session_state != 'running' or (request['epoch'], request['state_version'])
+                        != (ctl.epoch, ctl.state_version)):
+                    break
+                reservation = ctl.record_event(EventSpec('proposal.assessed', reservation_key,
+                    {'phase': 'practice_reserved', 'binding': key, 'request_id': request['request_id'],
+                     'result_ref': result['memory_id'], 'skill_id': skill_id}))
+                if reservation.event is None:
+                    break
             packet = {'goal': {k: goal[k] for k in ('text', 'criterion', 'operation', 'project_id')}}
             needed = self.ask(request, packet, response['provider'], 'requirement', started)
             match = needed is not None and needed['required_kind'] == result['scope']
@@ -117,7 +141,10 @@ class CompletionProvider:
                        'goal_sources':goal['sources'], 'goal_text':goal['text'], 'criterion':goal['criterion'],
                        'project_id':goal['project_id'], 'operation':goal['operation'],
                        'result_fingerprint':self.intentions.world.state['actions'][result['action_id']]['receipt']['fingerprint']}
-            saved = self.record(new_id('req'), dict(summary, phase='completion', proposal_id=pr['proposal_id']))
+            if skill_id is not None:
+                summary.update(basis='practice', skill_id=skill_id)
+            saved = self.record(new_id('req'), dict(summary, phase=summary.get('basis', 'completion'),
+                                                  proposal_id=pr['proposal_id']))
             if saved.event is not None:
                 self.intentions.reviews[key] = dict(summary, event_id=saved.event.event_id)
             break

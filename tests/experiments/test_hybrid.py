@@ -16,6 +16,7 @@ from iam.experiments.variants.hybrid.provider import MAX_TEXT
 from iam.experiments.variants.model_led import ModelLedArchitecture
 from iam.interfaces import ActionOutcome
 from iam.providers.codex import CodexProvider, CodexSandboxConfig, FakeCodex, build_prompt, fake
+from iam.providers.codex.presentation import restore_context
 from iam.providers.errors import (ProviderAuthError, ProviderFormatError, ProviderLimitError,
                                   ProviderTimeout, SessionLimitReached)
 from iam.state import verify
@@ -321,8 +322,9 @@ class HybridCase(unittest.TestCase):
         for call in runner.calls:
             self.assertIn("gpt-6-luna", call["argv"])
             prompt = json.loads(call["stdin"])["prompt"]
-            self.assertIn('"purpose": "summarize"', prompt)
-            self.assertIn('"allowed_actions": []', prompt)
+            presented = json.loads(prompt.split('\n\n', 1)[1])
+            self.assertEqual(presented['purpose'], 'summarize')
+            self.assertEqual(presented['allowed_actions'], [])
             self.assertNotIn(CAP_NOTES, prompt)
         with self.assertRaisesRegex(ValueError, "max_format_retries"):
             HybridArchitecture(lambda _: SimpleNamespace(max_format_retries=1)).build(None)
@@ -335,7 +337,7 @@ class HybridCase(unittest.TestCase):
                     calls.append(stdin)
                     view = json.loads(json.loads(stdin)["prompt"].split("\n\n", 1)[1])
                     proposal = {"kind": "no_action", "rationale": "сформулирован текст",
-                                "cites": [view["context"][0]["ref"]], "body": {"reason": "ЗАМЕТКА-CODEX"}}
+                                "cites": [restore_context(view["context"])[0]["ref"]], "body": {"reason": "ЗАМЕТКА-CODEX"}}
                     return fake.tool_attempt([proposal]) if tool else fake.reply([proposal])
                 adapter = CodexProvider(runner, CodexSandboxConfig(), max_format_retries=0)
                 result = self.bench.run(Scenario.from_dict(ticket()), HybridArchitecture(lambda _: adapter), self.persona)[0]

@@ -3,6 +3,7 @@ import json
 
 from cycle.helpers import CycleCase
 from iam.providers.codex import CodexProvider, CodexSandboxConfig, fake
+from iam.providers.codex.presentation import restore_context
 from iam.state import EventSpec, verify
 
 
@@ -14,7 +15,7 @@ class CodexCycleTest(CycleCase):
         def runner(argv, stdin, timeout, cleanup):
             calls.append(stdin)
             prompt = json.loads(stdin)['prompt'].split('\n\n', 1)[1]
-            context = json.loads(prompt)['context']
+            context = restore_context(json.loads(prompt)['context'])
             self.assertEqual(context[0]['ref'], trigger.event_id)
             return fake.reply([{'kind': 'no_action', 'rationale': 'notice only',
                                 'cites': [context[0]['ref']], 'body': {'reason': 'rest'}}])

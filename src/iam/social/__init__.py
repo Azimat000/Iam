@@ -7,6 +7,7 @@ from iam.memory.window import text_window
 from iam.perception import Perception
 from iam.world.cycle import WorldMemory
 from .context import authorship, adjacent, neighbor_context
+from .development import relationship_context
 
 
 class SocialMemory(WorldMemory):
@@ -121,6 +122,7 @@ class SocialMemory(WorldMemory):
                     context.append({'ref': row.memory_id, 'origin': row.origin,
                                     'layer': 'interpretation', 'text': detail})
         dialogue = self.dialogue(trigger)
+        context.extend(relationship_context(self, [*context, *dialogue], trigger))
         return [*context, *neighbor_context(self, trigger, records, [*context, *dialogue]), *dialogue]
 
     def _turns(self):

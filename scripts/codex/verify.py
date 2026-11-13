@@ -37,9 +37,9 @@ const home=process.env.CODEX_HOME;
 out.fresh_home=!fs.existsSync(home+'/auth.json');
 const auth={auth_mode:'chatgpt',tokens:{access_token:'synthetic-access',id_token:'synthetic-id',refresh_token:'synthetic-refresh'}};
 const probe="const fs=require('fs');const p=process.env.CODEX_HOME+'/auth.json';process.stdin.resume();process.stdin.on('end',()=>process.stdout.write(JSON.stringify({mode:fs.statSync(p).mode&511,valid:JSON.parse(fs.readFileSync(p)).auth_mode==='chatgpt'})))";
-const r=cp.spawnSync('node',['/opt/iam/launch.cjs','node','-e',probe],{input:JSON.stringify({auth,prompt:'synthetic prompt'}),encoding:'utf8'});
+const r=cp.spawnSync('node',['/opt/iam/launch.cjs','node','-e',probe,'--','--output-schema','/opt/iam/response.schema.json'],{input:JSON.stringify({auth,prompt:'synthetic prompt',citation_refs:[]}),encoding:'utf8'});
 let check={};try{check=JSON.parse(r.stdout);}catch{}
-out.ephemeral_auth=r.status===0&&check.mode===384&&check.valid===true&&!fs.existsSync(home+'/auth.json');
+out.ephemeral_auth=r.status===0&&check.mode===384&&check.valid===true&&!fs.existsSync(home+'/auth.json')&&!fs.existsSync(home+'/request.schema.json');
 process.stdout.write(JSON.stringify(out));
 """
 REQUEST = {'request_id': 'req_verify0001', 'persona_id': 'exp_verify0001', 'session_id': 'ses_verify0001',

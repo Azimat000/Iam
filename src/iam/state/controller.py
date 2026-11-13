@@ -86,6 +86,7 @@ class StateController:
         self._kinds: dict[str, KindHandler] = {}
         self._pending: dict[str, int] = {}
         self._memory_grants: set[str] = set()
+        self._memory_decode_cache: dict[str, MemoryRecord] = {}
         self._perception_guard = None
         self._reload()
         if not store.readonly:
@@ -147,7 +148,19 @@ class StateController:
         """Только текущие записи личной памяти и интерпретаций; архив этим путём недоступен."""
         rows = self.store.con.execute(
             "SELECT record FROM memory_records WHERE layer IN ('personal','interpretation')")
-        return [MemoryRecord.from_dict(json.loads(row[0])) for row in rows]
+        # SQL всегда заново определяет текущий набор. Кешируется только разбор
+        # точного JSON, а не доступность, версия состояния или результат поиска.
+        current, result = {}, []
+        for row in rows:
+            raw = row[0]
+            record = self._memory_decode_cache.get(raw)
+            if record is None:
+                record = MemoryRecord.from_dict(json.loads(raw))
+            current[raw] = record
+            result.append(record)
+        self._memory_decode_cache = current
+        # Получатель может менять вложенные content/history; кеш ему не отдаём.
+        return copy.deepcopy(result)
 
     def events_after(self, seq: int) -> list[Event]:
         """События журнала с номером больше `seq`, по порядку."""

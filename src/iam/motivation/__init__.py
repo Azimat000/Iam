@@ -21,10 +21,15 @@ class Motivation:
         self.ctl.add_validator('motivation_sources', self.validate)
         from .learning import Learning
         self.learning = Learning(self)
+        self.intentions.learning = self.learning
 
     def proposal(self, pr, ctx):
         draft = pr['body']['draft']
         content = draft['content']
+        if 'skill_assessment' in content:
+            return KindDecision(violation=Violation('assessment_reserved', 'Оценку умения записывает отдельный проверяющий'))
+        if 'practice' in content:
+            return self.learning.practice(pr, ctx)
         if 'procedure' in content:
             return self.learning.proposal(pr,ctx)
         if 'motivation' not in content:

@@ -155,16 +155,22 @@ class VerificationTest(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which('node'), 'Node required for bootstrap checks')
 class BootstrapTest(unittest.TestCase):
-    def run_bootstrap(self, payload, command=None, existing=False, writeback=False):
+    def run_bootstrap(self, payload, command=None, existing=False, writeback=False, existing_schema=False,
+                      schema_args=('--output-schema', '/opt/iam/response.schema.json')):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / 'home'
-            if existing:
+            if existing or existing_schema:
                 home.mkdir()
+            if existing:
                 (home / 'auth.json').write_text('preserve')
-            done = subprocess.run(['node', str(ROOT / 'docker/launch.cjs'), *(command or [])],
+            if existing_schema:
+                (home / 'request.schema.json').write_text('preserve schema')
+            child = [*command, '--', *schema_args] if command else []
+            done = subprocess.run(['node', str(ROOT / 'docker/launch.cjs'), *child],
                                   input=payload, capture_output=True, text=True,
                                   env={**os.environ, 'CODEX_HOME': str(home), 'IAM_AUTH_WRITEBACK': '1' if writeback else '0'}, timeout=10)
             preserved = (home / 'auth.json').read_text() if (home / 'auth.json').exists() else None
+            self.schema_remaining = (home / 'request.schema.json').read_text() if (home / 'request.schema.json').exists() else None
             return done, preserved
 
     def test_embedded_diagnostics_parse_real_js_escapes(self):
@@ -199,22 +205,122 @@ console.log(output);
 
     def test_exact_command_prompt_stdin_auth_mode_and_cleanup(self):
         probe = "const f=require('fs'),p=process.env.CODEX_HOME+'/auth.json';let x='';process.stdin.on('data',c=>x+=c);process.stdin.on('end',()=>console.log(JSON.stringify({mode:f.statSync(p).mode&511,auth:JSON.parse(f.readFileSync(p)).auth_mode,prompt:x==='synthetic prompt'})))"
-        done, remaining = self.run_bootstrap(json.dumps({'auth': AUTH, 'prompt':'synthetic prompt'}), ['node', '-e', probe])
+        done, remaining = self.run_bootstrap(json.dumps({'auth': AUTH, 'prompt':'synthetic prompt', 'citation_refs': []}), ['node', '-e', probe])
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout), {'mode':384,'auth':'chatgpt','prompt':True})
         self.assertIsNone(remaining)
+        self.assertIsNone(self.schema_remaining)
+
+    def test_embedded_auth_probe_uses_real_launcher_with_current_transport(self):
+        embedded = verify.DIAGNOSTIC[verify.DIAGNOSTIC.index('const home='):]
+        embedded = embedded.replace("'/opt/iam/launch.cjs'", json.dumps(str(ROOT / 'docker/launch.cjs')))
+        script = "const fs=require('fs'),cp=require('child_process');const out={};\n" + embedded
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / 'home'
+            done = subprocess.run(['node', '-e', script], capture_output=True, text=True, timeout=10,
+                env={**os.environ, 'CODEX_HOME': str(home), 'IAM_AUTH_WRITEBACK': '0'})
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(json.loads(done.stdout), {'fresh_home': True, 'ephemeral_auth': True})
+            self.assertFalse((home / 'auth.json').exists())
+            self.assertFalse((home / 'request.schema.json').exists())
+
+    def test_request_schema_constrains_every_citation_slot_and_preserves_template(self):
+        template = (ROOT / 'docker/response.schema.json').read_bytes()
+        visible = 'mem_8qcJfHHF7Rn8zSEQpLbf'
+        typo = 'mem_8qcJfHHF7Rn8zSEQpAu'
+        probe = """
+const fs=require('fs'),path=require('path');
+process.stdin.resume();process.stdin.on('end',()=>{
+ const argv=process.argv.slice(1),index=argv.indexOf('--output-schema'),file=argv[index+1];
+ console.log(JSON.stringify({
+  exact:file===path.join(process.env.CODEX_HOME,'request.schema.json'),
+  mode:fs.statSync(file).mode&511,schema:JSON.parse(fs.readFileSync(file,'utf8'))
+ }));
+});
+"""
+        for refs in ([visible, 'evt_Trigger0001'], []):
+            done, remaining = self.run_bootstrap(json.dumps({'auth': AUTH, 'prompt': 'quoted "mem_Text0001"',
+                                                              'citation_refs': refs}), ['node', '-e', probe])
+            self.assertEqual(done.returncode, 0, done.stderr)
+            packet = json.loads(done.stdout)
+            self.assertTrue(packet['exact'])
+            self.assertEqual(packet['mode'], 0o600)
+            schema = packet['schema']
+            slots = [item['properties']['cites'] for item in schema['properties']['proposals']['items']['anyOf']]
+            slots.append(schema['properties']['attention']['properties']['cites'])
+            self.assertEqual(len(slots), 4)
+            for slot in slots:
+                if refs:
+                    self.assertEqual(slot['items']['enum'], refs)
+                    self.assertEqual(jsonschema.check(slot, [visible], Path('.')), [])
+                    self.assertTrue(jsonschema.check(slot, [typo], Path('.')))
+                else:
+                    self.assertEqual(slot['maxItems'], 0)
+                    self.assertNotIn('enum', slot['items'])
+                    self.assertEqual(slot, dict(RESPONSE_JSON_SCHEMA['properties']['attention']['properties']['cites'],
+                                                maxItems=0))
+                # The core's smaller validator does not implement the external maxItems keyword.
+                shape = {key: value for key, value in slot.items() if key != 'maxItems'}
+                self.assertEqual(jsonschema.check(shape, [], Path('.')), [])
+                self.assertTrue(jsonschema.check(shape, ['inp_Notice0001'], Path('.')))
+            self.assertIsNone(remaining)
+            self.assertIsNone(self.schema_remaining)
+            self.assertEqual((ROOT / 'docker/response.schema.json').read_bytes(), template)
+
+    def test_schema_scope_has_no_cross_request_cache(self):
+        script = """
+const launcher=require(LAUNCHER),first=launcher.citationSchema(['mem_First0001']);
+first.properties.attention.properties.cites.items.enum.push('mem_Mutated001');
+console.log(JSON.stringify(launcher.citationSchema(['mem_Second0001'])));
+""".replace('LAUNCHER', json.dumps(str(ROOT / 'docker/launch.cjs')))
+        done = subprocess.run(['node', '-e', script], capture_output=True, text=True, timeout=10)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn('mem_First0001', done.stdout)
+        self.assertNotIn('mem_Mutated001', done.stdout)
+        self.assertEqual(json.loads(done.stdout)['properties']['attention']['properties']['cites']['items']['enum'],
+                         ['mem_Second0001'])
+
+    def test_invalid_refs_schema_options_and_existing_schema_fail_closed(self):
+        base = {'auth': AUTH, 'prompt': 'synthetic prompt'}
+        invalid = [None, {}, 'mem_Valid0001', [1], ['inp_Notice0001'], ['mem_short'], ['mem_AAAAAAAA\n'],
+                   ['mem_' + 'a' * 41], ['mem_Same0001', 'mem_Same0001']]
+        payloads = [base, *(dict(base, citation_refs=refs) for refs in invalid),
+                    dict(base, citation_refs=[], schema={'type': 'object'}),
+                    dict(base, citation_refs=[], schema_path='/tmp/foreign')]
+        for payload in payloads:
+            done, remaining = self.run_bootstrap(json.dumps(payload), ['node', '-e', "console.log('should not run')"])
+            self.assertEqual(done.returncode, 1)
+            self.assertEqual(done.stdout, '')
+            self.assertEqual(done.stderr, 'Codex bootstrap failed.\n')
+            self.assertIsNone(remaining)
+            self.assertIsNone(self.schema_remaining)
+        payload = json.dumps(dict(base, citation_refs=[]))
+        for args in ((), ('--output-schema',), ('--output-schema', '/tmp/foreign'),
+                     ('--output-schema', '/opt/iam/response.schema.json', '--output-schema', '/opt/iam/response.schema.json')):
+            done, remaining = self.run_bootstrap(payload, ['node', '-e', "console.log('should not run')"], schema_args=args)
+            self.assertEqual(done.returncode, 1)
+            self.assertEqual(done.stdout, '')
+            self.assertIsNone(remaining)
+            self.assertIsNone(self.schema_remaining)
+        done, remaining = self.run_bootstrap(payload, ['node', '-e', "console.log('should not run')"], existing_schema=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(done.stdout, '')
+        self.assertIsNone(remaining)
+        self.assertEqual(self.schema_remaining, 'preserve schema')
 
     def test_failures_hide_stderr_secrets_and_keep_existing_auth(self):
-        envelope = json.dumps({'auth': AUTH, 'prompt':'synthetic prompt'})
+        envelope = json.dumps({'auth': AUTH, 'prompt':'synthetic prompt', 'citation_refs': []})
         for command in ([], ['missing-iam-program'], ['node', '-e', "console.error('synthetic-secret');process.exit(3)"],
                         ['node', '-e', "process.kill(process.pid,'SIGTERM')"]):
             done, remaining = self.run_bootstrap(envelope, command)
             self.assertNotEqual(done.returncode, 0)
             self.assertNotIn('synthetic-secret', done.stderr + done.stdout)
             self.assertIsNone(remaining)
+            self.assertIsNone(self.schema_remaining)
         done, remaining = self.run_bootstrap(envelope, ['node','-e',''], existing=True)
         self.assertNotEqual(done.returncode, 0)
         self.assertEqual(remaining, 'preserve')
+        self.assertIsNone(self.schema_remaining)
 
     def test_invalid_transport_rejected_without_secret_echo(self):
         payloads = ['not json', 'x' * (4 * 1024 * 1024 + 1)]
@@ -226,13 +332,13 @@ console.log(output);
                        dict(AUTH['tokens'], account_id=1), dict(AUTH['tokens'], extra='x')):
             invalid.append({'auth':dict(AUTH,tokens=tokens),'prompt':'ok'})
         invalid.append({'auth':dict(AUTH,tokens=dict(AUTH['tokens'],account_id='account')),'prompt':5})
-        payloads += [json.dumps(value) for value in invalid]
+        payloads += [json.dumps(dict(value, citation_refs=[]) if isinstance(value, dict) else value) for value in invalid]
         for payload in payloads:
             done, remaining = self.run_bootstrap(payload, ['node', '-e', 'process.exit(0)'])
             self.assertNotEqual(done.returncode, 0)
             self.assertEqual(done.stderr, 'Codex bootstrap failed.\n')
             self.assertIsNone(remaining)
-        done, _ = self.run_bootstrap(json.dumps({'auth':dict(AUTH,tokens=dict(AUTH['tokens'],account_id='account')),'prompt':'ok'}), ['node','-e','process.stdin.resume()'])
+        done, _ = self.run_bootstrap(json.dumps({'auth':dict(AUTH,tokens=dict(AUTH['tokens'],account_id='account')),'prompt':'ok','citation_refs': []}), ['node','-e','process.stdin.resume()'])
         self.assertEqual(done.returncode, 0)
 
     def test_private_handoff_after_success_or_failure_and_cleanup(self):
@@ -250,7 +356,7 @@ process.stdin.resume();process.stdin.on('end',()=>{
 });
 """
         for status in (0, 3):
-            done, remaining = self.run_bootstrap(json.dumps({'auth':auth,'prompt':'synthetic prompt'}),
+            done, remaining = self.run_bootstrap(json.dumps({'auth':auth,'prompt':'synthetic prompt','citation_refs': []}),
                                                  ['node','-e',probe.replace('STATUS', str(status))], writeback=True)
             self.assertEqual(done.returncode, status)
             lines = [line for line in done.stdout.splitlines() if line]
@@ -272,13 +378,13 @@ process.stdin.resume();process.stdin.on('end',()=>{
             corruptions.append("const auth=JSON.parse(fs.readFileSync(p));" + changes + ";fs.writeFileSync(p,JSON.stringify(auth))")
         for corrupt in corruptions:
             script = "const fs=require('fs'),p=process.env.CODEX_HOME+'/auth.json';process.stdin.resume();process.stdin.on('end',()=>{" + corrupt + "});"
-            done, remaining = self.run_bootstrap(json.dumps({'auth':AUTH,'prompt':'synthetic prompt'}), ['node','-e',script], writeback=True)
+            done, remaining = self.run_bootstrap(json.dumps({'auth':AUTH,'prompt':'synthetic prompt','citation_refs': []}), ['node','-e',script], writeback=True)
             self.assertNotEqual(done.returncode, 0)
             self.assertEqual(done.stdout, '')
             self.assertEqual(done.stderr, 'Codex auth handoff failed.\n')
             self.assertIsNone(remaining)
         for timestamp in (None, 'invalid'):
-            done, remaining = self.run_bootstrap(json.dumps({'auth':dict(AUTH,last_refresh=timestamp),'prompt':'synthetic prompt'}),
+            done, remaining = self.run_bootstrap(json.dumps({'auth':dict(AUTH,last_refresh=timestamp),'prompt':'synthetic prompt','citation_refs': []}),
                                                  ['node','-e',''], writeback=True)
             self.assertEqual(done.stderr, 'Codex bootstrap failed.\n')
             self.assertEqual(done.stdout, '')

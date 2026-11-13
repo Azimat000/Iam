@@ -13,6 +13,7 @@ from iam.experiments.variants.model_led import ModelLedArchitecture
 from iam.experiments.variants.model_led.context import MAX_TEXT, bounded, numeric_fields, state_fragment
 from iam.experiments.variants.model_led.provider import GroundedProvider
 from iam.providers.codex import build_prompt
+from iam.providers.codex.presentation import restore_context
 from iam.providers.codex import CodexProvider, FakeCodex, CodexSandboxConfig
 from iam.providers.codex import fake
 from iam.providers.errors import (ProviderAuthError, ProviderFormatError, ProviderLimitError, ProviderTimeout,
@@ -152,7 +153,7 @@ class ModelLedCase(unittest.TestCase):
         prompt = build_prompt(request)
         self.assertNotIn("PRIVATE-", prompt)
         self.assertIn("Закончить заметку", prompt)
-        self.assertIn('"energy": 0.7', json.loads(prompt)["context"][-1]["text"])
+        self.assertIn('"energy": 0.7', restore_context(json.loads(prompt)["context"])[-1]["text"])
         for key in ("persona_id", "session_id", "idempotency_key", "issued_at", "state_version"):
             self.assertNotIn(key, json.loads(prompt))
 
@@ -193,7 +194,7 @@ class ModelLedCase(unittest.TestCase):
                 return fake.garbage()
             view = json.loads(json.loads(stdin)["prompt"].split("\n\n", 1)[1])
             proposal = {"kind": "no_action", "body": {"reason": "отдых"}, "rationale": "по ситуации",
-                        "cites": [view["context"][0]["ref"]]}
+                        "cites": [restore_context(view["context"])[0]["ref"]]}
             return fake.reply([proposal])
         adapter = CodexProvider(runner, CodexSandboxConfig(), max_format_retries=0)
         result = self.bench.run(Scenario.from_dict(ticket()), ModelLedArchitecture(lambda _: adapter), self.persona)[0]

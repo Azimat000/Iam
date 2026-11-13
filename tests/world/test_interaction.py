@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from iam.interfaces import Capability
 from iam.providers.codex import build_prompt
+from iam.providers.codex.presentation import restore_context
 from iam.social import SocialMemory
 from iam.state import verify
 from iam.stubs import Reply, StubCapabilities, attend, rest, say
@@ -31,7 +32,7 @@ class InteractionTest(PerceptionCase):
         frame = json.loads(context[-1]['text'])
         self.assertEqual(frame['kind'], 'current_interaction')
         # The actual provider receives the same available data, not an alternative DB path.
-        self.assertEqual(json.loads(build_prompt(self.provider.calls[-1]))['context'][-1]['text'],context[-1]['text'])
+        self.assertEqual(restore_context(json.loads(build_prompt(self.provider.calls[-1]))['context']), context)
         return frame
 
     def answer(self, text, number=1):

@@ -89,7 +89,7 @@ GUIDANCE = (
     'и укажи эти основания в cites, если они есть в отдельных блоках запроса. '
     'Это самооценка, не объективное измерение. Число записей/версий не является успехом.'
     ' После двух разных работ с отдельной положительной оценкой исходного критерия можно сохранить свой приём '
-    'memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:ключ_проекта,method:способ}}}; '
+    'memory_write draft={kind:procedural,origin:own_hypothesis,content:{text:кратко,procedure:{skill_id:группа_умения,method:способ}}}; '
     'cites:два видимых mem_ skill_assessment этих результатов. Приём и оценённое умение — разные вещи.'
 )
 
@@ -271,6 +271,12 @@ class LivingCycle(Cycle):
             packet['text_window'] = presented[item['ref']]['result_window']
             item['text'] = json.dumps(packet, ensure_ascii=False)
         context = compact
+        for result in results[:3]:
+            if not any(item['ref'] == result['event_id'] for item in context):
+                context.insert(1, {'ref': result['event_id'], 'origin': 'observation', 'layer': 'state',
+                                'text': json.dumps({'kind': 'world_result_receipt',
+                                    'result_ref': result['memory_id'], 'outcome': 'confirmed',
+                                    'scope': result['scope'], 'target': result['target']}, ensure_ascii=False)})
         goals = {} if self.motivation.off else self.intentions.visible()
         intention_results = {}
         for key, goal in goals.items():
@@ -323,9 +329,14 @@ class LivingCycle(Cycle):
         context.extend(self.motivation.learning.context())
         context.extend(character_context(self.ctl, self.memory))
         context.extend(self._proposal_feedback())
-        context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state', 'text': GUIDANCE},
-                    {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
-                     'text': json.dumps(catalog, ensure_ascii=False)}]
+        catalog_item = {'ref': trigger.event_id, 'origin': 'observation', 'layer': 'state',
+                        'text': json.dumps(catalog, ensure_ascii=False)}
+        options = self.motivation.learning.practice_options([*context, catalog_item])
+        if options:
+            catalog['practice_options'] = options
+            catalog_item['text'] = json.dumps(catalog, ensure_ascii=False)
+        context += [{'ref': trigger.event_id, 'origin': 'model_knowledge', 'layer': 'state',
+                     'text': GUIDANCE + self.motivation.learning.instructions}, catalog_item]
         return [*context, *interaction_context(trigger, context)]
 
     def _verified(self, rep, response, result):
@@ -333,7 +344,8 @@ class LivingCycle(Cycle):
         self._schedule_intentions()
         if self.ctl.session_state == 'running' and not self.memory.off and result.status in ('applied','partial','rejected'):
             for assessment in self.intentions.reviews.values():
-                self.motivation.learning.remember(assessment)
+                if assessment.get('basis') != 'practice':
+                    self.motivation.learning.remember(assessment)
         if rep.outcome == "done" and any(pr["kind"] == "reflection" and pr["proposal_id"] in result.accepted
                                          for pr in response["proposals"]):
             parent = self.ctl.find_event(key=f"req:{response['request_id']}").payload["request"]

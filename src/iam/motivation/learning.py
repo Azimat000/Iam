@@ -7,18 +7,34 @@ from iam.world import identifier, text
 
 
 class Learning:
+    instructions = (
+        'Практику можно оценить, не завершая активное намерение: memory_write '
+        'draft={kind:semantic,origin:own_hypothesis,content:{text:зачем оценить,'
+        'practice:{intention_id,result_ref,skill_id:свой переносимый ключ умения}}}; '
+        'cites: result_ref и event_id доступного результата из practice_options. '
+        'Оценщик проверит неизменные исходные цель и критерий; отрицательный результат тоже сохраняется. '
+        'Одна оценка за ответ; done имеет приоритет. Один результат по этому критерию и умению '
+        'повторно не оценивается; assessed_skills показывает уже доступные оценки этой пары. '
+        'skill_id описывает способ работы и может совпадать у разных проектов. '
+        'Два разных положительно оценённых результата одного умения позволяют предложить procedure '
+        'с тем же skill_id и собственным method; это гипотеза метода, а не доказанное общее мастерство.'
+    )
+
     def __init__(self, motivation):
         self.owner, self.memory, self.ctl = motivation, motivation.memory, motivation.ctl
 
-    def remember(self, assessment):
+    def assessment_record(self, assessment):
         result = assessment['result']
         sources = (result['memory_id'], *assessment['goal_sources'])
         evaluation = assessment['evaluation']
         verdict = evaluation['verdict'] if evaluation is not None else 'uncertain'
+        extra = ({'format': 2, 'basis': 'practice', 'project_id': assessment['project_id']}
+                 if assessment.get('basis') == 'practice' else {})
         record = self.memory.prepare(kind='semantic', origin='model_explanation',
                     text='Оценка исходного критерия: ' + verdict,
                     sources=sources, layer='interpretation', content={'skill_assessment': {
-                        'skill_id':assessment['project_id'], 'operation':assessment['operation'],
+                        **extra, 'skill_id':assessment.get('skill_id', assessment['project_id']),
+                        'operation':assessment['operation'],
                         'goal':assessment['goal_text'], 'criterion':assessment['criterion'],
                         'verdict':verdict, 'scope_match':assessment['scope_match'],
                         'evidence_kind':result['scope'], 'action_id':result['action_id'],
@@ -26,7 +42,95 @@ class Learning:
                         'assessment_event':assessment['event_id'],
                         'fingerprint':assessment['result_fingerprint'],
                         'independent_observation':False}})
-        return self.memory.write(record)
+        return record
+
+    def remember(self, assessment):
+        return self.memory.write(self.assessment_record(assessment))
+
+    def practice_candidate(self, pr, request):
+        """Проверка запроса практики переиспользует весь контракт результата done."""
+        draft = pr['body']['draft']
+        content = draft['content']
+        spec = content['practice']
+        if (self.memory.off or self.owner.off or request['purpose'] != 'choose_action'
+                or pr['kind'] != 'memory_write' or set(draft) != {'kind', 'origin', 'content'}
+                or draft['kind'] != 'semantic' or draft['origin'] != 'own_hypothesis'
+                or set(content) != {'text', 'practice'} or not text(content['text'], 512)
+                or not isinstance(spec, dict) or set(spec) != {'intention_id', 'result_ref', 'skill_id'}
+                or not identifier(spec['skill_id'])):
+            raise ValueError('Нужна отдельная оценка практики по активной цели')
+        normalized = dict(pr, body={'intention_id': spec['intention_id'], 'result_ref': spec['result_ref']})
+        goal, result = self.owner.intentions.result(normalized, request)
+        visible = {item['ref'] for item in request['context']}
+        if result['event_id'] not in visible:
+            raise ValueError('Подтверждающее событие не предъявлено')
+        return goal, result, spec['skill_id']
+
+    @staticmethod
+    def practice_key(goal, result, skill_id):
+        from iam.intentions.completion import digest
+        return 'assess:req_' + digest({'basis': 'practice', 'action_id': result['action_id'], 'goal': goal['text'],
+                                      'criterion': goal['criterion'], 'skill_id': skill_id})[:32]
+
+    def practice(self, pr, ctx):
+        from iam.intentions.completion import digest
+        try:
+            goal, result, skill_id = self.practice_candidate(pr, ctx.request)
+            key = digest({'request': ctx.request, 'proposal': pr, 'goal': goal})
+            assessed = self.owner.intentions.reviews.get(key)
+            if assessed is None:
+                code = ('assessment_slot_used' if self.owner.intentions.reviews else 'practice_unassessed')
+                return KindDecision(violation=Violation(code, 'Нужна отдельная оценка именно этого предложения'))
+            reservation = self.ctl.find_event(key=self.practice_key(goal, result, skill_id))
+            if (assessed.get('basis') != 'practice' or assessed.get('skill_id') != skill_id
+                    or assessed['result'] != result or reservation is None
+                    or reservation.payload.get('binding') != key):
+                raise ValueError('Оценка не относится к этому результату')
+            record = self.assessment_record(assessed)
+            return KindDecision((Op('memory', record.memory_id, 'add', record.to_dict(), True),))
+        except (KeyError, ValueError, TypeError):
+            return KindDecision(violation=Violation('practice_invalid', 'Практика требует доступного результата и привязанной оценки'))
+
+    def practice_options(self, context):
+        """До четырёх доступных пар, без чтения скрытого результата и выбора умения за личность."""
+        if self.memory.off or self.owner.off:
+            return []
+        results = []
+        for item in context:
+            try:
+                value = json.loads(item['text'])
+            except (ValueError, TypeError):
+                continue
+            if isinstance(value, dict):
+                results.extend(value.get('world_results', []))
+        options = []
+        visible = {item['ref'] for item in context}
+        assessed = [row for ref, row in self.assessments().items() if ref in visible]
+        for iid, goal in self.owner.intentions.visible().items():
+            if goal['status'] != 'active':
+                continue
+            for result in results:
+                if not isinstance(result, dict) or result.get('target') != goal['project_id']:
+                    continue
+                try:
+                    pr = {'body': {'intention_id': iid, 'result_ref': result['memory_id']},
+                          'cites': [result['memory_id'], result['event_id']]}
+                    _, checked = self.owner.intentions.result(pr, {'context': context})
+                    if checked['event_id'] not in visible:
+                        continue
+                except (KeyError, TypeError, ValueError):
+                    continue
+                option = {'intention_id': iid, 'result_ref': checked['memory_id'], 'event_id': checked['event_id'],
+                          'project_id': goal['project_id'], 'operation': goal['operation']}
+                prior = {row.content['skill_assessment']['skill_id']: row.memory_id for row in assessed
+                         if row.content['skill_assessment']['action_id'] == checked['action_id']
+                         and row.content['skill_assessment']['goal'] == goal['text']
+                         and row.content['skill_assessment']['criterion'] == goal['criterion']}
+                if prior:
+                    option['assessed_skills'] = prior
+                if option not in options:
+                    options.append(option)
+        return options[-4:]
 
     def context(self):
         """Цитируемые оценки и приёмы, чьи структурные поля не входят в обычное окно памяти."""
@@ -56,7 +160,7 @@ class Learning:
         seen = set()
         for row in self.assessments().values():
             value = row.content['skill_assessment']
-            identity=(value['action_id'],value['goal'],value['criterion'])
+            identity=(value['action_id'],value['goal'],value['criterion'],value['skill_id'])
             if identity in seen:
                 continue
             seen.add(identity)

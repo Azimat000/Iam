@@ -100,6 +100,8 @@ SYSTEM_PROMPT += (
     'as separate fields beside rationale and cites, without body_json. This is just the encoding of an action '
     'with cap_Project01 and those three params, so use it only when action and cap_Project01 are allowed. '
     'Other actions, including a project status change, still use body_json.'
+    ' The response schema restricts cites to the exact references presented as context block refs in this request. '
+    'Nested sources show provenance, not additional available citations. Copy each chosen citation exactly.'
 )
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}")
 _MEMORY = re.compile(r"([1-9]\d*)([mg])")

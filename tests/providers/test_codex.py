@@ -77,7 +77,8 @@ class ProviderTests(unittest.TestCase):
         p.propose(request())
         call = runner.calls[0]
         payload = json.loads(call["stdin"])
-        self.assertEqual(set(payload), {"auth", "prompt"})
+        self.assertEqual(set(payload), {"auth", "prompt", "citation_refs"})
+        self.assertEqual(payload['citation_refs'], ['evt_AAAAAAAA'])
         self.assertEqual(payload["auth"], {})
         self.assertIn("minimal context", payload["prompt"])
         self.assertIn("body_json", payload["prompt"])
@@ -86,7 +87,9 @@ class ProviderTests(unittest.TestCase):
             self.assertNotIn(private, call["stdin"] + str(call["argv"]))
         self.assertEqual(set(json.loads(build_prompt(request()))),
                          {"purpose", "context", "allowed_proposals", "allowed_actions", "max_output_tokens"})
-        self.assertEqual(set(json.loads(build_prompt(request()))["context"][0]), {"ref", "origin", "layer", "text"})
+        from iam.providers.codex.presentation import restore_context
+        expected = [{key: item[key] for key in ('ref', 'origin', 'layer', 'text')} for item in request()['context']]
+        self.assertEqual(restore_context(json.loads(build_prompt(request()))['context']), expected)
         self.assertEqual(call["cleanup"][:2], ["docker", "kill"])
 
     def test_retry_is_bounded_and_repair_does_not_echo_model_text(self):
