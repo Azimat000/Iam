@@ -8,6 +8,7 @@ from iam.perception import Perception
 from iam.world.cycle import WorldMemory
 from .context import authorship, adjacent, neighbor_context
 from .development import relationship_context, conversation_experience
+from .episodes import episode_context
 
 
 class SocialMemory(WorldMemory):
@@ -122,9 +123,12 @@ class SocialMemory(WorldMemory):
                     context.append({'ref': row.memory_id, 'origin': row.origin,
                                     'layer': 'interpretation', 'text': detail})
         dialogue = self.dialogue(trigger)
+        neighbors = neighbor_context(self, trigger, records, [*context, *dialogue])
+        episodes = episode_context(self, trigger, records, [*context, *dialogue])
+        context.extend(episodes)
         context.extend(relationship_context(self, [*context, *dialogue], trigger))
         context.extend(conversation_experience(self, [*context, *dialogue]))
-        return [*context, *neighbor_context(self, trigger, records, [*context, *dialogue]), *dialogue]
+        return [*context, *neighbors, *dialogue]
 
     def _turns(self):
         """Доступные реплики с порядком и авторством; тело берётся только из памяти."""

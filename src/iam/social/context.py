@@ -9,12 +9,16 @@ def authorship(turn):
             'evidence_rule': 'Контакт не доказывает автора цитаты; прежнее сомнение не отменяет показанный источник.'}
 
 
-def adjacent(memory, turns):
+def boundaries(memory):
     actions = memory.ctl.state['world_time'].get('world', {}).get('actions', {})
-    boundaries = {event.seq for event in memory.ctl.events_after(0)
+    return {event.seq for event in memory.ctl.events_after(0)
                   if event.type in ('input.arrived', 'input.read', 'message.out_sent', 'message.out_unknown')
                   or event.type == 'action.failed'
                   and actions.get(event.payload.get('action_id'), {}).get('kind') == 'message'}
+
+
+def adjacent(memory, turns):
+    edges = boundaries(memory)
     result = {}
     for i, turn in enumerate(turns):
         j = i + (1 if turn[2] == 'incoming' else -1)
@@ -23,7 +27,7 @@ def adjacent(memory, turns):
         other = turns[j]
         low, high = sorted((turn[0], other[0]))
         if (turn[3] == other[3] and turn[2] != other[2] and other[4] is not None
-                and not any(low < seq < high for seq in boundaries)):
+                and not any(low < seq < high for seq in edges)):
             result[turn[1].memory_id] = other
     return result
 

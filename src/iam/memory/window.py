@@ -32,7 +32,7 @@ def next_window(record, context):
             continue
         if not isinstance(data, dict) or data.get('version') != record.version:
             continue
-        if item['layer'] == 'state' and data.get('kind') == 'dialogue_turn':
+        if item['layer'] == 'state' and data.get('kind') in ('dialogue_turn', 'conversation_episode'):
             # Обзор может содержать только слова сообщения, без префикса record.text.
             # Поэтому его позиции не используются: открываем начало актуальной записи.
             overview = True

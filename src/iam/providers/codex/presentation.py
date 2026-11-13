@@ -27,7 +27,7 @@ def _decode(item):
     if layer == "state":
         signatures = (
             kind == "current_interaction" and {"read_now", "unread_targets"} <= data.keys(),
-            kind == "dialogue_turn" and {"speaker", "person", "seq", "text", "excerpt"} <= data.keys(),
+            kind in ("dialogue_turn", "conversation_episode") and {"speaker", "person", "seq", "text", "excerpt"} <= data.keys(),
             kind == "evidence_review" and "recollection_sources" in data,
             kind in STATE_KINDS if isinstance(kind, str) else False,
             {"library", "projects", "intentions", "world_results"} <= data.keys(),
@@ -52,6 +52,8 @@ def _place(item, data):
             return "unread"
         if kind == "current_interaction":
             return "current"
+        if kind == "conversation_episode":
+            return "recalled_utterances"
         if kind == "dialogue_turn":
             return "recent_turns"
         if kind == "evidence_review":
