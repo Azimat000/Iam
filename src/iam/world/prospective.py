@@ -52,6 +52,7 @@ class ProspectiveCycle(LivingCycle):
         self.can_appraise = can_appraise
         self.fast_inputs = fast_inputs
         self._appraised_intention = False
+        self._incoming_notice = False
         self._appraisal_sources = frozenset()
         self._reviewed_records = []
         self.ctl.register_kind('intention', self._intention)
@@ -73,7 +74,33 @@ class ProspectiveCycle(LivingCycle):
         if request['purpose'] == 'choose_action' and self._appraised_intention:
             # Один общий слот намерения на цикл, включая новую оценку.
             request['allowed_proposals'].remove('intention')
+        if request['purpose'] == 'choose_action' and self._incoming_notice:
+            request['allowed_proposals'] = ['attend', 'no_action']
+            request['allowed_actions'] = []
         return request
+
+    def _retrieve(self, rep, focus):
+        trigger = self.ctl.find_event(event_id=rep.trigger)
+        if (self.perception is not None and self.fast_inputs is not None and self.fast_inputs()
+                and trigger.type == 'input.arrived'):
+            self._stage(rep, 'retrieval', 'skipped', (), {'reason': 'conversation_notification', 'count': 0})
+            return []
+        return super()._retrieve(rep, focus)
+
+    def _context(self, trigger, focus, records):
+        if not self._incoming_notice:
+            return super()._context(trigger, focus, records)
+        packet = {'kind': 'incoming_attention', 'load': self.ctl.state['affect'].get('load'),
+                  'instructions': 'Режим общения. Пришло новое уведомление, его текст ещё неизвестен. '
+                  'Сейчас реши только, прочитать ли сообщение или отложить. '
+                  'Для чтения выбери attend с focus:dialogue и ref выбранного уведомления inp_. '
+                  'Можно no_action с reason, если сейчас не хочешь читать. '
+                  'После настоящего чтения будет отдельный выбор ответа или другого действия. '
+                  'Не отвечай на старую тему вместо чтения нового сообщения. '
+                  'Ссылки inp_ используются как ref внимания, не как cites.'}
+        return [{'ref': trigger.event_id, 'origin': 'observation', 'layer': 'notice',
+                 'text': json.dumps(packet, ensure_ascii=False)},
+                *self.perception.context(self.perception.input_id(trigger))]
 
     @staticmethod
     def _source_key(row):
@@ -218,11 +245,13 @@ class ProspectiveCycle(LivingCycle):
         self._reviewed_records = records
         try:
             fast = self.fast_inputs is not None and self.fast_inputs() and trigger.type in ('input.arrived', 'input.read')
+            self._incoming_notice = bool(fast and self.perception is not None and trigger.type == 'input.arrived')
             if fast:
                 self._stage(rep, 'experience_appraisal', 'skipped', (), {'reason': 'conversation_input'})
             if fast or self._appraise_experience(rep, trigger, focus, records):
                 # Контекст и версия строятся заново после проверенных интерпретаций.
                 super()._decide(rep, trigger, focus, self._reviewed_records)
         finally:
+            self._incoming_notice = False
             self._appraised_intention = False
             self._reviewed_records = []

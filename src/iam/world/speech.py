@@ -69,7 +69,8 @@ def speech_context(context):
 def compose(owner, request, response, started):
     """Черновик не отправляется: итог снова проходит обычное проверяющее ядро."""
     provider = owner.inner
-    if request['purpose'] != 'choose_action' or not callable(getattr(provider, 'compose_message', None)):
+    if (request['purpose'] != 'choose_action' or 'message' not in request['allowed_proposals']
+            or not callable(getattr(provider, 'compose_message', None))):
         return response
     messages = [p for p in response['proposals'] if p['kind'] == 'message']
     if len(messages) != 1 or any(p['kind'] in ('action', 'no_action') for p in response['proposals']):

@@ -58,6 +58,7 @@ class SpeechTest(LivingCase):
         self.assertIs(self.perform(request, response), response)
         self.p.compose_message = self.p.propose
         for mutate in (lambda q,r:q.update(purpose='reflect'),
+                       lambda q,r:q.update(allowed_proposals=['attend','no_action']),
                        lambda q,r:r.update(proposals=[rest()]),
                        lambda q,r:r['proposals'].append(act('cap_WorldRead01')),
                        lambda q,r:r['proposals'][0]['body'].update(extra='bad'),
