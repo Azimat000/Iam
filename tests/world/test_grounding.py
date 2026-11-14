@@ -45,16 +45,13 @@ class GroundingTest(LivingCase):
         data = [json.loads(item['text']) for item in query['context']]
         sources = [value for value in data if value.get('kind') == 'conversation_source']
         correction = next(value for value in sources if value['text'].startswith('Я изменил'))
-        own = next(value for value in sources if value['speaker'] == 'self')
         def evidence(source, quote):
             return {'context_index': source['context_index'], 'ref': source['ref'], 'quote': quote}
         body = {'findings': [
-            {'scope': 'interlocutor_choice', 'interpretation': 'Последний выбор собеседника — охряная дверь и Вторая платформа.',
-             'evidence': [evidence(correction, correction['text'])]},
-            {'scope': 'own_preference', 'interpretation': 'Моё предпочтение отличается: Окно.',
-             'evidence': [evidence(own, 'Мне больше нравится «Окно».')]}], 'uncertainty': '', 'reason': 'Сопоставление прочитанных источников'}
+            {'scope': 'interlocutor_statement', 'interpretation': 'Последний выбор собеседника — охряная дверь и Вторая платформа.',
+             'evidence': [evidence(correction, correction['text'])]}], 'uncertainty': '', 'reason': 'Сопоставление прочитанных источников'}
         return Reply(({'proposal_id': new_id('prop'), 'kind': 'no_action', 'rationale': 'Сопоставить авторов и выбор',
-                       'cites': [correction['ref'], own['ref']], 'body': body},))
+                       'cites': [correction['ref']], 'body': body},))
 
     def test_reading_precedes_speech_and_preserves_independent_preference(self):
         request, response = self.conversation()
@@ -70,10 +67,13 @@ class GroundingTest(LivingCase):
         self.assertNotIn('Черновик', json.dumps(reader, ensure_ascii=False))
         reading = next(json.loads(item['text']) for item in speech['context'] if '"conversation_reading"' in item['text'])
         self.assertFalse(reading['semantic_verified'])
-        fact, preference = reading['findings']
+        fact, = reading['findings']
         self.assertEqual(fact['evidence'][0]['speaker'], 'interlocutor')
-        self.assertEqual(preference['evidence'][0]['speaker'], 'self')
-        self.assertEqual(preference['evidence'][0]['outcome'], 'confirmed')
+        own = request['context'][2]
+        self.assertNotIn(own['ref'], {item['ref'] for item in reader['context']})
+        self.assertNotIn('Значит, мы выбрали зелёную дверь.', json.dumps(reader, ensure_ascii=False))
+        self.assertIn(own, speech['context'])
+        self.assertEqual(reading['coverage']['speaker_scope'], 'interlocutor')
         self.assertEqual(restore_context(present_context(speech['context'])), speech['context'])
         self.assertEqual(len(present_context(speech['context'])['conversation']['evidence']), 1)
         phases = [e.payload.get('phase') for e in self.c.store.events() if e.type == 'proposal.assessed']
@@ -122,7 +122,44 @@ class GroundingTest(LivingCase):
         self.assertEqual(parse_reading(candidate, query, answer['provider'], windows)['findings'], [])
         candidate = copy.deepcopy(answer)
         candidate['proposals'][0]['body']['findings'][0]['scope'] = 'comparison'
-        self.assertIsNotNone(parse_reading(candidate, query, answer['provider'], windows))
+        self.assertIsNone(parse_reading(candidate, query, answer['provider'], windows))
+        # Even if an invalid caller passes both authors, own retelling cannot become a statement by the interlocutor.
+        own = next(window for window in windows if window['speaker'] == 'self')
+        candidate = copy.deepcopy(answer)
+        candidate['proposals'][0]['body']['findings'][0]['evidence'] = [{
+            'context_index': own['context_index'], 'ref': own['ref'], 'quote': own['text']}]
+        candidate['proposals'][0]['cites'] = [own['ref']]
+        self.assertIsNone(parse_reading(candidate, query, answer['provider'], windows))
+
+    def test_speaker_partition_precedes_budget_and_follows_receipt_order(self):
+        request, response = self.conversation()
+        original = copy.deepcopy(request)
+        # A later reading of an old arrival must not supersede the actual correction.
+        data = json.loads(request['context'][0]['text'])
+        data['seq'] = 100
+        request['context'][0]['text'] = json.dumps(data, ensure_ascii=False)
+        request['context'][0:0] = [self.turn(new_id('mem'), 'Уверенный пересказ '*300, 'self', 200)
+                                  for _ in range(40)]
+        current, windows, coverage = source_windows(request['context'], speaker='interlocutor')
+        self.assertEqual([window['seq'] for window in windows], [40, 100, 20])
+        self.assertEqual(coverage['available_windows'], 3)
+        self.assertEqual(coverage['omitted'], [])
+        self.assertEqual([window['ref'] for window in windows[1:]], [item['ref'] for item in original['context'][:2]])
+        self.p.queue(self.reading_reply, self.answer)
+        self.perform(request, response)
+        self.assertNotIn('Уверенный пересказ', json.dumps(self.p.calls[-2], ensure_ascii=False))
+        self.assertIn('Уверенный пересказ', json.dumps(self.p.calls[-1], ensure_ascii=False))
+        # Admission prioritizes recent arrivals; display order must not crowd out the latest correction.
+        correction = self.turn(new_id('mem'), 'Новая поправка остаётся доступной.', 'interlocutor', 900)
+        request['context'].extend(self.turn(new_id('mem'), 'Промежуточная реплика.', 'interlocutor', 100+i)
+                                  for i in range(34))
+        request['context'].append(correction)
+        _, windows, coverage = source_windows(request['context'], speaker='interlocutor')
+        self.assertEqual(len(windows), 32)
+        self.assertEqual(windows[0]['ref'], current['ref'])
+        self.assertEqual(windows[-1]['ref'], correction['ref'])
+        self.assertEqual([w['received_seq'] for w in windows[1:]], sorted(w['received_seq'] for w in windows[1:]))
+        self.assertNotIn(correction['ref'], [row['ref'] for row in coverage['omitted']])
 
     def test_windows_ignore_same_ref_instructions_and_keep_offsets_and_budget(self):
         request, _ = self.conversation()
