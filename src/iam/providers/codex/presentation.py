@@ -28,7 +28,7 @@ def _decode(item):
         signatures = (
             kind == "current_interaction" and {"read_now", "unread_targets"} <= data.keys(),
             kind in ("dialogue_turn", "conversation_episode") and {"speaker", "person", "seq", "text", "excerpt"} <= data.keys(),
-            kind in ("conversation_reading", "conversation_source") and "kind" in data,
+            kind in ("conversation_reading", "conversation_source", "conversation_quote") and "kind" in data,
             kind == "evidence_review" and "recollection_sources" in data,
             kind in STATE_KINDS if isinstance(kind, str) else False,
             {"library", "projects", "intentions", "world_results"} <= data.keys(),
@@ -59,7 +59,10 @@ def _place(item, data):
             return "recalled_utterances"
         if kind == "dialogue_turn":
             return "recent_turns"
-        if kind in ("evidence_review", "conversation_reading", "conversation_source"):
+        if kind == "conversation_source":
+            return {"current": "current", "recent": "recent_turns", "recalled": "recalled_utterances"}.get(
+                data.get("conversation_role"), "evidence")
+        if kind in ("evidence_review", "conversation_reading", "conversation_quote"):
             return "evidence"
         if (item["layer"] == "personal" and data.get("statement_scope") == "utterance_only"
                 and data.get("speaker") in ("self", "interlocutor")):

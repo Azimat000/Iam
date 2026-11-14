@@ -140,6 +140,15 @@ class PresentationTest(unittest.TestCase):
         view = self.assert_roundtrip(context)
         self.assertEqual([row["index"] for row in view["conversation"]["recent_turns"]], [0, 1, 2])
 
+    def test_reader_roles_and_selected_quotes_roundtrip(self):
+        context = [block({'kind': 'conversation_source', 'conversation_role': role, 'seq': n,
+                          'context_index': n, 'parent_context_index': 40-n, 'text': 'Слова'})
+                   for n, role in enumerate(('current', 'recent', 'recalled', None))]
+        context.append(block({'kind': 'conversation_quote', 'quote': 'Моя позиция', 'speaker': 'self'}))
+        view = self.assert_roundtrip(context)['conversation']
+        self.assertEqual([len(view[k]) for k in ('current', 'recent_turns', 'recalled_utterances', 'evidence')], [1,1,1,2])
+        self.assertEqual(view['recent_turns'][0]['index'], view['recent_turns'][0]['item']['text']['context_index'])
+
     def test_no_mutable_alias_and_empty_context(self):
         self.assert_roundtrip([])
         context = [block(turn("Original", 1))]

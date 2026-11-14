@@ -14,7 +14,7 @@ from iam.storage import Store
 
 
 class ConversationRuntimeTest(unittest.TestCase):
-    def test_six_read_reply_turns_keep_one_session_and_charge_twenty_three_calls(self):
+    def test_six_read_reply_turns_keep_one_session_and_charge_twenty_eight_calls(self):
         recipient = 876543210987
         provider = FakeCodex()
         client = Mock(bot_id=123, timeout=0)
@@ -44,6 +44,7 @@ class ConversationRuntimeTest(unittest.TestCase):
                         if number:
                             sequence.insert(2, reply([{'kind': 'no_action', 'rationale': 'Проверка доступных источников',
                                 'body': {'findings': [], 'uncertainty': 'В этом обмене нет спорного воспоминания.', 'reason': 'Нет спорного воспоминания'}}]))
+                            sequence.insert(2, sequence[2])
                         provider.queue(*sequence)
                         rt.inject = lambda iid=iid, number=number: rt.ctl.record_event(EventSpec(
                             'input.arrived', 'rx:test:' + iid,
@@ -57,7 +58,7 @@ class ConversationRuntimeTest(unittest.TestCase):
                                 break
                         else:
                             self.fail('Нет подтверждённого ответа на очередное сообщение')
-                    self.assertEqual(view['usage']['calls'], 23)
+                    self.assertEqual(view['usage']['calls'], 28)
                     self.assertEqual([call.args[1]['text'] for call in sent], [f'Ответ {n}' for n in range(6)])
                     self.assertEqual(view['usage']['session_id'], sid)
                     self.assertEqual(view['session_state'], 'running')
@@ -75,11 +76,11 @@ class ConversationRuntimeTest(unittest.TestCase):
                             and e.payload.get('phase') == 'conversation_composition']
                 readings = [e for e in store.events() if e.type == 'proposal.assessed'
                             and e.payload.get('phase') == 'conversation_reading']
-                self.assertEqual(len(readings), 5)
+                self.assertEqual(len(readings), 10)
                 self.assertTrue(all(e.payload['error'] is None for e in readings))
                 self.assertEqual(len(composed),6)
                 self.assertTrue(all(e.payload['error'] is None for e in composed))
-        self.assertEqual(len(provider.calls), 23)
+        self.assertEqual(len(provider.calls), 28)
         prompts = [json.loads(call['stdin'])['prompt'] for call in provider.calls]
         self.assertNotIn('Вопрос 0', prompts[0])
         self.assertIn('Вопрос 0', prompts[1])

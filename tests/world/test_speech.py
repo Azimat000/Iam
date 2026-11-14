@@ -111,7 +111,7 @@ class SpeechTest(LivingCase):
             with self.assertRaisesRegex(ProviderError,'unavailable'):
                 compose(self.cycle.provider,request,response,0)
         self.p.queue(self.answer)
-        with patch('iam.world.speech.time.monotonic',side_effect=[0,1000]):
+        with patch('iam.world.speech.time.monotonic',side_effect=[0,0,1000]):
             with self.assertRaisesRegex(ProviderError,'state_or_deadline'):
                 compose(self.cycle.provider,request,response,0)
         self.p.queue(self.answer)

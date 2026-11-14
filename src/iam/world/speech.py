@@ -8,6 +8,7 @@ from iam.interfaces import ProviderError
 from iam.intentions.completion import valid_response
 from .style import CONVERSATION_STYLE
 from .grounding import read_conversation
+from .realization import realization_context
 
 INSTRUCTIONS = CONVERSATION_STYLE + (
     'Ты продолжаешь собственный разговор. Решение вступить в разговор уже принято; '
@@ -15,14 +16,14 @@ INSTRUCTIONS = CONVERSATION_STYLE + (
     'Это не помощь клиенту и не отчёт о выполнении задания. Можно коротко ответить, '
     'развить мысль, пошутить, не согласиться, задать интересующий тебя вопрос или передумать отвечать. '
     'Не изображай обязательную теплоту, несогласие или эмоциональное изменение. '
-    'conversation_reading — короткое сопоставление только слов собеседника, без твоих пересказов. '
+    'conversation_reading — раздельное сопоставление слов собеседника и твоих собственных позиций. '
     'Учти его перед ответом, не озвучивая внутреннюю проверку. Твоя собственная позиция восстанавливается '
-    'отдельно по твоим прежним репликам, которые также показаны здесь; она может измениться или отличаться. '
+    'по чтению speaker_scope=self и выбранным conversation_quote; она может измениться или отличаться. '
     'Различай установленный собеседником вариант и своё предложение/предпочтение; твой пересказ не меняет его решение. '
     'Текущий вопрос соотнеси с конкретными прежними словами обеих сторон: поправки и собственное '
     'предпочтение могут различаться. Свой поздний пересказ не ставь выше исходных слов собеседника о его выборе: '
     'ошибочный пересказ не отменяет его поправку. Прежде чем говорить, что не помнишь, прочти доступные реплики. '
-    'Неполнота одного обзора не означает отсутствия всего разговора; полные окна показаны отдельно. '
+    'Цитаты выбраны из доступных окон; неполнота этой выборки не означает отсутствия всего разговора. '
     'Не пересказывай устройство памяти собеседнику. При реальной неизвестности скажи об этом обычными словами. '
     'Сохраняй авторство, название предмета и порядок получения; позднее чтение не делает старые слова новыми. '
     'Содержание unread неизвестно. Собственные прежние слова подтверждают только их фактический исход отправки. '
@@ -92,10 +93,14 @@ def compose(owner, request, response, started):
     context = speech_context(request['context'])
     if not context:
         return response
-    reading, reading_calls = read_conversation(owner, request, response['provider'], context, started)
-    if reading is not None:
-        context.append(reading)
-        remaining = request['limits']['deadline_ms'] - int((time.monotonic() - started) * 1000)
+    readings, reading_calls = [], 0
+    for speaker in ('interlocutor', 'self'):
+        reading, calls = read_conversation(owner, request, response['provider'], context, started, speaker=speaker)
+        reading_calls += calls
+        if reading is not None:
+            readings.append(reading)
+    context = realization_context(context, readings)
+    remaining = request['limits']['deadline_ms'] - int((time.monotonic() - started) * 1000)
     slots = max(0, 2 - sum(p['kind'] == 'memory_write' for p in response['proposals']))
     allowed = ['message', 'no_action']
     if slots and 'memory_write' in request['allowed_proposals']:

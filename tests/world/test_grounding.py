@@ -44,24 +44,29 @@ class GroundingTest(LivingCase):
     def reading_reply(self, query):
         data = [json.loads(item['text']) for item in query['context']]
         sources = [value for value in data if value.get('kind') == 'conversation_source']
-        correction = next(value for value in sources if value['text'].startswith('Я изменил'))
+        own = data[-1]['speaker_scope'] == 'self'
+        correction = next((value for value in sources if value['text'].startswith('Мне больше' if own else 'Я изменил')), None)
+        if correction is None:
+            return Reply(({'proposal_id': new_id('prop'), 'kind': 'no_action', 'rationale': 'Нет основания',
+                           'cites': [sources[0]['ref']], 'body': {'findings': [], 'uncertainty': 'Неясно.', 'reason': 'Нет основания'}},))
         def evidence(source, quote):
             return {'context_index': source['context_index'], 'ref': source['ref'], 'quote': quote}
         body = {'findings': [
-            {'scope': 'interlocutor_statement', 'interpretation': 'Последний выбор собеседника — охряная дверь и Вторая платформа.',
-             'evidence': [evidence(correction, correction['text'])]}], 'uncertainty': '', 'reason': 'Сопоставление прочитанных источников'}
+            {'scope': 'own_preference' if own else 'interlocutor_statement',
+             'interpretation': 'Мне нравится Окно.' if own else 'Последний выбор собеседника — охряная дверь и Вторая платформа.',
+             'evidence': [evidence(correction, 'Мне больше нравится «Окно».' if own else correction['text'])]}], 'uncertainty': '', 'reason': 'Сопоставление прочитанных источников'}
         return Reply(({'proposal_id': new_id('prop'), 'kind': 'no_action', 'rationale': 'Сопоставить авторов и выбор',
                        'cites': [correction['ref']], 'body': body},))
 
     def test_reading_precedes_speech_and_preserves_independent_preference(self):
         request, response = self.conversation()
         before = copy.deepcopy(request)
-        self.p.queue(self.reading_reply, self.answer)
+        self.p.queue(self.reading_reply, self.reading_reply, self.answer)
         result = self.perform(request, response)
         self.assertEqual(request, before)
-        self.assertEqual(result['usage']['calls'], 3)
-        self.assertEqual([q['purpose'] for q in self.p.calls[-2:]], ['appraise', 'compose_message'])
-        reader, speech = self.p.calls[-2:]
+        self.assertEqual(result['usage']['calls'], 4)
+        self.assertEqual([q['purpose'] for q in self.p.calls[-3:]], ['appraise', 'appraise', 'compose_message'])
+        reader, own_reader, speech = self.p.calls[-3:]
         self.assertEqual(reader['allowed_proposals'], ['no_action'])
         self.assertEqual(reader['allowed_actions'], [])
         self.assertNotIn('Черновик', json.dumps(reader, ensure_ascii=False))
@@ -72,12 +77,20 @@ class GroundingTest(LivingCase):
         own = request['context'][2]
         self.assertNotIn(own['ref'], {item['ref'] for item in reader['context']})
         self.assertNotIn('Значит, мы выбрали зелёную дверь.', json.dumps(reader, ensure_ascii=False))
-        self.assertIn(own, speech['context'])
+        self.assertNotIn(own, speech['context'])
+        self.assertNotIn('Значит, мы выбрали зелёную дверь.', json.dumps(speech['context'], ensure_ascii=False))
+        quotes = [json.loads(item['text']) for item in speech['context'] if '"conversation_quote"' in item['text']]
+        self.assertTrue(any(q['ref'] == own['ref'] and q['quote'] == 'Мне больше нравится «Окно».' for q in quotes))
+        for query in (reader, own_reader):
+            for index, item in enumerate(query['context'][:-1]):
+                self.assertEqual(json.loads(item['text'])['context_index'], index)
+        self.assertEqual({json.loads(i['text'])['speaker'] for i in own_reader['context'][1:-1]}, {'self'})
         self.assertEqual(reading['coverage']['speaker_scope'], 'interlocutor')
         self.assertEqual(restore_context(present_context(speech['context'])), speech['context'])
-        self.assertEqual(len(present_context(speech['context'])['conversation']['evidence']), 1)
+        self.assertEqual(len(present_context(speech['context'])['conversation']['evidence']), 4)
         phases = [e.payload.get('phase') for e in self.c.store.events() if e.type == 'proposal.assessed']
-        self.assertEqual(phases[-4:], ['conversation_reading_requested', 'conversation_reading',
+        self.assertEqual(phases[-6:], ['conversation_reading_requested', 'conversation_reading',
+                                      'conversation_reading_requested', 'conversation_reading',
                                       'conversation_composition_requested', 'conversation_composition'])
         self.assertEqual([p['kind'] for p in result['proposals']], ['message'])
 
@@ -87,7 +100,10 @@ class GroundingTest(LivingCase):
         read_conversation(self.cycle.provider, request, response['provider'], request['context'], time.monotonic())
         query = self.p.calls[-1]
         answer = ScriptedProvider([self.reading_reply(query)]).propose(query)
-        return query, answer, source_windows(request['context'])[1]
+        windows = [json.loads(item['text']) for item in query['context'][:-1]]
+        own = next(w for w in source_windows(request['context'])[1] if w['speaker'] == 'self')
+        windows.append(dict(own, context_index=99))  # Invalid mixed-author caller must still be rejected.
+        return query, answer, windows
 
     def test_rejects_false_quote_wrong_window_author_and_unbound_citations(self):
         query, answer, windows = self.parsed_fixture()
@@ -152,10 +168,10 @@ class GroundingTest(LivingCase):
         self.assertEqual(coverage['available_windows'], 3)
         self.assertEqual(coverage['omitted'], [])
         self.assertEqual([window['ref'] for window in windows[1:]], [item['ref'] for item in original['context'][:2]])
-        self.p.queue(self.reading_reply, self.answer)
+        self.p.queue(self.reading_reply, self.reading_reply, self.answer)
         self.perform(request, response)
-        self.assertNotIn('Уверенный пересказ', json.dumps(self.p.calls[-2], ensure_ascii=False))
-        self.assertIn('Уверенный пересказ', json.dumps(self.p.calls[-1], ensure_ascii=False))
+        self.assertNotIn('Уверенный пересказ', json.dumps(self.p.calls[-3], ensure_ascii=False))
+        self.assertNotIn('Уверенный пересказ', json.dumps(self.p.calls[-1], ensure_ascii=False))
         # Admission prioritizes recent arrivals; display order must not crowd out the latest correction.
         correction = self.turn(new_id('mem'), 'Новая поправка остаётся доступной.', 'interlocutor', 900)
         request['context'].extend(self.turn(new_id('mem'), 'Промежуточная реплика.', 'interlocutor', 100+i)
@@ -242,9 +258,9 @@ class GroundingTest(LivingCase):
             with self.assertRaisesRegex(ProviderError,'reading_audit_unavailable'):self.perform(request,response)
         session=SessionRunner(self.c);before=session.usage()['calls']
         self.cycle.provider.inner=session.provider(self.p)
-        self.p.queue(self.reading_reply,self.answer)
-        self.assertEqual(self.perform(request,response)['usage']['calls'],3)
-        self.assertEqual(session.usage()['calls'],before+2)
+        self.p.queue(self.reading_reply,self.reading_reply,self.answer)
+        self.assertEqual(self.perform(request,response)['usage']['calls'],4)
+        self.assertEqual(session.usage()['calls'],before+3)
         self.assertEqual(len({q['request_id'] for q in self.p.calls}),len(self.p.calls))
 
     def test_secret_in_reading_is_rejected_and_redacted_before_audit(self):
@@ -259,3 +275,94 @@ class GroundingTest(LivingCase):
         with self.assertRaisesRegex(ProviderError,'reading_invalid'):self.perform(request,response)
         self.assertNotIn(secret,json.dumps([e.payload for e in self.c.store.events()]))
         self.assertEqual([q['purpose'] for q in self.p.calls[before:]],['appraise'])
+
+
+    def test_recent_role_survives_better_personal_window_and_child_indices_match(self):
+        request, response = self.conversation()
+        raw = json.loads(request['context'][1]['text'])
+        raw['kind'] = 'dialogue_turn'
+        request['context'][1]['text'] = json.dumps(raw, ensure_ascii=False)
+        full = dict(raw, kind='semantic', statement_scope='utterance_only', text_window=copy.deepcopy(raw['excerpt']))
+        full.pop('excerpt')
+        # The full window wins over a truncated recent overview but retains recent role.
+        raw['text'] = raw['text'][:8]
+        raw['excerpt'].update(end=8, more=True)
+        request['context'][1]['text'] = json.dumps(raw, ensure_ascii=False)
+        request['context'].append(dict(request['context'][1], layer='personal', text=json.dumps(full, ensure_ascii=False)))
+        _, windows, _ = source_windows(request['context'], speaker='interlocutor')
+        selected = next(w for w in windows if w['ref'] == request['context'][1]['ref'])
+        self.assertEqual(selected['conversation_role'], 'recent')
+        self.assertEqual(selected['text_kind'], 'memory_text_window')
+        self.p.queue(self.reading_reply)
+        read_conversation(self.cycle.provider, request, response['provider'], request['context'], time.monotonic())
+        query = self.p.calls[-1]
+        view = present_context(query['context'])
+        self.assertEqual(len(view['conversation']['current']), 1)
+        self.assertEqual(len(view['conversation']['recent_turns']), 1)
+        self.assertEqual(len(view['conversation']['recalled_utterances']), 1)
+        self.assertEqual(restore_context(view), query['context'])
+        for group in ('current', 'recent_turns', 'recalled_utterances'):
+            for row in view['conversation'][group]:
+                self.assertEqual(row['index'], row['item']['text']['context_index'])
+        self.assertEqual(view['conversation']['recent_turns'][0]['item']['text']['parent_context_index'], 5)
+
+    def test_own_reading_accepts_only_own_quote_and_current_uncertainty(self):
+        request, response = self.conversation()
+        self.p.queue(self.reading_reply)
+        read_conversation(self.cycle.provider, request, response['provider'], request['context'],
+                          time.monotonic(), speaker='self')
+        query = self.p.calls[-1]
+        windows = [json.loads(i['text']) for i in query['context'][:-1]]
+        answer = ScriptedProvider([self.reading_reply(query)]).propose(query)
+        parse = lambda value: parse_reading(value, query, answer['provider'], windows, speaker='self')
+        self.assertIsNotNone(parse(answer))
+        body = answer['proposals'][0]['body']
+        body['findings'][0]['evidence'] = [{'context_index': 0, 'ref': windows[0]['ref'], 'quote': windows[0]['text']}]
+        answer['proposals'][0]['cites'] = [windows[0]['ref']]
+        for scope in ('own_preference', 'own_reaction', 'own_words', 'interlocutor_statement'):
+            body['findings'][0]['scope'] = scope
+            self.assertIsNone(parse(answer))
+        body.update(findings=[], uncertainty='Позиция не установлена.')
+        self.assertIsNotNone(parse(answer))
+
+
+    def test_pause_and_expiry_between_readers_prevent_remaining_calls(self):
+        request, response = self.conversation()
+        record = self.cycle.provider.record
+        clock = [0]
+        def expire_after_read(rid, audit):
+            saved = record(rid, audit)
+            if audit['phase'] == 'conversation_reading' and audit['error'] is None:
+                clock[0] = 1000
+            return saved
+        self.p.queue(self.reading_reply)
+        before = len(self.p.calls)
+        with patch('iam.world.speech.time.monotonic', side_effect=lambda: clock[0]), patch.object(
+                self.cycle.provider, 'record', side_effect=expire_after_read):
+            with self.assertRaisesRegex(ProviderError, 'reading_unavailable'):
+                self.perform(request, response)
+        self.assertEqual(len(self.p.calls), before + 1)
+        def pause_after_read(rid, audit):
+            saved = record(rid, audit)
+            if audit['phase'] == 'conversation_reading' and audit['error'] is None:
+                self.c.pause_session('operator')
+            return saved
+        self.p.queue(self.reading_reply)
+        before = len(self.p.calls)
+        with patch.object(self.cycle.provider, 'record', side_effect=pause_after_read):
+            with self.assertRaisesRegex(ProviderError, 'reading_unavailable'):
+                self.perform(request, response)
+        self.assertEqual(len(self.p.calls), before + 1)
+        self.assertNotIn('compose_message', [q['purpose'] for q in self.p.calls])
+
+
+    def test_invalid_second_reader_does_not_send_original_draft(self):
+        request, response = self.conversation()
+        before = len(self.p.calls)
+        self.p.queue(self.reading_reply, Reply((rest(),)))
+        with self.assertRaisesRegex(ProviderError, 'reading_invalid'):
+            self.perform(request, response)
+        self.assertEqual([q['purpose'] for q in self.p.calls[before:]], ['appraise', 'appraise'])
+        audit = list(self.c.store.events())[-1].payload
+        self.assertEqual(audit['speaker_scope'], 'self')
+        self.assertIn('reading_invalid', audit['error'])
