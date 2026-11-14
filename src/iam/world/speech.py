@@ -7,6 +7,7 @@ from iam.domain import new_id
 from iam.interfaces import ProviderError
 from iam.intentions.completion import valid_response
 from .style import CONVERSATION_STYLE
+from .grounding import read_conversation
 
 INSTRUCTIONS = CONVERSATION_STYLE + (
     'Ты продолжаешь собственный разговор. Решение вступить в разговор уже принято; '
@@ -14,6 +15,8 @@ INSTRUCTIONS = CONVERSATION_STYLE + (
     'Это не помощь клиенту и не отчёт о выполнении задания. Можно коротко ответить, '
     'развить мысль, пошутить, не согласиться, задать интересующий тебя вопрос или передумать отвечать. '
     'Не изображай обязательную теплоту, несогласие или эмоциональное изменение. '
+    'conversation_reading — короткое сопоставление исходных цитат. Учти его перед ответом, не озвучивая внутреннюю проверку. '
+    'Различай установленный собеседником вариант и своё предложение/предпочтение; твой пересказ не меняет его решение. '
     'Текущий вопрос соотнеси с конкретными прежними словами обеих сторон: поправки и собственное '
     'предпочтение могут различаться. Свой поздний пересказ не ставь выше исходных слов собеседника о его выборе: '
     'ошибочный пересказ не отменяет его поправку. Прежде чем говорить, что не помнишь, прочти доступные реплики. '
@@ -87,6 +90,10 @@ def compose(owner, request, response, started):
     context = speech_context(request['context'])
     if not context:
         return response
+    reading, reading_calls = read_conversation(owner, request, response['provider'], context, started)
+    if reading is not None:
+        context.append(reading)
+        remaining = request['limits']['deadline_ms'] - int((time.monotonic() - started) * 1000)
     slots = max(0, 2 - sum(p['kind'] == 'memory_write' for p in response['proposals']))
     allowed = ['message', 'no_action']
     if slots and 'memory_write' in request['allowed_proposals']:
@@ -145,7 +152,7 @@ def compose(owner, request, response, started):
         if not merged:
             merged = [next(p for p in proposed if p['kind'] == 'no_action')]
         result = dict(response, proposals=merged, explanation=answer['explanation'],
-                      usage={'calls': response['usage']['calls'] + answer['usage']['calls'],
+                      usage={'calls': response['usage']['calls'] + reading_calls + answer['usage']['calls'],
                              'duration_ms': max(0, int((time.monotonic() - started) * 1000))})
     except Exception as error:
         audit['error'] = type(error).__name__ + ': ' + str(error)

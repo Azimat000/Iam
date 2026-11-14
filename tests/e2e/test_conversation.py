@@ -14,7 +14,7 @@ from iam.storage import Store
 
 
 class ConversationRuntimeTest(unittest.TestCase):
-    def test_six_read_reply_turns_keep_one_session_and_charge_eighteen_calls(self):
+    def test_six_read_reply_turns_keep_one_session_and_charge_twenty_three_calls(self):
         recipient = 876543210987
         provider = FakeCodex()
         client = Mock(bot_id=123, timeout=0)
@@ -35,12 +35,16 @@ class ConversationRuntimeTest(unittest.TestCase):
                     self.assertTrue(rt.submit('can_review').result(5))
                     for number in range(6):
                         iid = new_id('inp')
-                        provider.queue(reply([{'kind': 'attend', 'rationale': 'Прочесть сообщение',
+                        sequence = [reply([{'kind': 'attend', 'rationale': 'Прочесть сообщение',
                             'body': {'focus': 'dialogue', 'ref': iid}}]),
                             reply([{'kind': 'message', 'rationale': 'Выбрать ответ',
                             'body': {'capability_id': 'cap_Telegram01', 'to': 'creator', 'text': f'Черновик {number}'}}]),
                             reply([{'kind': 'message', 'rationale': 'Ответить на прочитанное',
-                            'body': {'capability_id': 'cap_Telegram01', 'to': 'creator', 'text': f'Ответ {number}'}}]))
+                            'body': {'capability_id': 'cap_Telegram01', 'to': 'creator', 'text': f'Ответ {number}'}}])]
+                        if number:
+                            sequence.insert(2, reply([{'kind': 'no_action', 'rationale': 'Проверка доступных источников',
+                                'body': {'findings': [], 'uncertainty': 'В этом обмене нет спорного воспоминания.', 'reason': 'Нет спорного воспоминания'}}]))
+                        provider.queue(*sequence)
                         rt.inject = lambda iid=iid, number=number: rt.ctl.record_event(EventSpec(
                             'input.arrived', 'rx:test:' + iid,
                             {'input_id': iid, 'sender': str(recipient), 'channel': 'telegram', 'text': f'Вопрос {number}'}))
@@ -53,7 +57,7 @@ class ConversationRuntimeTest(unittest.TestCase):
                                 break
                         else:
                             self.fail('Нет подтверждённого ответа на очередное сообщение')
-                    self.assertEqual(view['usage']['calls'], 18)
+                    self.assertEqual(view['usage']['calls'], 23)
                     self.assertEqual([call.args[1]['text'] for call in sent], [f'Ответ {n}' for n in range(6)])
                     self.assertEqual(view['usage']['session_id'], sid)
                     self.assertEqual(view['session_state'], 'running')
@@ -69,9 +73,13 @@ class ConversationRuntimeTest(unittest.TestCase):
                 self.assertEqual([q['purpose'] for q in requests], ['choose_action'] * 12)
                 composed = [e for e in store.events() if e.type == 'proposal.assessed'
                             and e.payload.get('phase') == 'conversation_composition']
+                readings = [e for e in store.events() if e.type == 'proposal.assessed'
+                            and e.payload.get('phase') == 'conversation_reading']
+                self.assertEqual(len(readings), 5)
+                self.assertTrue(all(e.payload['error'] is None for e in readings))
                 self.assertEqual(len(composed),6)
                 self.assertTrue(all(e.payload['error'] is None for e in composed))
-        self.assertEqual(len(provider.calls), 18)
+        self.assertEqual(len(provider.calls), 23)
         prompts = [json.loads(call['stdin'])['prompt'] for call in provider.calls]
         self.assertNotIn('Вопрос 0', prompts[0])
         self.assertIn('Вопрос 0', prompts[1])
