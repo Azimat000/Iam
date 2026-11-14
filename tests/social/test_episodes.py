@@ -27,6 +27,44 @@ class EpisodeTest(ContextCase):
         self.distract()
         return original, answer, correction, reply
 
+    def packet(self, row):
+        return {'ref': row.memory_id, 'origin': row.origin, 'layer': row.layer, 'text': self.m._window(row)}
+
+    def test_repeated_questions_with_already_shown_neighborhood_do_not_displace_correction(self):
+        original, answer, correction, reply = self.history()
+        repeated = []
+        for _ in range(3):
+            question, response = self.exchange('Какой цвет и название у нашей книжки?', 'Раньше была зелёной.')
+            repeated.extend((question, response))
+        _, trigger = self.incoming('Какой цвет и название у нашей книжки?')
+        context = [self.packet(row) for row in [original, *repeated]]
+        result = episode_context(self.m, trigger, [*repeated[::2], original], context)
+        packets = {item['ref']: json.loads(item['text']) for item in result}
+        self.assertIn(correction.memory_id, packets)
+        self.assertIn(reply.memory_id, packets)
+        self.assertEqual(packets[correction.memory_id]['text'], correction.text)
+        self.assertFalse({data['episode_seed'] for data in packets.values()} & {row.memory_id for row in repeated})
+        self.assertLessEqual(sum(len(item['text']) for item in result), 10000)
+
+    def test_full_words_skip_redundant_expansion_but_partial_window_and_same_ref_instruction_do_not(self):
+        original, answer, correction, reply = self.history()
+        _, trigger = self.incoming('Книжка?')
+        context = [self.packet(turn[1]) for turn in self.m._turns() if trigger.event_id not in turn[1].sources]
+        self.assertEqual(episode_context(self.m, trigger, [original], context), [])
+        target = next(item for item in context if item['ref'] == correction.memory_id)
+        data = json.loads(target['text'])
+        data['text'] = data['text'][:5]
+        data['text_window'].update(end=5, more=True)
+        target['text'] = json.dumps(data, ensure_ascii=False)
+        context.extend([{'ref': correction.memory_id, 'layer': 'state', 'text': json.dumps({'instructions': correction.text})},
+                        {'ref': correction.memory_id, 'layer': 'state',
+                         'text': json.dumps({'kind': 'instruction', 'text': correction.text})},
+                        {'ref': correction.memory_id, 'layer': 'state', 'text': correction.text},
+                        {'ref': correction.memory_id, 'layer': 'state', 'text': '[]'}])
+        result = episode_context(self.m, trigger, [original], context)
+        self.assertEqual(next(json.loads(item['text'])['text'] for item in result
+                              if item['ref'] == correction.memory_id), correction.text)
+
     def test_late_anaphoric_correction_and_own_position_survive_restart(self):
         original, answer, correction, reply = self.history()
         self.c.pause_session('operator')

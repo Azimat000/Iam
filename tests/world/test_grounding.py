@@ -120,6 +120,13 @@ class GroundingTest(LivingCase):
         candidate = copy.deepcopy(answer)
         candidate['proposals'][0].update(cites=[], body={'findings': [], 'uncertainty': 'Недостаточно доступных слов.', 'reason': 'Недостаточно источников'})
         self.assertEqual(parse_reading(candidate, query, answer['provider'], windows)['findings'], [])
+        # A question may explain uncertainty without becoming a quoted factual finding.
+        candidate['proposals'][0]['cites'] = [windows[0]['ref']]
+        self.assertEqual(parse_reading(candidate, query, answer['provider'], windows)['findings'], [])
+        for refs in ([new_id('mem')], [window['ref'] for window in windows if window['speaker'] == 'self'],
+                     [windows[0]['ref'], windows[0]['ref']]):
+            candidate['proposals'][0]['cites'] = refs
+            self.assertIsNone(parse_reading(candidate, query, answer['provider'], windows))
         candidate = copy.deepcopy(answer)
         candidate['proposals'][0]['body']['findings'][0]['scope'] = 'comparison'
         self.assertIsNone(parse_reading(candidate, query, answer['provider'], windows))

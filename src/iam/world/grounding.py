@@ -24,8 +24,10 @@ INSTRUCTIONS = (
     'Цитируй только показанные слова собеседника. Приводи содержательные цитаты, достаточные для толкования. '
     'coverage описывает отбор доступных окон, не полную историю. При пропуске нельзя заключать, что поправки или ответа не было. '
     'relation=temporal_neighbor_not_verified_reply не доказывает связь вопрос–ответ. '
-    'cites — ровно множество ref процитированных окон. Если сопоставлять нечего, findings:[], '
-    'cites:[] и краткая uncertainty. Не выдумывай недостающие источники.'
+    'cites обязательно содержит ref всех цитат. При непустой uncertainty можно также сослаться на '
+    'показанные слова собеседника, объясняющие неизвестность, включая текущий вопрос. '
+    'Если сопоставлять нечего, findings:[] и краткая uncertainty; cites может быть пустым. '
+    'Не выдумывай недостающие источники.'
 )
 
 
@@ -120,7 +122,10 @@ def parse_reading(response, request, provider, windows):
                              'quote': quote['quote'], 'quote_start': start, 'quote_end': start + len(quote['quote'])})
             cited.add(source['ref'])
         findings.append({**finding, 'evidence': evidence})
-    if set(proposal['cites']) != cited or len(proposal['cites']) != len(cited):
+    allowed = cited | ({source['ref'] for source in windows if source['speaker'] == 'interlocutor'}
+                       if body['uncertainty'].strip() else set())
+    supplied = set(proposal['cites'])
+    if not cited <= supplied <= allowed or len(proposal['cites']) != len(supplied):
         return None
     return {'kind': 'conversation_reading', 'semantic_verified': False, 'findings': findings,
             'uncertainty': body['uncertainty'], 'meaning': 'Точное присутствие цитат проверено; толкование — гипотеза модели, не новый факт биографии.'}

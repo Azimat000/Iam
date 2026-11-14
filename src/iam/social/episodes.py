@@ -6,6 +6,23 @@ from iam.memory.window import text_window
 from .context import adjacent, authorship, boundaries
 
 
+def visible_words(context):
+    """Показанные слова конкретных источников; инструкция с тем же ref не считается репликой."""
+    result = {}
+    for item in context:
+        try:
+            data = json.loads(item.get('text', ''))
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(data, dict) or not isinstance(data.get('text'), str):
+            continue
+        utterance = (item.get('layer') == 'state' and data.get('kind') in ('dialogue_turn', 'conversation_episode')
+                     or item.get('layer') == 'personal' and data.get('statement_scope') == 'utterance_only')
+        if utterance:
+            result.setdefault(item['ref'], []).append(data['text'])
+    return result
+
+
 def episode_context(memory, trigger, records, context):
     if memory.off or getattr(trigger, 'type', None) != 'input.read' or not records:
         return []
@@ -15,14 +32,15 @@ def episode_context(memory, trigger, records, context):
                   and turn[1].memory_id in visible and trigger.event_id not in turn[1].sources]
     scores = relevance(memory.retrieval_query(trigger), [turn[1] for turn in candidates])
     ranked = sorted((turn for turn in candidates if turn[1].memory_id in scores),
-                    key=lambda turn: (-scores[turn[1].memory_id], turn[0]))[:2]
+                    key=lambda turn: (-scores[turn[1].memory_id], turn[0]))
     if not ranked:
         return []
-    seeds = ranked
+    shown = visible_words(context)
     links, edges = adjacent(memory, turns), boundaries(memory)
     positions = {turn[1].memory_id: i for i, turn in enumerate(turns)}
     selected = {}
-    for seed in seeds:
+    admitted = 0
+    for seed in ranked:
         ref = seed[1].memory_id
         chain = [seed]
         answer = links.get(ref)
@@ -44,9 +62,15 @@ def episode_context(memory, trigger, records, context):
             reply = links.get(following[1].memory_id)
             if reply is not None:
                 chain.append(reply)
+        chain = [turn for turn in chain if trigger.event_id not in turn[1].sources and turn[4] is not None]
+        if not any(turn[1].memory_id not in selected
+                   and not any(turn[4] in text for text in shown.get(turn[1].memory_id, ())) for turn in chain):
+            continue
         for turn in chain:
-            if trigger.event_id not in turn[1].sources and turn[4] is not None:
-                selected.setdefault(turn[1].memory_id, (turn, ref))
+            selected.setdefault(turn[1].memory_id, (turn, ref))
+        admitted += 1
+        if admitted == 2:
+            break
     result, budget = [], 10000
     for turn, seed in selected.values():
         row = turn[1]
