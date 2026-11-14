@@ -162,9 +162,9 @@ class StateController:
         # Получатель может менять вложенные content/history; кеш ему не отдаём.
         return copy.deepcopy(result)
 
-    def events_after(self, seq: int) -> list[Event]:
-        """События журнала с номером больше `seq`, по порядку."""
-        return list(self.store.events(seq + 1))
+    def events_after(self, seq: int, *, types: tuple[str, ...] | None = None) -> list[Event]:
+        """События с номером больше `seq`; необязательный фильтр не кеширует историю."""
+        return list(self.store.events(seq + 1, types=types))
 
     def _reload(self) -> None:
         snap = self.store.latest_snapshot()

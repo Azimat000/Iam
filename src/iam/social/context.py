@@ -11,7 +11,8 @@ def authorship(turn):
 
 def boundaries(memory):
     actions = memory.ctl.state['world_time'].get('world', {}).get('actions', {})
-    return {event.seq for event in memory.ctl.events_after(0)
+    return {event.seq for event in memory.ctl.events_after(0, types=(
+                      'input.arrived', 'input.read', 'message.out_sent', 'message.out_unknown', 'action.failed'))
                   if event.type in ('input.arrived', 'input.read', 'message.out_sent', 'message.out_unknown')
                   or event.type == 'action.failed'
                   and actions.get(event.payload.get('action_id'), {}).get('kind') == 'message'}

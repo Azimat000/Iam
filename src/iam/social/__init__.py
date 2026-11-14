@@ -30,7 +30,7 @@ class SocialMemory(WorldMemory):
         return contact_id(channel, sender)
 
     def _read_arrivals(self):
-        events = self.ctl.events_after(0)
+        events = self.ctl.events_after(0, types=('input.arrived', 'input.read'))
         arrivals = {Perception.input_id(event): event for event in events if event.type == "input.arrived"}
         return {event.event_id: arrivals.get(event.payload.get("input_id"))
                 for event in events if event.type == "input.read"}

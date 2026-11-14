@@ -208,8 +208,8 @@ class Proxy(Double):
     def find_event(self, **kw):
         return self._inner.find_event(**kw)
 
-    def events_after(self, seq):
-        return self._inner.events_after(seq)
+    def events_after(self, seq, *, types=None):
+        return self._inner.events_after(seq, types=types)
 
     def tick(self):
         return self._inner.tick()
@@ -217,6 +217,19 @@ class Proxy(Double):
 
 class SwapTest(CycleCase):
     """Подмена любой заглушки другой реализацией не требует правок цикла."""
+
+    def test_filtered_events_work_through_proxy_with_persistent_perception(self):
+        from iam.memory import PersistentMemory
+        from iam.perception import Perception
+        from iam.state import EventSpec
+        self.build()
+        proxy = Proxy(self.c)
+        memory = PersistentMemory(proxy)
+        perception = Perception(proxy, memory)
+        arrival = self.c.record_event(EventSpec('input.arrived', 'rx:proxy:filter', {'text': 'Ещё не прочитано'})).event
+        self.assertEqual(proxy.events_after(arrival.seq-1, types=('input.arrived',)), [arrival])
+        self.assertEqual(perception._arrivals(), {perception.input_id(arrival): arrival})
+        self.assertFalse(any(row.text == 'Ещё не прочитано' for row in memory.records()))
 
     def test_cycle_runs_on_other_implementations_of_every_socket(self):
         self.build()

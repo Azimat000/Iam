@@ -252,10 +252,17 @@ class Store:
         r = self.con.execute(f"SELECT * FROM events WHERE {col} = ?", (val,)).fetchone()
         return None if r is None else self._row_event(r)
 
-    def events(self, from_seq: int = 1, to_seq: int | None = None) -> Iterator[Event]:
-        """События по порядку seq (порядок определяется только seq, а не временем)."""
+    def events(self, from_seq: int = 1, to_seq: int | None = None,
+               *, types: tuple[str, ...] | None = None) -> Iterator[Event]:
+        """События по seq; фильтр типов применяется до чтения и разбора payload."""
         hi = self.last_seq() if to_seq is None else to_seq
-        for r in self.con.execute("SELECT * FROM events WHERE seq BETWEEN ? AND ? ORDER BY seq", (from_seq, hi)):
+        if types is not None and not types:
+            return
+        query, params = "SELECT * FROM events WHERE seq BETWEEN ? AND ?", [from_seq, hi]
+        if types is not None:
+            query += " AND type IN (" + ",".join("?" for _ in types) + ")"
+            params.extend(types)
+        for r in self.con.execute(query + " ORDER BY seq", params):
             yield self._row_event(r)
 
     # --- снимки состояния ----------------------------------------------------------------------

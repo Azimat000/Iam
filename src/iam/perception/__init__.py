@@ -37,7 +37,7 @@ class Perception:
 
     def _arrivals(self):
         # Архив транспорта читается здесь только для стадии восприятия, не как память.
-        return {self.input_id(e): e for e in self.ctl.events_after(0) if e.type == 'input.arrived'}
+        return {self.input_id(e): e for e in self.ctl.events_after(0, types=('input.arrived',))}
 
     @staticmethod
     def input_id(event):
